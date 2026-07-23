@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Parish Formation
  * Description:       Provides focused online formation tools for parishes.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires PHP:      8.3
  * Author:            Father Andrew M. Boyd
  * Author URI:        https://fatherboyd.com
@@ -15,14 +15,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PARISH_FORMATION_VERSION', '0.1.0' );
+define( 'PARISH_FORMATION_VERSION', '0.2.0' );
 define( 'PARISH_FORMATION_DB_VERSION', '0.1.0' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'PARISH_FORMATION_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-upgrader.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-capabilities.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-course-post-type.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-lesson-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-lesson-settings.php';
 
 register_activation_hook(
 	PARISH_FORMATION_PLUGIN_FILE,
@@ -47,4 +52,58 @@ add_action(
 add_action(
 	'admin_menu',
 	array( 'Parish_Formation_Admin', 'register_menu' )
+);
+
+add_action(
+	'init',
+	array( 'Parish_Formation_Course_Post_Type', 'register' )
+);
+
+add_action(
+	'init',
+	array( 'Parish_Formation_Lesson_Post_Type', 'register' )
+);
+
+add_action(
+	'add_meta_boxes',
+	array( 'Parish_Formation_Lesson_Settings', 'register_meta_box' )
+);
+
+add_action(
+	'add_meta_boxes',
+	array( 'Parish_Formation_Course_Settings', 'register_meta_box' )
+);
+
+add_action(
+	'save_post_pf_lesson',
+	array( 'Parish_Formation_Lesson_Settings', 'save' )
+);
+
+add_action(
+	'save_post_pf_course',
+	array( 'Parish_Formation_Course_Settings', 'save' )
+);
+
+add_filter(
+	'manage_pf_lesson_posts_columns',
+	array( 'Parish_Formation_Lesson_Settings', 'add_list_columns' )
+);
+
+add_action(
+	'manage_pf_lesson_posts_custom_column',
+	array( 'Parish_Formation_Lesson_Settings', 'render_list_column' ),
+	10,
+	2
+);
+
+add_action(
+	'quick_edit_custom_box',
+	array( 'Parish_Formation_Lesson_Settings', 'render_quick_edit_fields' ),
+	10,
+	2
+);
+
+add_action(
+	'admin_enqueue_scripts',
+	array( 'Parish_Formation_Lesson_Settings', 'enqueue_quick_edit_script' )
 );

@@ -45,13 +45,14 @@ confirmed. Any future deletion process must account for WordPress multisite.
 - Conservative uninstall behavior.
 - Internal roadmap.
 
-### 0.2.0 — Courses and lessons
+### 0.2.0 — Courses and lessons (complete)
 
 - Course and lesson custom post types.
 - Block-editor lesson content.
 - Course assignment and lesson ordering.
 - Required and optional lessons.
 - Course introduction and completion content.
+- Course lesson summary for staff.
 
 ### 0.3.0 — Enrollment
 
