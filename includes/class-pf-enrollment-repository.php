@@ -1,0 +1,141 @@
+<?php
+/**
+ * Provides enrollment data access.
+ *
+ * @package ParishFormation
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Enrollment persistence operations.
+ */
+final class Parish_Formation_Enrollment_Repository {
+
+	/**
+	 * Create a manual enrollment.
+	 *
+	 * @param int $user_id    Participant user ID.
+	 * @param int $course_id  Course post ID.
+	 * @param int         $created_by Staff user ID.
+	 * @param string|null $expires_at UTC expiration datetime, or null.
+	 * @return int|WP_Error Enrollment ID or error.
+	 */
+	public static function create_manual( $user_id, $course_id, $created_by, $expires_at = null ) {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'pf_enrollments';
+		$existing_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$table_name} WHERE user_id = %d AND course_id = %d LIMIT 1",
+				$user_id,
+				$course_id
+			)
+		);
+
+		if ( $existing_id ) {
+			$existing_status = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT status FROM {$table_name} WHERE id = %d",
+					$existing_id
+				)
+			);
+
+			if ( 'unenrolled' === $existing_status ) {
+				$now       = current_time( 'mysql', true );
+				$reactivated = $wpdb->update(
+					$table_name,
+					array(
+						'status'            => 'enrolled',
+						'enrolled_at'       => $now,
+						'started_at'        => null,
+						'completed_at'      => null,
+						'expires_at'        => $expires_at,
+						'enrollment_source' => 'manual',
+						'created_by'        => absint( $created_by ),
+						'updated_at'        => $now,
+					),
+					array( 'id' => absint( $existing_id ) ),
+					array( '%s', '%s', null, null, '%s', '%s', '%d', '%s' ),
+					array( '%d' )
+				);
+
+				if ( false === $reactivated ) {
+					return new WP_Error( 'database_error', __( 'The enrollment could not be saved.', 'parish-formation' ) );
+				}
+
+				return absint( $existing_id );
+			}
+
+			return new WP_Error( 'duplicate_enrollment', __( 'That user is already enrolled in this course.', 'parish-formation' ) );
+		}
+
+		$now = current_time( 'mysql', true );
+		$inserted = $wpdb->insert(
+			$table_name,
+			array(
+				'user_id'          => absint( $user_id ),
+				'course_id'        => absint( $course_id ),
+				'status'           => 'enrolled',
+				'enrolled_at'      => $now,
+				'enrollment_source' => 'manual',
+				'expires_at'        => $expires_at,
+				'created_by'       => absint( $created_by ),
+				'created_at'       => $now,
+				'updated_at'       => $now,
+			),
+			array( '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
+		);
+
+		if ( false === $inserted ) {
+			return new WP_Error( 'database_error', __( 'The enrollment could not be saved.', 'parish-formation' ) );
+		}
+
+		return absint( $wpdb->insert_id );
+	}
+
+	/**
+	 * Mark an enrollment as unenrolled without deleting its history.
+	 *
+	 * @param int $enrollment_id Enrollment ID.
+	 * @return true|WP_Error True on success or error.
+	 */
+	public static function unenroll( $enrollment_id ) {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'pf_enrollments';
+		$enrollment = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, status FROM {$table_name} WHERE id = %d",
+				$enrollment_id
+			)
+		);
+
+		if ( ! $enrollment ) {
+			return new WP_Error( 'invalid_enrollment', __( 'The enrollment could not be found.', 'parish-formation' ) );
+		}
+
+		if ( 'unenrolled' === $enrollment->status ) {
+			return true;
+		}
+
+		$updated = $wpdb->update(
+			$table_name,
+			array(
+				'status'     => 'unenrolled',
+				'updated_at' => current_time( 'mysql', true ),
+			),
+			array( 'id' => absint( $enrollment_id ) ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
+
+		if ( false === $updated ) {
+			return new WP_Error( 'database_error', __( 'The enrollment could not be updated.', 'parish-formation' ) );
+		}
+
+		return true;
+	}
+}

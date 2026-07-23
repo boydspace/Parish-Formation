@@ -29,6 +29,16 @@ final class Parish_Formation_Admin {
 			'dashicons-welcome-learn-more',
 			25
 		);
+
+		add_submenu_page(
+			'parish-formation',
+			esc_html__( 'Parish Formation Dashboard', 'parish-formation' ),
+			esc_html__( 'Dashboard', 'parish-formation' ),
+			'pf_manage_courses',
+			'parish-formation',
+			array( self::class, 'render_dashboard' ),
+			0
+		);
 	}
 
 	/**

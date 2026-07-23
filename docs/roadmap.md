@@ -54,12 +54,13 @@ confirmed. Any future deletion process must account for WordPress multisite.
 - Course introduction and completion content.
 - Course lesson summary for staff.
 
-### 0.3.0 — Enrollment
+### 0.3.0 — Enrollment (complete)
 
 - Enrollment database table with appropriate indexes and uniqueness rules.
 - Manual enrollment by authorized parish staff.
 - Enrollment status and important dates.
-- Optional expiration and course reopening.
+- Optional enrollment expiration.
+- Reversible unenrollment and re-enrollment.
 
 ### 0.4.0 — Participant course experience
 
@@ -73,7 +74,7 @@ confirmed. Any future deletion process must account for WordPress multisite.
 - Lesson-progress database table with a unique enrollment-and-lesson rule.
 - Course completion calculation.
 - Staff participant search and status filters.
-- Completion overrides and course reopening.
+- Completion overrides and reopening completed courses.
 
 ### Later releases
 
