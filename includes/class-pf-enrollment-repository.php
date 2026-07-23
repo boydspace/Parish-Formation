@@ -15,6 +15,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Parish_Formation_Enrollment_Repository {
 
 	/**
+	 * Retrieve one enrollment with participant and course details for staff.
+	 *
+	 * @param int $enrollment_id Enrollment ID.
+	 * @return object|null
+	 */
+	public static function get_details( $enrollment_id ) {
+		global $wpdb;
+
+		$table_name  = $wpdb->prefix . 'pf_enrollments';
+		$users_table = $wpdb->users;
+		$posts_table = $wpdb->posts;
+
+		return $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT enrollment.*, user.display_name, user.user_email,
+					course.post_title AS course_title
+				FROM {$table_name} AS enrollment
+				INNER JOIN {$users_table} AS user ON user.ID = enrollment.user_id
+				INNER JOIN {$posts_table} AS course ON course.ID = enrollment.course_id
+				WHERE enrollment.id = %d
+				LIMIT 1",
+				absint( $enrollment_id )
+			)
+		);
+	}
+
+	/**
 	 * Retrieve active enrollments for a participant.
 	 *
 	 * @param int $user_id Participant user ID.
@@ -115,13 +142,15 @@ final class Parish_Formation_Enrollment_Repository {
 						'enrolled_at'       => $now,
 						'started_at'        => null,
 						'completed_at'      => null,
+						'completion_override_by' => null,
+						'completion_override_at' => null,
 						'expires_at'        => $expires_at,
 						'enrollment_source' => 'manual',
 						'created_by'        => absint( $created_by ),
 						'updated_at'        => $now,
 					),
 					array( 'id' => absint( $existing_id ) ),
-					array( '%s', '%s', null, null, '%s', '%s', '%d', '%s' ),
+					array( '%s', '%s', null, null, null, null, '%s', '%s', '%d', '%s' ),
 					array( '%d' )
 				);
 
@@ -239,10 +268,12 @@ final class Parish_Formation_Enrollment_Repository {
 				'enrolled_at'  => $now,
 				'started_at'   => null,
 				'completed_at' => null,
+				'completion_override_by' => null,
+				'completion_override_at' => null,
 				'updated_at'   => $now,
 			),
 			array( 'id' => absint( $enrollment_id ) ),
-			array( '%s', '%s', null, null, '%s' ),
+			array( '%s', '%s', null, null, null, null, '%s' ),
 			array( '%d' )
 		);
 
@@ -250,6 +281,65 @@ final class Parish_Formation_Enrollment_Repository {
 			$wpdb->query( 'ROLLBACK' );
 
 			return new WP_Error( 'database_error', __( 'The course could not be reset.', 'parish-formation' ) );
+		}
+
+		$wpdb->query( 'COMMIT' );
+
+		return true;
+	}
+
+	/**
+	 * Complete a course on behalf of a participant and record the staff override.
+	 *
+	 * @param int $enrollment_id Enrollment ID.
+	 * @param int $staff_user_id Staff WordPress user ID.
+	 * @return true|WP_Error True on success or error.
+	 */
+	public static function mark_complete_by_staff( $enrollment_id, $staff_user_id ) {
+		global $wpdb;
+
+		$enrollment = self::get_details( $enrollment_id );
+
+		if ( ! $enrollment || 'unenrolled' === $enrollment->status ) {
+			return new WP_Error( 'invalid_enrollment', __( 'The enrollment could not be found.', 'parish-formation' ) );
+		}
+
+		$lessons = Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id );
+
+		if ( ! $lessons ) {
+			return new WP_Error( 'no_lessons', __( 'Publish at least one lesson before completing this course.', 'parish-formation' ) );
+		}
+
+		$wpdb->query( 'START TRANSACTION' );
+
+		foreach ( $lessons as $lesson ) {
+			$result = Parish_Formation_Progress_Repository::finish_lesson( $enrollment, $lesson->ID, 'completed' );
+
+			if ( is_wp_error( $result ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return $result;
+			}
+		}
+
+		$now        = current_time( 'mysql', true );
+		$table_name = $wpdb->prefix . 'pf_enrollments';
+		$updated    = $wpdb->update(
+			$table_name,
+			array(
+				'status'                 => 'completed',
+				'completed_at'           => $now,
+				'completion_override_by' => absint( $staff_user_id ),
+				'completion_override_at' => $now,
+				'updated_at'             => $now,
+			),
+			array( 'id' => absint( $enrollment_id ) ),
+			array( '%s', '%s', '%d', '%s', '%s' ),
+			array( '%d' )
+		);
+
+		if ( false === $updated ) {
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'database_error', __( 'The completion override could not be saved.', 'parish-formation' ) );
 		}
 
 		$wpdb->query( 'COMMIT' );

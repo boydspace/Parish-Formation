@@ -41,7 +41,23 @@ final class Parish_Formation_Enrollments_Admin {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'parish-formation' ) );
 		}
 
-		$enrollments = self::get_recent_enrollments();
+		$enrollment_id = isset( $_GET['enrollment_id'] ) ? absint( $_GET['enrollment_id'] ) : 0;
+
+		if ( $enrollment_id ) {
+			self::render_detail_page( $enrollment_id );
+			return;
+		}
+
+		$search_term   = isset( $_GET['pf_search'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_search'] ) ) : '';
+		$course_filter = isset( $_GET['pf_course_filter'] ) ? absint( $_GET['pf_course_filter'] ) : 0;
+		$status_filter = isset( $_GET['pf_status_filter'] ) ? sanitize_key( wp_unslash( $_GET['pf_status_filter'] ) ) : '';
+		$valid_statuses = array( 'enrolled', 'in_progress', 'completed' );
+
+		if ( ! in_array( $status_filter, $valid_statuses, true ) ) {
+			$status_filter = '';
+		}
+
+		$enrollments = self::get_recent_enrollments( $search_term, $course_filter, $status_filter );
 		$courses    = get_posts(
 			array(
 				'post_type'      => Parish_Formation_Course_Post_Type::POST_TYPE,
@@ -104,15 +120,41 @@ final class Parish_Formation_Enrollments_Admin {
 
 			<hr />
 			<h2><?php echo esc_html__( 'Recent Enrollments', 'parish-formation' ); ?></h2>
+			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="search-form">
+				<input type="hidden" name="page" value="parish-formation-enrollments" />
+				<label class="screen-reader-text" for="pf-enrollment-search"><?php echo esc_html__( 'Search participants', 'parish-formation' ); ?></label>
+				<input type="search" id="pf-enrollment-search" name="pf_search" value="<?php echo esc_attr( $search_term ); ?>" placeholder="<?php echo esc_attr__( 'Name or email', 'parish-formation' ); ?>" />
+
+				<label class="screen-reader-text" for="pf-course-filter"><?php echo esc_html__( 'Filter by course', 'parish-formation' ); ?></label>
+				<select id="pf-course-filter" name="pf_course_filter">
+					<option value="0"><?php echo esc_html__( 'All courses', 'parish-formation' ); ?></option>
+					<?php foreach ( $courses as $course ) : ?>
+						<option value="<?php echo esc_attr( $course->ID ); ?>" <?php selected( $course_filter, $course->ID ); ?>><?php echo esc_html( $course->post_title ); ?></option>
+					<?php endforeach; ?>
+				</select>
+
+				<label class="screen-reader-text" for="pf-status-filter"><?php echo esc_html__( 'Filter by status', 'parish-formation' ); ?></label>
+				<select id="pf-status-filter" name="pf_status_filter">
+					<option value=""><?php echo esc_html__( 'All statuses', 'parish-formation' ); ?></option>
+					<option value="enrolled" <?php selected( $status_filter, 'enrolled' ); ?>><?php echo esc_html__( 'Enrolled', 'parish-formation' ); ?></option>
+					<option value="in_progress" <?php selected( $status_filter, 'in_progress' ); ?>><?php echo esc_html__( 'In Progress', 'parish-formation' ); ?></option>
+					<option value="completed" <?php selected( $status_filter, 'completed' ); ?>><?php echo esc_html__( 'Completed', 'parish-formation' ); ?></option>
+				</select>
+
+				<?php submit_button( __( 'Filter', 'parish-formation' ), 'secondary', 'submit', false ); ?>
+				<a class="button" href="<?php echo esc_url( add_query_arg( 'page', 'parish-formation-enrollments', admin_url( 'admin.php' ) ) ); ?>"><?php echo esc_html__( 'Clear', 'parish-formation' ); ?></a>
+			</form>
 
 			<?php if ( ! $enrollments ) : ?>
-				<p><?php echo esc_html__( 'No enrollments have been created yet.', 'parish-formation' ); ?></p>
+				<p><?php echo esc_html__( 'No enrollments match the current filters.', 'parish-formation' ); ?></p>
 			<?php else : ?>
 				<table class="widefat striped">
 					<thead>
 						<tr>
 							<th scope="col"><?php echo esc_html__( 'Participant', 'parish-formation' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Course', 'parish-formation' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Progress', 'parish-formation' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Current lesson', 'parish-formation' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Status', 'parish-formation' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Enrolled', 'parish-formation' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Completed', 'parish-formation' ); ?></th>
@@ -122,9 +164,43 @@ final class Parish_Formation_Enrollments_Admin {
 					</thead>
 					<tbody>
 						<?php foreach ( $enrollments as $enrollment ) : ?>
+							<?php
+							$lessons          = Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id );
+							$progress         = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons );
+							$current_lesson_id = Parish_Formation_Progress_Repository::get_current_lesson_id( $enrollment->id, $lessons );
+							$current_lesson    = $current_lesson_id ? get_post( $current_lesson_id ) : null;
+							?>
 							<tr>
-								<td><?php echo esc_html( $enrollment->display_name ); ?></td>
+								<td>
+									<a href="<?php echo esc_url( add_query_arg( array( 'page' => 'parish-formation-enrollments', 'enrollment_id' => $enrollment->id ), admin_url( 'admin.php' ) ) ); ?>">
+										<?php echo esc_html( $enrollment->display_name ); ?>
+									</a>
+								</td>
 								<td><?php echo esc_html( $enrollment->course_title ); ?></td>
+								<td>
+									<?php
+									echo esc_html(
+										sprintf(
+											/* translators: 1: finished lesson count, 2: total lesson count, 3: percentage. */
+											__( '%1$d of %2$d (%3$d%%)', 'parish-formation' ),
+											$progress['finished'],
+											$progress['total'],
+											$progress['percentage']
+										)
+									);
+									?>
+								</td>
+								<td>
+									<?php
+									if ( $current_lesson ) {
+										echo esc_html( $current_lesson->post_title );
+									} elseif ( $progress['is_complete'] ) {
+										echo esc_html__( 'Course complete', 'parish-formation' );
+									} else {
+										echo esc_html__( 'No published lessons', 'parish-formation' );
+									}
+									?>
+								</td>
 								<td><?php echo esc_html( ucwords( str_replace( '_', ' ', $enrollment->status ) ) ); ?></td>
 								<td><?php echo esc_html( self::format_utc_date( $enrollment->enrolled_at ) ); ?></td>
 								<td>
@@ -160,6 +236,96 @@ final class Parish_Formation_Enrollments_Admin {
 					</tbody>
 				</table>
 			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render detailed progress for one enrollment.
+	 *
+	 * @param int $enrollment_id Enrollment ID.
+	 * @return void
+	 */
+	private static function render_detail_page( $enrollment_id ) {
+		$enrollment = Parish_Formation_Enrollment_Repository::get_details( $enrollment_id );
+
+		if ( ! $enrollment ) {
+			wp_die( esc_html__( 'The enrollment could not be found.', 'parish-formation' ) );
+		}
+
+		$lessons          = Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id );
+		$progress         = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons );
+		$records          = Parish_Formation_Progress_Repository::get_records( $enrollment->id );
+		$current_lesson_id = Parish_Formation_Progress_Repository::get_current_lesson_id( $enrollment->id, $lessons );
+		$list_url         = add_query_arg( 'page', 'parish-formation-enrollments', admin_url( 'admin.php' ) );
+		?>
+		<div class="wrap">
+			<p><a href="<?php echo esc_url( $list_url ); ?>">&larr; <?php echo esc_html__( 'Back to Enrollments', 'parish-formation' ); ?></a></p>
+			<h1><?php echo esc_html( $enrollment->display_name ); ?></h1>
+			<h2><?php echo esc_html( $enrollment->course_title ); ?></h2>
+
+			<table class="widefat striped" style="max-width: 900px; margin-bottom: 24px;">
+				<tbody>
+					<tr><th scope="row"><?php echo esc_html__( 'Email', 'parish-formation' ); ?></th><td><?php echo esc_html( $enrollment->user_email ); ?></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Status', 'parish-formation' ); ?></th><td><?php echo esc_html( ucwords( str_replace( '_', ' ', $enrollment->status ) ) ); ?></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Progress', 'parish-formation' ); ?></th><td><?php echo esc_html( $progress['percentage'] . '%' ); ?></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Enrolled', 'parish-formation' ); ?></th><td><?php echo esc_html( self::format_utc_date( $enrollment->enrolled_at ) ); ?></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Started', 'parish-formation' ); ?></th><td><?php echo $enrollment->started_at ? esc_html( self::format_utc_date( $enrollment->started_at ) ) : '&mdash;'; ?></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Completed', 'parish-formation' ); ?></th><td><?php echo $enrollment->completed_at ? esc_html( self::format_utc_date( $enrollment->completed_at ) ) : '&mdash;'; ?></td></tr>
+					<tr><th scope="row"><?php echo esc_html__( 'Expires', 'parish-formation' ); ?></th><td><?php echo $enrollment->expires_at ? esc_html( self::format_utc_date( $enrollment->expires_at ) ) : '&mdash;'; ?></td></tr>
+					<?php if ( $enrollment->completion_override_by ) : ?>
+						<?php $override_user = get_userdata( $enrollment->completion_override_by ); ?>
+						<tr>
+							<th scope="row"><?php echo esc_html__( 'Completion override', 'parish-formation' ); ?></th>
+							<td>
+								<?php echo $override_user ? esc_html( $override_user->display_name ) : esc_html__( 'Unknown staff user', 'parish-formation' ); ?>
+								<?php if ( $enrollment->completion_override_at ) : ?>
+									&mdash; <?php echo esc_html( self::format_utc_date( $enrollment->completion_override_at ) ); ?>
+								<?php endif; ?>
+							</td>
+						</tr>
+					<?php endif; ?>
+				</tbody>
+			</table>
+
+			<?php if ( 'completed' !== $enrollment->status ) : ?>
+				<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" onsubmit="return window.confirm('<?php echo esc_js( __( 'Mark this entire course complete for the participant?', 'parish-formation' ) ); ?>');">
+					<input type="hidden" name="action" value="pf_override_completion" />
+					<input type="hidden" name="enrollment_id" value="<?php echo esc_attr( $enrollment->id ); ?>" />
+					<?php wp_nonce_field( 'pf_override_completion_' . $enrollment->id ); ?>
+					<?php submit_button( __( 'Mark Course Complete', 'parish-formation' ), 'primary', 'submit', false ); ?>
+				</form>
+			<?php endif; ?>
+
+			<h2><?php echo esc_html__( 'Lesson Progress', 'parish-formation' ); ?></h2>
+			<table class="widefat striped">
+				<thead>
+					<tr>
+						<th scope="col"><?php echo esc_html__( 'Number', 'parish-formation' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Lesson', 'parish-formation' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Requirement', 'parish-formation' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'State', 'parish-formation' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Started', 'parish-formation' ); ?></th>
+						<th scope="col"><?php echo esc_html__( 'Finished', 'parish-formation' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $lessons as $lesson ) : ?>
+						<?php
+						$record = $records[ $lesson->ID ] ?? null;
+						$state  = $record ? sanitize_key( $record->status ) : ( $current_lesson_id === $lesson->ID ? 'current' : 'locked' );
+						?>
+						<tr>
+							<td><?php echo esc_html( Parish_Formation_Course_Repository::get_lesson_number( $lesson->ID ) ); ?></td>
+							<td><a href="<?php echo esc_url( get_edit_post_link( $lesson->ID ) ); ?>"><?php echo esc_html( $lesson->post_title ); ?></a></td>
+							<td><?php echo Parish_Formation_Course_Repository::is_lesson_required( $lesson->ID ) ? esc_html__( 'Required', 'parish-formation' ) : esc_html__( 'Optional', 'parish-formation' ); ?></td>
+							<td><?php echo esc_html( ucfirst( $state ) ); ?></td>
+							<td><?php echo $record && $record->started_at ? esc_html( self::format_utc_date( $record->started_at ) ) : '&mdash;'; ?></td>
+							<td><?php echo $record && $record->completed_at ? esc_html( self::format_utc_date( $record->completed_at ) ) : '&mdash;'; ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
 		</div>
 		<?php
 	}
@@ -255,6 +421,31 @@ final class Parish_Formation_Enrollments_Admin {
 	}
 
 	/**
+	 * Process a staff course-completion override.
+	 *
+	 * @return void
+	 */
+	public static function handle_completion_override() {
+		if ( ! current_user_can( 'pf_manage_enrollments' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage enrollments.', 'parish-formation' ) );
+		}
+
+		$enrollment_id = isset( $_POST['enrollment_id'] ) ? absint( $_POST['enrollment_id'] ) : 0;
+		check_admin_referer( 'pf_override_completion_' . $enrollment_id );
+
+		$result = Parish_Formation_Enrollment_Repository::mark_complete_by_staff(
+			$enrollment_id,
+			get_current_user_id()
+		);
+
+		if ( is_wp_error( $result ) ) {
+			self::redirect_with_notice( $result->get_error_code() );
+		}
+
+		self::redirect_with_notice( 'completion_overridden' );
+	}
+
+	/**
 	 * Render a whitelisted enrollment result notice.
 	 *
 	 * @return void
@@ -265,11 +456,13 @@ final class Parish_Formation_Enrollments_Admin {
 			'created'              => array( 'success', __( 'The participant was enrolled successfully.', 'parish-formation' ) ),
 			'unenrolled'           => array( 'success', __( 'The participant was unenrolled successfully.', 'parish-formation' ) ),
 			'reset'                => array( 'success', __( 'The course was reset successfully.', 'parish-formation' ) ),
+			'completion_overridden' => array( 'success', __( 'The course was marked complete successfully.', 'parish-formation' ) ),
 			'duplicate_enrollment' => array( 'warning', __( 'That user is already enrolled in this course.', 'parish-formation' ) ),
 			'invalid_user'         => array( 'error', __( 'Select a valid WordPress user.', 'parish-formation' ) ),
 			'invalid_course'       => array( 'error', __( 'Select a valid published course.', 'parish-formation' ) ),
 			'invalid_expiration'   => array( 'error', __( 'Enter a valid expiration date.', 'parish-formation' ) ),
 			'invalid_enrollment'   => array( 'error', __( 'The enrollment could not be found.', 'parish-formation' ) ),
+			'no_lessons'           => array( 'error', __( 'Publish at least one lesson before completing this course.', 'parish-formation' ) ),
 			'database_error'       => array( 'error', __( 'The enrollment could not be saved.', 'parish-formation' ) ),
 		);
 
@@ -309,21 +502,44 @@ final class Parish_Formation_Enrollments_Admin {
 	 *
 	 * @return object[]
 	 */
-	private static function get_recent_enrollments() {
+	private static function get_recent_enrollments( $search_term = '', $course_id = 0, $status = '' ) {
 		global $wpdb;
 
 		$enrollments_table = $wpdb->prefix . 'pf_enrollments';
 		$users_table       = $wpdb->users;
 		$posts_table       = $wpdb->posts;
 
-		$query = "SELECT enrollment.id, enrollment.status, enrollment.enrolled_at, enrollment.completed_at, enrollment.expires_at,
+		$query = "SELECT enrollment.id, enrollment.user_id, enrollment.course_id, enrollment.status,
+			enrollment.enrolled_at, enrollment.completed_at, enrollment.expires_at,
 			user.display_name, course.post_title AS course_title
 			FROM {$enrollments_table} AS enrollment
 			INNER JOIN {$users_table} AS user ON user.ID = enrollment.user_id
 			INNER JOIN {$posts_table} AS course ON course.ID = enrollment.course_id
-			WHERE enrollment.status <> 'unenrolled'
-			ORDER BY enrollment.enrolled_at DESC, enrollment.id DESC
-			LIMIT 50";
+			WHERE enrollment.status <> 'unenrolled'";
+		$query_parameters = array();
+
+		if ( $search_term ) {
+			$search_like        = '%' . $wpdb->esc_like( $search_term ) . '%';
+			$query             .= ' AND (user.display_name LIKE %s OR user.user_email LIKE %s)';
+			$query_parameters[] = $search_like;
+			$query_parameters[] = $search_like;
+		}
+
+		if ( $course_id ) {
+			$query             .= ' AND enrollment.course_id = %d';
+			$query_parameters[] = absint( $course_id );
+		}
+
+		if ( $status ) {
+			$query             .= ' AND enrollment.status = %s';
+			$query_parameters[] = $status;
+		}
+
+		$query .= ' ORDER BY enrollment.enrolled_at DESC, enrollment.id DESC LIMIT 50';
+
+		if ( $query_parameters ) {
+			$query = $wpdb->prepare( $query, $query_parameters );
+		}
 
 		return $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}

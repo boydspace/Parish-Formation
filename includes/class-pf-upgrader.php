@@ -39,6 +39,10 @@ final class Parish_Formation_Upgrader {
 			self::install_progress_table();
 		}
 
+		if ( version_compare( $installed_version, '0.4.0', '<' ) ) {
+			self::install_enrollments_table();
+		}
+
 		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() ) {
 			return;
 		}
@@ -71,6 +75,8 @@ final class Parish_Formation_Upgrader {
 			enrolled_at datetime NOT NULL,
 			started_at datetime DEFAULT NULL,
 			completed_at datetime DEFAULT NULL,
+			completion_override_by bigint(20) unsigned DEFAULT NULL,
+			completion_override_at datetime DEFAULT NULL,
 			expires_at datetime DEFAULT NULL,
 			enrollment_source varchar(30) NOT NULL DEFAULT 'manual',
 			created_by bigint(20) unsigned NOT NULL DEFAULT 0,

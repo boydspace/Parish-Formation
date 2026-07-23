@@ -74,12 +74,13 @@ confirmed. Any future deletion process must account for WordPress multisite.
 - Responsive UIkit learning interface with persistent course navigation.
 - Staff course reset for testing and reopening a participant's course.
 
-### 0.5.0 — Staff progress visibility
+### 0.5.0 — Staff progress visibility (complete)
 
 - Participant and course progress views.
-- Detailed lesson completion and response visibility.
+- Detailed lesson completion and timestamps.
 - Staff participant search and status filters.
-- Completion overrides and reopening completed courses.
+- Audited staff completion overrides.
+- Course reset and reopening controls.
 
 ### Later releases
 

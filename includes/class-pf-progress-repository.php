@@ -21,22 +21,41 @@ final class Parish_Formation_Progress_Repository {
 	 * @return array<int,string> Status keyed by lesson ID.
 	 */
 	public static function get_statuses( $enrollment_id ) {
+		$records  = self::get_records( $enrollment_id );
+		$statuses = array();
+
+		foreach ( $records as $lesson_id => $record ) {
+			$statuses[ $lesson_id ] = sanitize_key( $record->status );
+		}
+
+		return $statuses;
+	}
+
+	/**
+	 * Retrieve progress records keyed by lesson ID.
+	 *
+	 * @param int $enrollment_id Enrollment ID.
+	 * @return array<int,object>
+	 */
+	public static function get_records( $enrollment_id ) {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'pf_progress';
 		$rows       = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT lesson_id, status FROM {$table_name} WHERE enrollment_id = %d",
+				"SELECT lesson_id, status, started_at, completed_at
+				FROM {$table_name}
+				WHERE enrollment_id = %d",
 				absint( $enrollment_id )
 			)
 		);
-		$statuses   = array();
+		$records    = array();
 
 		foreach ( $rows as $row ) {
-			$statuses[ absint( $row->lesson_id ) ] = sanitize_key( $row->status );
+			$records[ absint( $row->lesson_id ) ] = $row;
 		}
 
-		return $statuses;
+		return $records;
 	}
 
 	/**
