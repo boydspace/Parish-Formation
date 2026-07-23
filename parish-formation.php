@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Parish Formation
  * Description:       Provides focused online formation tools for parishes.
- * Version:           0.3.0
+ * Version:           0.4.0
  * Requires PHP:      8.3
  * Author:            Father Andrew M. Boyd
  * Author URI:        https://fatherboyd.com
@@ -15,17 +15,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PARISH_FORMATION_VERSION', '0.3.0' );
-define( 'PARISH_FORMATION_DB_VERSION', '0.2.0' );
+define( 'PARISH_FORMATION_VERSION', '0.4.0' );
+define( 'PARISH_FORMATION_DB_VERSION', '0.3.0' );
+define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PARISH_FORMATION_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-upgrader.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-capabilities.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-course-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-course-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-lesson-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-enrollment-repository.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-progress-repository.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-shortcodes.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-progress-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
@@ -72,6 +77,16 @@ add_action(
 );
 
 add_action(
+	'admin_post_pf_reset_enrollment',
+	array( 'Parish_Formation_Enrollments_Admin', 'handle_reset' )
+);
+
+add_action(
+	'admin_post_pf_complete_lesson',
+	array( 'Parish_Formation_Progress_Actions', 'complete_lesson' )
+);
+
+add_action(
 	'init',
 	array( 'Parish_Formation_Course_Post_Type', 'register' )
 );
@@ -79,6 +94,16 @@ add_action(
 add_action(
 	'init',
 	array( 'Parish_Formation_Lesson_Post_Type', 'register' )
+);
+
+add_action(
+	'init',
+	array( 'Parish_Formation_Shortcodes', 'register' )
+);
+
+add_action(
+	'wp_enqueue_scripts',
+	array( 'Parish_Formation_Shortcodes', 'enqueue_assets' )
 );
 
 add_action(

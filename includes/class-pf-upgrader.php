@@ -35,7 +35,11 @@ final class Parish_Formation_Upgrader {
 			self::install_enrollments_table();
 		}
 
-		if ( ! self::enrollments_table_exists() ) {
+		if ( version_compare( $installed_version, '0.3.0', '<' ) ) {
+			self::install_progress_table();
+		}
+
+		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() ) {
 			return;
 		}
 
@@ -83,6 +87,40 @@ final class Parish_Formation_Upgrader {
 	}
 
 	/**
+	 * Create or update the lesson progress table.
+	 *
+	 * @return void
+	 */
+	private static function install_progress_table() {
+		global $wpdb;
+
+		$table_name      = $wpdb->prefix . 'pf_progress';
+		$charset_collate = $wpdb->get_charset_collate();
+
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+		$sql = "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			enrollment_id bigint(20) unsigned NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			course_id bigint(20) unsigned NOT NULL,
+			lesson_id bigint(20) unsigned NOT NULL,
+			status varchar(20) NOT NULL DEFAULT 'started',
+			started_at datetime DEFAULT NULL,
+			completed_at datetime DEFAULT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY enrollment_lesson (enrollment_id, lesson_id),
+			KEY user_course (user_id, course_id),
+			KEY course_lesson (course_id, lesson_id),
+			KEY enrollment_status (enrollment_id, status)
+		) {$charset_collate};";
+
+		dbDelta( $sql );
+	}
+
+	/**
 	 * Determine whether the enrollments table exists.
 	 *
 	 * @return bool
@@ -91,6 +129,24 @@ final class Parish_Formation_Upgrader {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'pf_enrollments';
+		$table_like = $wpdb->esc_like( $table_name );
+
+		$found_table = $wpdb->get_var(
+			$wpdb->prepare( 'SHOW TABLES LIKE %s', $table_like )
+		);
+
+		return $table_name === $found_table;
+	}
+
+	/**
+	 * Determine whether the lesson progress table exists.
+	 *
+	 * @return bool
+	 */
+	private static function progress_table_exists() {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'pf_progress';
 		$table_like = $wpdb->esc_like( $table_name );
 
 		$found_table = $wpdb->get_var(

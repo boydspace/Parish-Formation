@@ -115,6 +115,7 @@ final class Parish_Formation_Enrollments_Admin {
 							<th scope="col"><?php echo esc_html__( 'Course', 'parish-formation' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Status', 'parish-formation' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Enrolled', 'parish-formation' ); ?></th>
+							<th scope="col"><?php echo esc_html__( 'Completed', 'parish-formation' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Expires', 'parish-formation' ); ?></th>
 							<th scope="col"><?php echo esc_html__( 'Actions', 'parish-formation' ); ?></th>
 						</tr>
@@ -127,9 +128,21 @@ final class Parish_Formation_Enrollments_Admin {
 								<td><?php echo esc_html( ucwords( str_replace( '_', ' ', $enrollment->status ) ) ); ?></td>
 								<td><?php echo esc_html( self::format_utc_date( $enrollment->enrolled_at ) ); ?></td>
 								<td>
+									<?php echo $enrollment->completed_at ? esc_html( self::format_utc_date( $enrollment->completed_at ) ) : '&mdash;'; ?>
+								</td>
+								<td>
 									<?php echo $enrollment->expires_at ? esc_html( self::format_utc_date( $enrollment->expires_at ) ) : '&mdash;'; ?>
 								</td>
 								<td>
+									<div class="pf-enrollment-actions">
+									<?php if ( in_array( $enrollment->status, array( 'in_progress', 'completed' ), true ) ) : ?>
+										<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" onsubmit="return window.confirm('<?php echo esc_js( __( 'Reset this course? All lesson progress and the completion date will be removed.', 'parish-formation' ) ); ?>');">
+											<input type="hidden" name="action" value="pf_reset_enrollment" />
+											<input type="hidden" name="enrollment_id" value="<?php echo esc_attr( $enrollment->id ); ?>" />
+											<?php wp_nonce_field( 'pf_reset_enrollment_' . $enrollment->id ); ?>
+											<?php submit_button( __( 'Reset Course', 'parish-formation' ), 'secondary small', 'submit', false ); ?>
+										</form>
+									<?php endif; ?>
 									<?php if ( 'unenrolled' !== $enrollment->status ) : ?>
 										<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
 											<input type="hidden" name="action" value="pf_unenroll_participant" />
@@ -137,9 +150,10 @@ final class Parish_Formation_Enrollments_Admin {
 											<?php wp_nonce_field( 'pf_unenroll_' . $enrollment->id ); ?>
 											<?php submit_button( __( 'Unenroll', 'parish-formation' ), 'delete small', 'submit', false ); ?>
 										</form>
-										<?php else : ?>
+									<?php else : ?>
 											&mdash;
 									<?php endif; ?>
+									</div>
 								</td>
 							</tr>
 						<?php endforeach; ?>
@@ -219,6 +233,28 @@ final class Parish_Formation_Enrollments_Admin {
 	}
 
 	/**
+	 * Process a course-reset request.
+	 *
+	 * @return void
+	 */
+	public static function handle_reset() {
+		if ( ! current_user_can( 'pf_manage_enrollments' ) ) {
+			wp_die( esc_html__( 'You do not have permission to manage enrollments.', 'parish-formation' ) );
+		}
+
+		$enrollment_id = isset( $_POST['enrollment_id'] ) ? absint( $_POST['enrollment_id'] ) : 0;
+		check_admin_referer( 'pf_reset_enrollment_' . $enrollment_id );
+
+		$result = Parish_Formation_Enrollment_Repository::reset_course( $enrollment_id );
+
+		if ( is_wp_error( $result ) ) {
+			self::redirect_with_notice( $result->get_error_code() );
+		}
+
+		self::redirect_with_notice( 'reset' );
+	}
+
+	/**
 	 * Render a whitelisted enrollment result notice.
 	 *
 	 * @return void
@@ -228,6 +264,7 @@ final class Parish_Formation_Enrollments_Admin {
 		$notices     = array(
 			'created'              => array( 'success', __( 'The participant was enrolled successfully.', 'parish-formation' ) ),
 			'unenrolled'           => array( 'success', __( 'The participant was unenrolled successfully.', 'parish-formation' ) ),
+			'reset'                => array( 'success', __( 'The course was reset successfully.', 'parish-formation' ) ),
 			'duplicate_enrollment' => array( 'warning', __( 'That user is already enrolled in this course.', 'parish-formation' ) ),
 			'invalid_user'         => array( 'error', __( 'Select a valid WordPress user.', 'parish-formation' ) ),
 			'invalid_course'       => array( 'error', __( 'Select a valid published course.', 'parish-formation' ) ),
@@ -279,7 +316,7 @@ final class Parish_Formation_Enrollments_Admin {
 		$users_table       = $wpdb->users;
 		$posts_table       = $wpdb->posts;
 
-		$query = "SELECT enrollment.id, enrollment.status, enrollment.enrolled_at, enrollment.expires_at,
+		$query = "SELECT enrollment.id, enrollment.status, enrollment.enrolled_at, enrollment.completed_at, enrollment.expires_at,
 			user.display_name, course.post_title AS course_title
 			FROM {$enrollments_table} AS enrollment
 			INNER JOIN {$users_table} AS user ON user.ID = enrollment.user_id

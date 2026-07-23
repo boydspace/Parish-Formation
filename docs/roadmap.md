@@ -20,6 +20,7 @@ social network, or academic gradebook.
   access to WordPress administration screens.
 - Add AJAX or REST endpoints only when they materially improve the participant
   experience.
+- Bundle UIkit locally for participant-interface styling and pin its version.
 
 ## Data and privacy boundaries
 
@@ -62,17 +63,21 @@ confirmed. Any future deletion process must account for WordPress multisite.
 - Optional enrollment expiration.
 - Reversible unenrollment and re-enrollment.
 
-### 0.4.0 — Participant course experience
+### 0.4.0 — Participant course experience (complete)
 
 - Front-end My Formation page.
 - Enrolled-course and lesson views.
 - Sequential progression through required lessons.
 - Participant lesson-completion action with nonce and authorization checks.
+- Explicit optional-lesson skipping.
+- Progress percentages, course completion, and completion dates.
+- Responsive UIkit learning interface with persistent course navigation.
+- Staff course reset for testing and reopening a participant's course.
 
-### 0.5.0 — Progress and staff visibility
+### 0.5.0 — Staff progress visibility
 
-- Lesson-progress database table with a unique enrollment-and-lesson rule.
-- Course completion calculation.
+- Participant and course progress views.
+- Detailed lesson completion and response visibility.
 - Staff participant search and status filters.
 - Completion overrides and reopening completed courses.
 

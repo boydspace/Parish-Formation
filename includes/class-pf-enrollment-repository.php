@@ -15,6 +15,69 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Parish_Formation_Enrollment_Repository {
 
 	/**
+	 * Retrieve active enrollments for a participant.
+	 *
+	 * @param int $user_id Participant user ID.
+	 * @return object[]
+	 */
+	public static function get_for_user( $user_id ) {
+		global $wpdb;
+
+		$table_name  = $wpdb->prefix . 'pf_enrollments';
+		$posts_table = $wpdb->posts;
+
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT enrollment.id, enrollment.course_id, enrollment.status,
+					enrollment.enrolled_at, enrollment.completed_at, enrollment.expires_at,
+					course.post_title AS course_title
+				FROM {$table_name} AS enrollment
+				INNER JOIN {$posts_table} AS course ON course.ID = enrollment.course_id
+				WHERE enrollment.user_id = %d
+					AND enrollment.status <> 'unenrolled'
+					AND course.post_type = %s
+					AND course.post_status = 'publish'
+				ORDER BY enrollment.enrolled_at DESC, enrollment.id DESC",
+				absint( $user_id ),
+				Parish_Formation_Course_Post_Type::POST_TYPE
+			)
+		);
+	}
+
+	/**
+	 * Retrieve one active enrollment and its published course.
+	 *
+	 * @param int $user_id   Participant user ID.
+	 * @param int $course_id Course post ID.
+	 * @return object|null
+	 */
+	public static function get_for_user_course( $user_id, $course_id ) {
+		global $wpdb;
+
+		$table_name  = $wpdb->prefix . 'pf_enrollments';
+		$posts_table = $wpdb->posts;
+
+		return $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT enrollment.id, enrollment.course_id, enrollment.status,
+					enrollment.enrolled_at, enrollment.completed_at, enrollment.expires_at,
+					course.post_title AS course_title, course.post_content AS course_content
+				FROM {$table_name} AS enrollment
+				INNER JOIN {$posts_table} AS course ON course.ID = enrollment.course_id
+				WHERE enrollment.user_id = %d
+					AND enrollment.course_id = %d
+					AND enrollment.status <> 'unenrolled'
+					AND course.post_type = %s
+					AND course.post_status = 'publish'
+				LIMIT 1",
+				absint( $user_id ),
+				absint( $course_id ),
+				Parish_Formation_Course_Post_Type::POST_TYPE
+			)
+		);
+	}
+
+	/**
 	 * Create a manual enrollment.
 	 *
 	 * @param int $user_id    Participant user ID.
@@ -135,6 +198,61 @@ final class Parish_Formation_Enrollment_Repository {
 		if ( false === $updated ) {
 			return new WP_Error( 'database_error', __( 'The enrollment could not be updated.', 'parish-formation' ) );
 		}
+
+		return true;
+	}
+
+	/**
+	 * Reset an enrollment and remove its lesson progress.
+	 *
+	 * @param int $enrollment_id Enrollment ID.
+	 * @return true|WP_Error True on success or error.
+	 */
+	public static function reset_course( $enrollment_id ) {
+		global $wpdb;
+
+		$enrollments_table = $wpdb->prefix . 'pf_enrollments';
+		$progress_table    = $wpdb->prefix . 'pf_progress';
+		$enrollment_exists = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$enrollments_table} WHERE id = %d AND status <> 'unenrolled'",
+				absint( $enrollment_id )
+			)
+		);
+
+		if ( ! $enrollment_exists ) {
+			return new WP_Error( 'invalid_enrollment', __( 'The enrollment could not be found.', 'parish-formation' ) );
+		}
+
+		$now = current_time( 'mysql', true );
+		$wpdb->query( 'START TRANSACTION' );
+
+		$progress_deleted = $wpdb->delete(
+			$progress_table,
+			array( 'enrollment_id' => absint( $enrollment_id ) ),
+			array( '%d' )
+		);
+		$enrollment_reset = $wpdb->update(
+			$enrollments_table,
+			array(
+				'status'       => 'enrolled',
+				'enrolled_at'  => $now,
+				'started_at'   => null,
+				'completed_at' => null,
+				'updated_at'   => $now,
+			),
+			array( 'id' => absint( $enrollment_id ) ),
+			array( '%s', '%s', null, null, '%s' ),
+			array( '%d' )
+		);
+
+		if ( false === $progress_deleted || false === $enrollment_reset ) {
+			$wpdb->query( 'ROLLBACK' );
+
+			return new WP_Error( 'database_error', __( 'The course could not be reset.', 'parish-formation' ) );
+		}
+
+		$wpdb->query( 'COMMIT' );
 
 		return true;
 	}

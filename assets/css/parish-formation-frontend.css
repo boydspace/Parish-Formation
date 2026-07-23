@@ -1,0 +1,150 @@
+.pf-learning-layout {
+	display: grid;
+	grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+	position: relative;
+	left: 50%;
+	width: calc(100vw - 40px) !important;
+	max-width: 1400px !important;
+	min-height: 72vh;
+	margin: 20px auto;
+	transform: translateX(-50%);
+	background: #fff;
+	border: 1px solid #d9dde5;
+	box-shadow: 0 4px 18px rgba(27, 35, 52, 0.14);
+}
+
+.pf-course-sidebar {
+	padding: 28px 22px;
+	background: #f5f6f8;
+	border-right: 1px solid #d9dde5;
+}
+
+.pf-course-sidebar h2 {
+	margin: 24px 0 20px;
+	font-size: 1.65rem;
+	line-height: 1.35;
+}
+
+.pf-back-link {
+	font-weight: 600;
+}
+
+.pf-progress-text {
+	margin-top: -10px;
+	color: #475067;
+}
+
+.pf-lesson-navigation {
+	margin: 28px -22px -28px;
+}
+
+.pf-lesson-navigation ol {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.pf-lesson-navigation li {
+	display: grid;
+	grid-template-columns: 34px minmax(0, 1fr);
+	gap: 12px;
+	align-items: start;
+	padding: 17px 22px;
+	border-top: 1px solid #d9dde5;
+}
+
+.pf-lesson-navigation li.is-active {
+	background: #e0e2e8;
+	box-shadow: inset 4px 0 #d4ac25;
+}
+
+.pf-lesson-navigation li.is-locked {
+	color: #81889a;
+}
+
+.pf-lesson-navigation a,
+.pf-lesson-navigation li > div > span {
+	display: block;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.pf-lesson-navigation small {
+	display: block;
+	margin-top: 5px;
+	font-size: 0.72rem;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+
+.pf-lesson-marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: 2px solid #747d91;
+	border-radius: 50%;
+	font-size: 0.8rem;
+	font-weight: 700;
+}
+
+.is-complete .pf-lesson-marker {
+	color: #fff;
+	background: #32a56a;
+	border-color: #32a56a;
+}
+
+.pf-course-content {
+	display: flex;
+	min-width: 0;
+	min-height: 72vh;
+	flex-direction: column;
+}
+
+.pf-content-header {
+	padding: 18px 28px;
+	border-bottom: 1px solid #d9dde5;
+}
+
+.pf-content-header h1 {
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+.pf-content-body {
+	width: min(820px, 100%);
+	margin: 0 auto;
+	padding: 70px 48px;
+	box-sizing: border-box;
+}
+
+.pf-content-footer {
+	margin-top: auto;
+	padding: 20px 28px;
+	text-align: center;
+	border-top: 1px solid #d9dde5;
+}
+
+.pf-content-footer form {
+	display: flex;
+	gap: 12px;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+@media (max-width: 800px) {
+	.pf-learning-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.pf-course-sidebar {
+		border-right: 0;
+		border-bottom: 1px solid #d9dde5;
+	}
+
+	.pf-content-body {
+		padding: 40px 24px;
+	}
+}
