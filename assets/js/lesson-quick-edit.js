@@ -22,7 +22,6 @@
 		const editRow = $( '#edit-' + id );
 
 		editRow.find( '[name="pf_course_id"]' ).val( data.data( 'course-id' ) );
-		editRow.find( '[name="pf_lesson_order"]' ).val( data.data( 'lesson-order' ) );
 		editRow.find( '[name="pf_is_required"]' ).prop( 'checked', Number( data.data( 'is-required' ) ) === 1 );
 	};
 } )( jQuery );

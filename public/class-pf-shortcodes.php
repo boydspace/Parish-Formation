@@ -14,13 +14,21 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Parish_Formation_Shortcodes {
 
+	/** Shortcode page URL supplied during REST fragment rendering. */
+	private static $rest_base_url = '';
+
 	/**
 	 * Register participant shortcodes.
 	 *
 	 * @return void
 	 */
 	public static function register() {
+		add_rewrite_endpoint( 'course', EP_PAGES );
 		add_shortcode( 'parish_formation_my_courses', array( self::class, 'render_my_courses' ) );
+		if ( '1' !== get_option( 'parish_formation_pretty_routes_060', '0' ) ) {
+			flush_rewrite_rules( false );
+			update_option( 'parish_formation_pretty_routes_060', '1', false );
+		}
 	}
 
 	/**
@@ -46,12 +54,78 @@ final class Parish_Formation_Shortcodes {
 			PARISH_FORMATION_UIKIT_VERSION
 		);
 
+		wp_enqueue_script(
+			'parish-formation-assessment-submission',
+			PARISH_FORMATION_PLUGIN_URL . 'assets/js/assessment-submission.js',
+			array(),
+			(string) filemtime( PARISH_FORMATION_PLUGIN_DIR . 'assets/js/assessment-submission.js' ),
+			true
+		);
+		wp_localize_script(
+			'parish-formation-assessment-submission',
+			'pfAssessmentSubmission',
+			array(
+				'endpoint' => rest_url( 'parish-formation/v1/assessment-attempts' ),
+				'nonce'    => wp_create_nonce( 'wp_rest' ),
+				'submitting' => __( 'Submitting…', 'parish-formation' ),
+				'error'      => __( 'The assessment could not be submitted.', 'parish-formation' ),
+			)
+		);
+
 		wp_enqueue_style(
 			'parish-formation-frontend',
 			PARISH_FORMATION_PLUGIN_URL . 'assets/css/parish-formation-frontend.css',
 			array( 'parish-formation-uikit' ),
 			PARISH_FORMATION_VERSION
 		);
+
+		wp_enqueue_script(
+			'parish-formation-course-navigation',
+			PARISH_FORMATION_PLUGIN_URL . 'assets/js/course-navigation.js',
+			array(),
+			(string) filemtime( PARISH_FORMATION_PLUGIN_DIR . 'assets/js/course-navigation.js' ),
+			true
+		);
+		wp_localize_script(
+			'parish-formation-course-navigation',
+			'pfCourseNavigation',
+			array(
+				'endpoint' => rest_url( 'parish-formation/v1/course-view' ),
+				'lessonEndpoint' => rest_url( 'parish-formation/v1/lesson-progress' ),
+				'nonce'    => wp_create_nonce( 'wp_rest' ),
+				'error'    => __( 'This course section could not be loaded.', 'parish-formation' ),
+			)
+		);
+	}
+
+	/** Register the authenticated course-view endpoint used by AJAX navigation. */
+	public static function register_rest_route() {
+		register_rest_route(
+			'parish-formation/v1',
+			'/course-view',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( self::class, 'render_course_rest' ),
+				'permission_callback' => static function () { return is_user_logged_in(); },
+			)
+		);
+	}
+
+	/** Return one access-controlled course interface fragment. */
+	public static function render_course_rest( WP_REST_Request $request ) {
+		$course_slug = sanitize_title( $request->get_param( 'course_slug' ) );
+		$item_type   = sanitize_key( $request->get_param( 'item_type' ) );
+		$item_slug   = sanitize_title( $request->get_param( 'item_slug' ) );
+		self::$rest_base_url = esc_url_raw( $request->get_param( 'base_url' ) );
+		$course      = get_page_by_path( $course_slug, OBJECT, Parish_Formation_Course_Post_Type::POST_TYPE );
+		if ( ! $course || 'publish' !== $course->post_status ) {
+			return new WP_Error( 'invalid_course', __( 'This course could not be found.', 'parish-formation' ), array( 'status' => 404 ) );
+		}
+		if ( $item_type && ! in_array( $item_type, array( 'lesson', 'assessment' ), true ) ) {
+			return new WP_Error( 'invalid_section', __( 'This course section could not be found.', 'parish-formation' ), array( 'status' => 404 ) );
+		}
+		$html = self::render_course( $course->ID, $item_type, $item_slug );
+		return rest_ensure_response( array( 'html' => $html, 'title' => $course->post_title ) );
 	}
 
 	/**
@@ -71,10 +145,14 @@ final class Parish_Formation_Shortcodes {
 			);
 		}
 
-		$course_id = isset( $_GET['pf_course'] ) ? absint( $_GET['pf_course'] ) : 0;
+		$route = self::get_pretty_route();
+		if ( is_wp_error( $route ) ) {
+			return '<div class="uk-alert uk-alert-danger"><p>' . esc_html( $route->get_error_message() ) . '</p></div>';
+		}
+		$course_id = $route ? $route['course_id'] : ( isset( $_GET['pf_course'] ) ? absint( $_GET['pf_course'] ) : 0 );
 
 		if ( $course_id ) {
-			return self::render_course( $course_id );
+			return self::render_course( $course_id, $route ? $route['item_type'] : '', $route ? $route['item_slug'] : '' );
 		}
 
 		$enrollments = Parish_Formation_Enrollment_Repository::get_for_user( get_current_user_id() );
@@ -91,10 +169,11 @@ final class Parish_Formation_Shortcodes {
 				<?php foreach ( $enrollments as $enrollment ) : ?>
 					<?php
 					$course_lessons = Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id );
-					$progress       = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $course_lessons );
+					$curriculum     = Parish_Formation_Course_Repository::get_published_curriculum( $enrollment->course_id );
+					$progress       = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $course_lessons, $enrollment->course_id );
 					self::reconcile_course_completion( $enrollment, $course_lessons, $progress );
-					$current_lesson_id = Parish_Formation_Progress_Repository::get_current_lesson_id( $enrollment->id, $course_lessons );
-					$current_lesson    = $current_lesson_id ? get_post( $current_lesson_id ) : null;
+					$current_item = self::get_current_curriculum_item( $curriculum, $enrollment->id );
+					$current_lesson = $current_item && 'lesson' === $current_item['type'] ? $current_item['post'] : null;
 					?>
 					<li class="parish-formation-course uk-card uk-card-default uk-card-body uk-margin">
 						<h3 class="uk-card-title"><?php echo esc_html( $enrollment->course_title ); ?></h3>
@@ -126,10 +205,10 @@ final class Parish_Formation_Shortcodes {
 							</p>
 						<?php endif; ?>
 						<p>
-							<strong><?php echo esc_html__( 'Current lesson:', 'parish-formation' ); ?></strong>
+							<strong><?php echo esc_html__( 'Current item:', 'parish-formation' ); ?></strong>
 							<?php
-							if ( $current_lesson ) {
-								echo esc_html( $current_lesson->post_title );
+							if ( $current_item ) {
+								echo esc_html( $current_item['post']->post_title );
 							} elseif ( $progress['is_complete'] ) {
 								echo esc_html__( 'Course complete', 'parish-formation' );
 							} else {
@@ -142,6 +221,8 @@ final class Parish_Formation_Shortcodes {
 							<?php
 							if ( self::is_expired( $enrollment ) ) {
 								echo esc_html__( 'Contact the parish about expired access.', 'parish-formation' );
+							} elseif ( $current_item && 'assessment' === $current_item['type'] ) {
+								echo esc_html__( 'Complete the current assessment.', 'parish-formation' );
 							} elseif ( $current_lesson ) {
 								echo Parish_Formation_Course_Repository::is_lesson_required( $current_lesson->ID )
 									? esc_html__( 'Complete the current lesson.', 'parish-formation' )
@@ -156,12 +237,12 @@ final class Parish_Formation_Shortcodes {
 						<?php if ( ! self::is_expired( $enrollment ) ) : ?>
 							<p>
 								<?php
-								$course_link = $current_lesson
-									? add_query_arg( array( 'pf_course' => $enrollment->course_id, 'pf_lesson' => $current_lesson->ID ), self::current_url() )
-									: add_query_arg( 'pf_course', $enrollment->course_id, self::current_url() );
+								$course_link = $current_item
+									? self::get_curriculum_item_url( $enrollment->course_id, $current_item, self::current_url() )
+									: self::get_course_url( $enrollment->course_id );
 								?>
 								<a class="uk-button uk-button-primary" href="<?php echo esc_url( $course_link ); ?>">
-									<?php echo $current_lesson ? esc_html__( 'Continue course', 'parish-formation' ) : esc_html__( 'Review course', 'parish-formation' ); ?>
+									<?php echo $current_item ? esc_html__( 'Continue course', 'parish-formation' ) : esc_html__( 'Review course', 'parish-formation' ); ?>
 								</a>
 							</p>
 						<?php endif; ?>
@@ -174,13 +255,205 @@ final class Parish_Formation_Shortcodes {
 		return (string) ob_get_clean();
 	}
 
+	/** Render participant-safe question controls without answer-key attributes. */
+	private static function render_assessment_questions( $assessment, $enrollment, $curriculum ) {
+		$questions = Parish_Formation_Assessment_Repository::get_questions( $assessment->ID );
+		if ( ! $questions ) {
+			return '<div class="uk-alert uk-alert-primary"><p>' . esc_html__( 'No questions have been added to this assessment yet.', 'parish-formation' ) . '</p></div>';
+		}
+		$latest = Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment->id, $assessment->ID );
+		$max_attempts = max( 1, absint( get_post_meta( $assessment->ID, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
+		$closed = $latest && ( 'pending_review' === $latest->status || (bool) $latest->passed || absint( $latest->attempt_number ) >= $max_attempts );
+		$return_url = self::get_curriculum_item_url( $enrollment->course_id, array( 'type' => 'assessment', 'post' => $assessment ), self::current_url() );
+		$next_item  = self::get_next_curriculum_item( $curriculum, $assessment->ID );
+		$next_url   = $next_item
+			? self::get_curriculum_item_url( $enrollment->course_id, $next_item, self::current_url() )
+			: self::get_course_url( $enrollment->course_id );
+
+		ob_start();
+		?>
+		<?php if ( isset( $_GET['pf_assessment_error'] ) ) : ?><div class="uk-alert uk-alert-danger"><p><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['pf_assessment_error'] ) ) ); ?></p></div><?php endif; ?>
+		<?php if ( $latest ) : ?>
+			<div class="uk-alert <?php echo 'passed' === $latest->status ? 'uk-alert-success' : ( 'failed' === $latest->status ? 'uk-alert-danger' : 'uk-alert-primary' ); ?>">
+				<p><strong><?php echo esc_html( ucwords( str_replace( '_', ' ', $latest->status ) ) ); ?></strong></p>
+				<?php if ( 'pending_review' !== $latest->status ) : ?><p><?php echo esc_html( sprintf( __( 'Score: %1$s of %2$s points; %3$d of %4$d correct.', 'parish-formation' ), $latest->score_points, $latest->max_points, $latest->correct_count, $latest->total_graded ) ); ?></p><?php endif; ?>
+				<p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, $max_attempts ) ); ?></p>
+			</div>
+		<?php endif; ?>
+		<div class="pf-assessment-ajax-result" aria-live="polite"></div>
+		<form class="pf-assessment-questions" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+			<input type="hidden" name="action" value="pf_submit_assessment" />
+			<input type="hidden" name="enrollment_id" value="<?php echo esc_attr( $enrollment->id ); ?>" />
+			<input type="hidden" name="course_id" value="<?php echo esc_attr( $enrollment->course_id ); ?>" />
+			<input type="hidden" name="assessment_id" value="<?php echo esc_attr( $assessment->ID ); ?>" />
+			<input type="hidden" name="return_url" value="<?php echo esc_url( $return_url ); ?>" />
+			<input type="hidden" name="formation_base_url" value="<?php echo esc_url( self::current_url() ); ?>" />
+			<?php wp_nonce_field( 'pf_submit_assessment_' . $enrollment->id . '_' . $assessment->ID ); ?>
+			<?php foreach ( $questions as $index => $question ) : ?>
+				<?php
+				$type       = sanitize_key( get_post_meta( $question->ID, '_pf_question_type', true ) );
+				$prompt     = wp_kses_post( $question->post_content );
+				$options    = get_post_meta( $question->ID, '_pf_question_options', true );
+				$options    = is_array( $options ) ? $options : array();
+				$field_name = 'pf_answers[' . $question->ID . ']';
+				$required   = ! metadata_exists( 'post', $question->ID, '_pf_question_required' ) || (bool) get_post_meta( $question->ID, '_pf_question_required', true );
+				?>
+				<section class="pf-assessment-question uk-card uk-card-default uk-card-body uk-margin">
+					<h3><?php echo esc_html( sprintf( __( 'Question %d', 'parish-formation' ), $index + 1 ) ); ?></h3>
+					<div class="pf-assessment-prompt"><?php echo $prompt; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+					<?php if ( 'multiple_choice' === $type ) : ?>
+						<?php foreach ( $options as $option_index => $option ) : ?>
+							<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="<?php echo esc_attr( $option_index + 1 ); ?>" <?php disabled( $closed ); ?> <?php echo $required ? 'required' : ''; ?> /> <?php echo esc_html( sanitize_text_field( $option ) ); ?></label>
+						<?php endforeach; ?>
+					<?php elseif ( 'true_false' === $type ) : ?>
+						<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="true" <?php disabled( $closed ); ?> <?php echo $required ? 'required' : ''; ?> /> <?php esc_html_e( 'True', 'parish-formation' ); ?></label>
+						<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="false" <?php disabled( $closed ); ?> /> <?php esc_html_e( 'False', 'parish-formation' ); ?></label>
+					<?php elseif ( 'acknowledgement' === $type ) : ?>
+						<label class="pf-assessment-option"><input class="uk-checkbox" type="checkbox" name="<?php echo esc_attr( $field_name ); ?>" value="acknowledged" <?php disabled( $closed ); ?> <?php echo $required ? 'required' : ''; ?> /> <?php esc_html_e( 'I acknowledge this statement.', 'parish-formation' ); ?></label>
+					<?php else : ?>
+						<label><span class="screen-reader-text"><?php esc_html_e( 'Your response', 'parish-formation' ); ?></span><textarea class="uk-textarea" name="<?php echo esc_attr( $field_name ); ?>" rows="6" placeholder="<?php esc_attr_e( 'Enter your response…', 'parish-formation' ); ?>" <?php disabled( $closed ); ?> <?php echo $required ? 'required' : ''; ?>></textarea></label>
+					<?php endif; ?>
+				</section>
+			<?php endforeach; ?>
+			<?php if ( ! $closed ) : ?><button class="uk-button uk-button-primary" type="submit"><?php esc_html_e( 'Submit Assessment', 'parish-formation' ); ?></button><?php endif; ?>
+		</form>
+		<?php if ( $latest && (bool) $latest->passed ) : ?>
+			<div class="pf-assessment-continue uk-margin-top">
+				<a class="uk-button uk-button-primary" href="<?php echo esc_url( $next_url ); ?>">
+					<?php echo $next_item ? esc_html__( 'Continue to Next Section', 'parish-formation' ) : esc_html__( 'Finish Course', 'parish-formation' ); ?> &rarr;
+				</a>
+			</div>
+		<?php endif; ?>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/** Recursively find assessment question blocks. */
+	private static function find_question_blocks( $blocks ) {
+		$questions = array();
+		foreach ( $blocks as $block ) {
+			if ( Parish_Formation_Question_Block::BLOCK_NAME === ( $block['blockName'] ?? '' ) ) {
+				$questions[] = $block;
+			}
+			if ( ! empty( $block['innerBlocks'] ) ) {
+				$questions = array_merge( $questions, self::find_question_blocks( $block['innerBlocks'] ) );
+			}
+		}
+		return $questions;
+	}
+
+	/** Find a published post of a given type in the curriculum. */
+	private static function find_curriculum_post( $curriculum, $type, $post_id ) {
+		foreach ( $curriculum as $item ) {
+			if ( $type === $item['type'] && absint( $post_id ) === $item['post']->ID ) {
+				return $item['post'];
+			}
+		}
+		return null;
+	}
+
+	/** Determine whether an item has an unfinished lesson before it. */
+	private static function is_curriculum_item_locked( $curriculum, $item_id, $statuses, $enrollment_id ) {
+		foreach ( $curriculum as $item ) {
+			if ( absint( $item_id ) === $item['post']->ID ) {
+				return false;
+			}
+			if ( 'lesson' === $item['type'] ) {
+				$status = $statuses[ $item['post']->ID ] ?? '';
+				if ( ! in_array( $status, array( 'completed', 'skipped' ), true ) ) {
+					return true;
+				}
+			} else {
+				$progression = get_post_meta( $item['post']->ID, Parish_Formation_Assessment_Settings::PROGRESSION_META_KEY, true );
+				if ( 'no_gate' !== $progression ) {
+					$attempt = Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment_id, $item['post']->ID );
+					if ( ! $attempt || ( 'submit_to_continue' !== $progression && ! (bool) $attempt->passed ) ) {
+						return true;
+					}
+				}
+			}
+		}
+		return true;
+	}
+
+	/** Get the item immediately following a curriculum item. */
+	private static function get_next_curriculum_item( $curriculum, $item_id ) {
+		foreach ( $curriculum as $index => $item ) {
+			if ( absint( $item_id ) === $item['post']->ID ) {
+				return $curriculum[ $index + 1 ] ?? null;
+			}
+		}
+		return null;
+	}
+
+	/** Get the first unfinished required curriculum item. */
+	private static function get_current_curriculum_item( $curriculum, $enrollment_id ) {
+		$statuses = Parish_Formation_Progress_Repository::get_statuses( $enrollment_id );
+		foreach ( $curriculum as $item ) {
+			if ( 'lesson' === $item['type'] ) {
+				if ( ! in_array( $statuses[ $item['post']->ID ] ?? '', array( 'completed', 'skipped' ), true ) ) {
+					return $item;
+				}
+				continue;
+			}
+			$progression = get_post_meta( $item['post']->ID, Parish_Formation_Assessment_Settings::PROGRESSION_META_KEY, true );
+			if ( 'no_gate' === $progression ) {
+				continue;
+			}
+			$attempt = Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment_id, $item['post']->ID );
+			if ( ! $attempt || ( 'submit_to_continue' !== $progression && ! (bool) $attempt->passed ) ) {
+				return $item;
+			}
+		}
+		return null;
+	}
+
+	/** Build a curriculum item URL while removing conflicting item arguments. */
+	private static function get_curriculum_item_url( $course_id, $item, $base_url ) {
+		return trailingslashit( $base_url ) . 'course/' . rawurlencode( get_post_field( 'post_name', absint( $course_id ) ) ) . '/' . rawurlencode( $item['type'] ) . '/' . rawurlencode( $item['post']->post_name ) . '/';
+	}
+
+	/** Build the clean course overview URL. */
+	private static function get_course_url( $course_id ) {
+		return trailingslashit( self::current_url() ) . 'course/' . rawurlencode( get_post_field( 'post_name', absint( $course_id ) ) ) . '/';
+	}
+
+	/** Parse the course endpoint attached to the shortcode page. */
+	private static function get_pretty_route() {
+		$route = trim( (string) get_query_var( 'course', '' ), '/' );
+		if ( '' === $route ) {
+			return null;
+		}
+		$parts  = array_map( 'sanitize_title', explode( '/', $route ) );
+		$course = get_page_by_path( $parts[0], OBJECT, Parish_Formation_Course_Post_Type::POST_TYPE );
+		if ( ! $course || 'publish' !== $course->post_status ) {
+			return new WP_Error( 'invalid_course_route', __( 'This course could not be found.', 'parish-formation' ) );
+		}
+		$item_type = $parts[1] ?? '';
+		$item_slug = $parts[2] ?? '';
+		if ( $item_type && ! in_array( $item_type, array( 'lesson', 'assessment' ), true ) ) {
+			return new WP_Error( 'invalid_item_route', __( 'This course section could not be found.', 'parish-formation' ) );
+		}
+		return array( 'course_id' => $course->ID, 'item_type' => $item_type, 'item_slug' => $item_slug );
+	}
+
+	/** Find a curriculum item ID by its course-scoped slug. */
+	private static function find_curriculum_id_by_slug( $curriculum, $type, $slug ) {
+		foreach ( $curriculum as $item ) {
+			if ( $type === $item['type'] && $slug === $item['post']->post_name ) {
+				return $item['post']->ID;
+			}
+		}
+		return 0;
+	}
+
 	/**
 	 * Render an enrolled participant's course introduction and lesson list.
 	 *
 	 * @param int $course_id Course post ID.
 	 * @return string
 	 */
-	private static function render_course( $course_id ) {
+	private static function render_course( $course_id, $route_item_type = '', $route_item_slug = '' ) {
 		$enrollment = Parish_Formation_Enrollment_Repository::get_for_user_course(
 			get_current_user_id(),
 			$course_id
@@ -194,12 +467,18 @@ final class Parish_Formation_Shortcodes {
 			return '<div class="uk-alert uk-alert-warning"><p>' . esc_html__( 'Your access to this course has expired.', 'parish-formation' ) . '</p></div>';
 		}
 
-		$lessons  = Parish_Formation_Course_Repository::get_published_lessons( $course_id );
+		$lessons   = Parish_Formation_Course_Repository::get_published_lessons( $course_id );
+		$curriculum = Parish_Formation_Course_Repository::get_published_curriculum( $course_id );
 		$sequence = self::get_sequence( $enrollment->id, $lessons );
-		$progress = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons );
+		$progress = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons, $course_id );
 		self::reconcile_course_completion( $enrollment, $lessons, $progress );
-		$lesson_id    = isset( $_GET['pf_lesson'] ) ? absint( $_GET['pf_lesson'] ) : 0;
-		$active_lesson = null;
+		$lesson_id    = 'lesson' === $route_item_type ? self::find_curriculum_id_by_slug( $curriculum, 'lesson', $route_item_slug ) : ( isset( $_GET['pf_lesson'] ) ? absint( $_GET['pf_lesson'] ) : 0 );
+		$assessment_id  = 'assessment' === $route_item_type ? self::find_curriculum_id_by_slug( $curriculum, 'assessment', $route_item_slug ) : ( isset( $_GET['pf_assessment'] ) ? absint( $_GET['pf_assessment'] ) : 0 );
+		$active_lesson  = null;
+		$active_assessment = null;
+		if ( ( 'lesson' === $route_item_type && ! $lesson_id ) || ( 'assessment' === $route_item_type && ! $assessment_id ) ) {
+			return '<div class="uk-alert uk-alert-danger"><p>' . esc_html__( 'This course section could not be found.', 'parish-formation' ) . '</p></div>';
+		}
 
 		if ( $lesson_id ) {
 			$active_lesson = Parish_Formation_Course_Repository::get_published_lesson( $course_id, $lesson_id );
@@ -214,7 +493,17 @@ final class Parish_Formation_Shortcodes {
 			}
 		}
 
-		return self::render_learning_layout( $enrollment, $lessons, $sequence, $progress, $active_lesson );
+		if ( $assessment_id ) {
+			$active_assessment = self::find_curriculum_post( $curriculum, 'assessment', $assessment_id );
+			if ( ! $active_assessment ) {
+				return '<div class="uk-alert uk-alert-danger"><p>' . esc_html__( 'This assessment is not available in your course.', 'parish-formation' ) . '</p></div>';
+			}
+			if ( self::is_curriculum_item_locked( $curriculum, $assessment_id, $sequence['statuses'], $enrollment->id ) ) {
+				return '<div class="uk-alert uk-alert-warning"><p>' . esc_html__( 'Complete the preceding lessons before opening this assessment.', 'parish-formation' ) . '</p></div>';
+			}
+		}
+
+		return self::render_learning_layout( $enrollment, $lessons, $curriculum, $sequence, $progress, $active_lesson, $active_assessment );
 	}
 
 	/**
@@ -227,11 +516,13 @@ final class Parish_Formation_Shortcodes {
 	 * @param WP_Post|null $active_lesson Active lesson, or null for the introduction.
 	 * @return string
 	 */
-	private static function render_learning_layout( $enrollment, $lessons, $sequence, $progress, $active_lesson ) {
-		$course_url  = add_query_arg( 'pf_course', $enrollment->course_id, self::current_url() );
-		$my_url      = remove_query_arg( array( 'pf_course', 'pf_lesson' ), self::current_url() );
+	private static function render_learning_layout( $enrollment, $lessons, $curriculum, $sequence, $progress, $active_lesson, $active_assessment ) {
+		$course_url  = self::get_course_url( $enrollment->course_id );
+		$my_url      = self::current_url();
 		$active_id   = $active_lesson ? $active_lesson->ID : 0;
+		$active_assessment_id = $active_assessment ? $active_assessment->ID : 0;
 		$lesson_index = $active_lesson ? self::find_lesson_index( $lessons, $active_id ) : null;
+		$current_item = self::get_current_curriculum_item( $curriculum, $enrollment->id );
 
 		ob_start();
 		?>
@@ -242,26 +533,33 @@ final class Parish_Formation_Shortcodes {
 				<progress class="uk-progress" value="<?php echo esc_attr( $progress['percentage'] ); ?>" max="100"></progress>
 				<p class="pf-progress-text"><?php echo esc_html( $progress['percentage'] . '% ' . __( 'complete', 'parish-formation' ) ); ?></p>
 
-				<nav class="pf-lesson-navigation" aria-label="<?php echo esc_attr__( 'Course lessons', 'parish-formation' ); ?>">
+				<nav class="pf-lesson-navigation" aria-label="<?php echo esc_attr__( 'Course curriculum', 'parish-formation' ); ?>">
 					<ol>
-						<?php foreach ( $lessons as $index => $lesson ) : ?>
+						<?php foreach ( $curriculum as $index => $item ) : ?>
 							<?php
-							$status   = $sequence['statuses'][ $lesson->ID ] ?? '';
-							$is_done  = in_array( $status, array( 'completed', 'skipped' ), true );
-							$is_locked = $index > $sequence['current_index'];
-							$is_active = $active_id === $lesson->ID;
+							$item_post = $item['post'];
+							$is_lesson = 'lesson' === $item['type'];
+							$status   = $is_lesson ? ( $sequence['statuses'][ $item_post->ID ] ?? '' ) : '';
+							$is_done  = $is_lesson && in_array( $status, array( 'completed', 'skipped' ), true );
+							if ( ! $is_lesson ) {
+								$assessment_progression = get_post_meta( $item_post->ID, Parish_Formation_Assessment_Settings::PROGRESSION_META_KEY, true );
+								$assessment_attempt = Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment->id, $item_post->ID );
+								$is_done = 'no_gate' === $assessment_progression || ( $assessment_attempt && ( 'submit_to_continue' === $assessment_progression || (bool) $assessment_attempt->passed ) );
+							}
+							$is_locked = self::is_curriculum_item_locked( $curriculum, $item_post->ID, $sequence['statuses'], $enrollment->id );
+							$is_active = $is_lesson ? $active_id === $item_post->ID : $active_assessment_id === $item_post->ID;
 							$item_classes = implode( ' ', array_filter( array( $is_done ? 'is-complete' : '', $is_locked ? 'is-locked' : '', $is_active ? 'is-active' : '' ) ) );
 							?>
-							<li class="<?php echo esc_attr( $item_classes ); ?>">
+				<li class="<?php echo esc_attr( $item_classes ); ?>" data-item-id="<?php echo esc_attr( $item_post->ID ); ?>" data-item-type="<?php echo esc_attr( $item['type'] ); ?>">
 								<span class="pf-lesson-marker" aria-hidden="true"><?php echo $is_done ? '&#10003;' : esc_html( $index + 1 ); ?></span>
 								<div>
 									<?php if ( ! $is_locked ) : ?>
-										<a href="<?php echo esc_url( add_query_arg( array( 'pf_course' => $enrollment->course_id, 'pf_lesson' => $lesson->ID ), self::current_url() ) ); ?>"><?php echo esc_html( $lesson->post_title ); ?></a>
+										<a href="<?php echo esc_url( self::get_curriculum_item_url( $enrollment->course_id, $item, self::current_url() ) ); ?>"><?php echo esc_html( $item_post->post_title ); ?></a>
 									<?php else : ?>
-										<span><?php echo esc_html( $lesson->post_title ); ?></span>
+										<span><?php echo esc_html( $item_post->post_title ); ?></span>
 									<?php endif; ?>
 									<small>
-										<?php echo Parish_Formation_Course_Repository::is_lesson_required( $lesson->ID ) ? esc_html__( 'Required', 'parish-formation' ) : esc_html__( 'Optional', 'parish-formation' ); ?>
+										<?php echo $is_lesson ? ( Parish_Formation_Course_Repository::is_lesson_required( $item_post->ID ) ? esc_html__( 'Required lesson', 'parish-formation' ) : esc_html__( 'Optional lesson', 'parish-formation' ) ) : esc_html__( 'Assessment', 'parish-formation' ); ?>
 										<?php if ( $is_locked ) : ?> &middot; <?php echo esc_html__( 'Locked', 'parish-formation' ); ?><?php endif; ?>
 										<?php if ( 'skipped' === $status ) : ?> &middot; <?php echo esc_html__( 'Skipped', 'parish-formation' ); ?><?php endif; ?>
 									</small>
@@ -273,7 +571,12 @@ final class Parish_Formation_Shortcodes {
 			</aside>
 
 			<main class="pf-course-content">
-				<?php if ( $active_lesson ) : ?>
+				<?php if ( $active_assessment ) : ?>
+					<header class="pf-content-header"><h1><?php echo esc_html( $active_assessment->post_title ); ?></h1></header>
+					<article class="pf-content-body uk-article">
+						<?php echo self::render_assessment_questions( $active_assessment, $enrollment, $curriculum ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</article>
+				<?php elseif ( $active_lesson ) : ?>
 					<header class="pf-content-header"><h1><?php echo esc_html( $active_lesson->post_title ); ?></h1></header>
 					<article class="pf-content-body uk-article">
 						<?php echo apply_filters( 'the_content', $active_lesson->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
@@ -281,10 +584,8 @@ final class Parish_Formation_Shortcodes {
 					<footer class="pf-content-footer">
 						<?php if ( $lesson_index === $sequence['current_index'] ) : ?>
 							<?php
-							$next_lesson = $lessons[ $lesson_index + 1 ] ?? null;
-							$return_url  = $next_lesson
-								? add_query_arg( array( 'pf_course' => $enrollment->course_id, 'pf_lesson' => $next_lesson->ID ), self::current_url() )
-								: $course_url;
+							$next_item  = self::get_next_curriculum_item( $curriculum, $active_lesson->ID );
+							$return_url = $next_item ? self::get_curriculum_item_url( $enrollment->course_id, $next_item, self::current_url() ) : $course_url;
 							?>
 							<form class="parish-formation-complete-lesson" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
 								<input type="hidden" name="action" value="pf_complete_lesson" />
@@ -292,6 +593,7 @@ final class Parish_Formation_Shortcodes {
 								<input type="hidden" name="course_id" value="<?php echo esc_attr( $enrollment->course_id ); ?>" />
 								<input type="hidden" name="lesson_id" value="<?php echo esc_attr( $active_lesson->ID ); ?>" />
 								<input type="hidden" name="return_url" value="<?php echo esc_url( $return_url ); ?>" />
+								<input type="hidden" name="formation_base_url" value="<?php echo esc_url( self::current_url() ); ?>" />
 								<?php wp_nonce_field( 'pf_complete_lesson_' . $enrollment->id . '_' . $active_lesson->ID ); ?>
 								<button class="uk-button uk-button-primary" type="submit" name="progress_action" value="completed"><?php echo esc_html__( 'Complete & Continue', 'parish-formation' ); ?> &rarr;</button>
 								<?php if ( ! Parish_Formation_Course_Repository::is_lesson_required( $active_lesson->ID ) ) : ?>
@@ -313,9 +615,9 @@ final class Parish_Formation_Shortcodes {
 							</div>
 						<?php endif; ?>
 					</article>
-					<?php if ( ! $progress['is_complete'] && isset( $lessons[ $sequence['current_index'] ] ) ) : ?>
+					<?php if ( ! $progress['is_complete'] && $current_item ) : ?>
 						<footer class="pf-content-footer">
-							<a class="uk-button uk-button-primary" href="<?php echo esc_url( add_query_arg( array( 'pf_course' => $enrollment->course_id, 'pf_lesson' => $lessons[ $sequence['current_index'] ]->ID ), self::current_url() ) ); ?>"><?php echo esc_html__( 'Continue Course', 'parish-formation' ); ?> &rarr;</a>
+							<a class="uk-button uk-button-primary" href="<?php echo esc_url( self::get_curriculum_item_url( $enrollment->course_id, $current_item, self::current_url() ) ); ?>"><?php echo esc_html__( 'Continue Course', 'parish-formation' ); ?> &rarr;</a>
 						</footer>
 					<?php endif; ?>
 				<?php endif; ?>
@@ -434,8 +736,9 @@ final class Parish_Formation_Shortcodes {
 	 * @return string
 	 */
 	private static function current_url() {
-		global $wp;
-
-		return home_url( add_query_arg( array(), $wp->request ) );
+		if ( self::$rest_base_url ) {
+			return self::$rest_base_url;
+		}
+		return get_permalink( get_queried_object_id() );
 	}
 }

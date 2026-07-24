@@ -1,0 +1,27 @@
+.pf-course-curriculum {
+	margin: 0;
+	border: 1px solid #c3c4c7;
+}
+
+.pf-curriculum-item {
+	display: grid;
+	grid-template-columns: 32px 100px minmax(180px, 1fr) auto;
+	align-items: center;
+	margin: 0;
+	padding: 12px;
+	border-bottom: 1px solid #dcdcde;
+	background: #fff;
+}
+
+.pf-curriculum-item:last-child { border-bottom: 0; }
+.pf-curriculum-handle { cursor: grab; color: #646970; }
+.pf-curriculum-type { font-size: 12px; font-weight: 600; text-transform: uppercase; color: #50575e; }
+.pf-curriculum-status { color: #646970; }
+.pf-curriculum-success { color: #008a20; }
+.pf-curriculum-error { color: #b32d2e; }
+.pf-curriculum-item.ui-sortable-helper { box-shadow: 0 3px 10px rgba(0,0,0,.18); }
+
+@media (max-width: 782px) {
+	.pf-curriculum-item { grid-template-columns: 32px 90px 1fr; }
+	.pf-curriculum-status { display: none; }
+}

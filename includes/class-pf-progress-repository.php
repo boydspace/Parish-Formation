@@ -160,9 +160,10 @@ final class Parish_Formation_Progress_Repository {
 	 *
 	 * @param int       $enrollment_id Enrollment ID.
 	 * @param WP_Post[] $lessons       Ordered published lessons.
+	 * @param int       $course_id     Course ID; when provided, required assessments are included.
 	 * @return array{finished:int,total:int,percentage:int,is_complete:bool}
 	 */
-	public static function get_summary( $enrollment_id, $lessons ) {
+	public static function get_summary( $enrollment_id, $lessons, $course_id = 0 ) {
 		$statuses = self::get_statuses( $enrollment_id );
 		$total    = count( $lessons );
 		$finished = 0;
@@ -172,6 +173,20 @@ final class Parish_Formation_Progress_Repository {
 
 			if ( in_array( $status, array( 'completed', 'skipped' ), true ) ) {
 				++$finished;
+			}
+		}
+
+		if ( $course_id ) {
+			foreach ( Parish_Formation_Course_Repository::get_published_assessments( $course_id ) as $assessment ) {
+				$progression = get_post_meta( $assessment->ID, Parish_Formation_Assessment_Settings::PROGRESSION_META_KEY, true );
+				if ( 'no_gate' === $progression ) {
+					continue;
+				}
+				++$total;
+				$attempt = Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment_id, $assessment->ID );
+				if ( $attempt && ( 'submit_to_continue' === $progression || (bool) $attempt->passed ) ) {
+					++$finished;
+				}
 			}
 		}
 
@@ -193,11 +208,12 @@ final class Parish_Formation_Progress_Repository {
 	public static function sync_course_completion( $enrollment, $lessons ) {
 		global $wpdb;
 
-		$summary = self::get_summary( $enrollment->id, $lessons );
+		$summary = self::get_summary( $enrollment->id, $lessons, $enrollment->course_id );
 
 		if ( ! $summary['is_complete'] ) {
 			return true;
 		}
+
 
 		if ( 'completed' === $enrollment->status && ! empty( $enrollment->completed_at ) ) {
 			return true;

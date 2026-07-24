@@ -13,6 +13,12 @@
 	box-shadow: 0 4px 18px rgba(27, 35, 52, 0.14);
 }
 
+.pf-learning-layout.pf-is-loading {
+	opacity: .55;
+	pointer-events: none;
+	transition: opacity .15s ease;
+}
+
 .pf-course-sidebar {
 	padding: 28px 22px;
 	background: #f5f6f8;
@@ -118,6 +124,19 @@
 	margin: 0 auto;
 	padding: 70px 48px;
 	box-sizing: border-box;
+}
+
+.pf-assessment-question h3 {
+	margin-bottom: 12px;
+}
+
+.pf-assessment-prompt {
+	margin-bottom: 18px;
+}
+
+.pf-assessment-option {
+	display: block;
+	margin: 10px 0;
 }
 
 .pf-content-footer {

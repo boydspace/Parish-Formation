@@ -14,6 +14,49 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Parish_Formation_Course_Repository {
 
+	/** Retrieve published assessments assigned to a course. */
+	public static function get_published_assessments( $course_id ) {
+		return get_posts(
+			array(
+				'post_type'      => Parish_Formation_Assessment_Post_Type::POST_TYPE,
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'meta_query'     => array(
+					array(
+						'key'     => Parish_Formation_Assessment_Settings::COURSE_META_KEY,
+						'value'   => absint( $course_id ),
+						'compare' => '=',
+						'type'    => 'NUMERIC',
+					),
+				),
+			)
+		);
+	}
+
+	/** Retrieve the combined published curriculum in drag-and-drop order. */
+	public static function get_published_curriculum( $course_id ) {
+		$items   = array();
+		$lessons = self::get_published_lessons( $course_id );
+		foreach ( $lessons as $index => $lesson ) {
+			$order   = absint( get_post_meta( $lesson->ID, Parish_Formation_Course_Settings::CURRICULUM_ORDER_META_KEY, true ) );
+			$items[] = array( 'type' => 'lesson', 'post' => $lesson, 'order' => $order ? $order : ( $index + 1 ) * 10 );
+		}
+		foreach ( self::get_published_assessments( $course_id ) as $index => $assessment ) {
+			$order   = absint( get_post_meta( $assessment->ID, Parish_Formation_Course_Settings::CURRICULUM_ORDER_META_KEY, true ) );
+			$items[] = array( 'type' => 'assessment', 'post' => $assessment, 'order' => $order ? $order : 100000 + $index );
+		}
+		usort(
+			$items,
+			static function ( $first, $second ) {
+				if ( $first['order'] === $second['order'] ) {
+					return strcasecmp( $first['post']->post_title, $second['post']->post_title );
+				}
+				return $first['order'] <=> $second['order'];
+			}
+		);
+		return $items;
+	}
+
 	/**
 	 * Retrieve one published lesson assigned to a course.
 	 *

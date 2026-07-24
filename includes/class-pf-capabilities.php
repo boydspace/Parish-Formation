@@ -15,6 +15,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Parish_Formation_Capabilities {
 
 	/**
+	 * Current role and capability configuration version.
+	 */
+	private const CONFIGURATION_VERSION = '0.6.0';
+
+	/**
 	 * Option containing the installed capability configuration version.
 	 */
 	private const VERSION_OPTION = 'parish_formation_capabilities_version';
@@ -27,12 +32,12 @@ final class Parish_Formation_Capabilities {
 	public static function maybe_install() {
 		$installed_version = get_option( self::VERSION_OPTION, '0.0.0' );
 
-		if ( version_compare( $installed_version, PARISH_FORMATION_VERSION, '>=' ) ) {
+		if ( version_compare( $installed_version, self::CONFIGURATION_VERSION, '>=' ) ) {
 			return;
 		}
 
 		self::install();
-		update_option( self::VERSION_OPTION, PARISH_FORMATION_VERSION, false );
+		update_option( self::VERSION_OPTION, self::CONFIGURATION_VERSION, false );
 	}
 
 	/**
@@ -51,6 +56,8 @@ final class Parish_Formation_Capabilities {
 			array(
 				'pf_manage_courses'     => true,
 				'pf_manage_enrollments' => true,
+				'pf_manage_assessments' => true,
+				'pf_grade_assessments'  => true,
 				'pf_view_reports'       => true,
 			)
 		);
@@ -58,8 +65,9 @@ final class Parish_Formation_Capabilities {
 		$administrator_capabilities = array_merge(
 			$coordinator_capabilities,
 			array(
-				'pf_manage_settings' => true,
-				'pf_manage_roles'    => true,
+				'pf_manage_settings'             => true,
+				'pf_manage_roles'                => true,
+				'pf_override_assessment_attempts' => true,
 			)
 		);
 

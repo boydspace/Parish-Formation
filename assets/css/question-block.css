@@ -1,0 +1,29 @@
+.wp-block-parish-formation-question.pf-question-block {
+	padding: 20px;
+	border: 1px solid #c3c4c7;
+	border-left: 4px solid #3858e9;
+	background: #fff;
+}
+
+.pf-question-block__label {
+	margin-bottom: 10px;
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+}
+
+.pf-question-block__prompt {
+	min-height: 32px;
+	margin-bottom: 16px;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.pf-question-block__summary {
+	margin-top: 12px;
+	color: #646970;
+	font-size: 12px;
+	text-transform: capitalize;
+}

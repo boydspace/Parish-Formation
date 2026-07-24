@@ -166,7 +166,7 @@ final class Parish_Formation_Enrollments_Admin {
 						<?php foreach ( $enrollments as $enrollment ) : ?>
 							<?php
 							$lessons          = Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id );
-							$progress         = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons );
+							$progress         = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons, $enrollment->course_id );
 							$current_lesson_id = Parish_Formation_Progress_Repository::get_current_lesson_id( $enrollment->id, $lessons );
 							$current_lesson    = $current_lesson_id ? get_post( $current_lesson_id ) : null;
 							?>
@@ -254,13 +254,14 @@ final class Parish_Formation_Enrollments_Admin {
 		}
 
 		$lessons          = Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id );
-		$progress         = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons );
+		$progress         = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons, $enrollment->course_id );
 		$records          = Parish_Formation_Progress_Repository::get_records( $enrollment->id );
 		$current_lesson_id = Parish_Formation_Progress_Repository::get_current_lesson_id( $enrollment->id, $lessons );
 		$list_url         = add_query_arg( 'page', 'parish-formation-enrollments', admin_url( 'admin.php' ) );
 		?>
 		<div class="wrap">
 			<p><a href="<?php echo esc_url( $list_url ); ?>">&larr; <?php echo esc_html__( 'Back to Enrollments', 'parish-formation' ); ?></a></p>
+			<?php self::render_notice(); ?>
 			<h1><?php echo esc_html( $enrollment->display_name ); ?></h1>
 			<h2><?php echo esc_html( $enrollment->course_title ); ?></h2>
 
@@ -326,7 +327,58 @@ final class Parish_Formation_Enrollments_Admin {
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+
+			<?php self::render_assessment_attempts( $enrollment ); ?>
 		</div>
+		<?php
+	}
+
+	/** Render submitted assessment attempts and pending review controls. */
+	private static function render_assessment_attempts( $enrollment ) {
+		$attempts = Parish_Formation_Assessment_Repository::get_attempts_for_enrollment( $enrollment->id );
+		?>
+		<h2><?php esc_html_e( 'Assessment Attempts', 'parish-formation' ); ?></h2>
+		<?php if ( ! $attempts ) : ?><p><?php esc_html_e( 'No assessments have been submitted.', 'parish-formation' ); ?></p><?php return; endif; ?>
+		<?php foreach ( $attempts as $attempt ) : ?>
+			<?php $answers = Parish_Formation_Assessment_Repository::get_attempt_answers( $attempt->id ); ?>
+			<div class="postbox" style="padding: 16px; max-width: 1000px;">
+				<h3><?php echo esc_html( get_the_title( $attempt->assessment_id ) ); ?> &mdash; <?php echo esc_html( sprintf( __( 'Attempt %d', 'parish-formation' ), $attempt->attempt_number ) ); ?></h3>
+				<p><strong><?php esc_html_e( 'Status:', 'parish-formation' ); ?></strong> <?php echo esc_html( ucwords( str_replace( '_', ' ', $attempt->status ) ) ); ?> &nbsp; <strong><?php esc_html_e( 'Submitted:', 'parish-formation' ); ?></strong> <?php echo esc_html( self::format_utc_date( $attempt->submitted_at ) ); ?></p>
+				<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+					<input type="hidden" name="action" value="pf_review_assessment" />
+					<input type="hidden" name="enrollment_id" value="<?php echo esc_attr( $enrollment->id ); ?>" />
+					<input type="hidden" name="attempt_id" value="<?php echo esc_attr( $attempt->id ); ?>" />
+					<?php wp_nonce_field( 'pf_review_assessment_' . $attempt->id ); ?>
+					<table class="widefat striped">
+						<thead><tr><th><?php esc_html_e( 'Question', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Response', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Result / Points', 'parish-formation' ); ?></th></tr></thead>
+						<tbody>
+						<?php foreach ( $answers as $answer ) : ?>
+							<?php $snapshot = json_decode( $answer->question_snapshot, true ); $question_points = max( 1, absint( $snapshot['points'] ?? 1 ) ); ?>
+							<tr>
+								<td><?php echo wp_kses_post( $snapshot['prompt'] ?? '' ); ?></td>
+								<td><?php echo nl2br( esc_html( $answer->answer ) ); ?></td>
+								<td>
+									<?php if ( $answer->requires_review && 'pending_review' === $attempt->status ) : ?>
+										<label><?php esc_html_e( 'Points', 'parish-formation' ); ?> <input type="number" name="manual_points[<?php echo esc_attr( $answer->id ); ?>]" min="0" max="<?php echo esc_attr( $question_points ); ?>" step="0.01" value="<?php echo esc_attr( $answer->points_awarded ); ?>" class="small-text" /> / <?php echo esc_html( $question_points ); ?></label>
+									<?php elseif ( null !== $answer->is_correct ) : ?>
+										<?php echo $answer->is_correct ? esc_html__( 'Correct', 'parish-formation' ) : esc_html__( 'Incorrect', 'parish-formation' ); ?> (<?php echo esc_html( $answer->points_awarded ); ?>)
+									<?php else : ?><?php echo esc_html( $answer->points_awarded ); ?><?php endif; ?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+					<?php if ( 'pending_review' === $attempt->status && current_user_can( 'pf_grade_assessments' ) ) : ?>
+						<p><label for="pf-review-note-<?php echo esc_attr( $attempt->id ); ?>"><strong><?php esc_html_e( 'Private review note', 'parish-formation' ); ?></strong></label></p>
+						<textarea id="pf-review-note-<?php echo esc_attr( $attempt->id ); ?>" name="review_note" rows="3" class="large-text"></textarea>
+						<p><button class="button button-primary" type="submit" name="review_decision" value="passed"><?php esc_html_e( 'Approve / Pass', 'parish-formation' ); ?></button> <button class="button" type="submit" name="review_decision" value="failed"><?php esc_html_e( 'Fail', 'parish-formation' ); ?></button></p>
+					<?php elseif ( $attempt->reviewed_by ) : ?>
+						<?php $reviewer = get_userdata( $attempt->reviewed_by ); ?><p><strong><?php esc_html_e( 'Reviewed by:', 'parish-formation' ); ?></strong> <?php echo esc_html( $reviewer ? $reviewer->display_name : __( 'Unknown staff user', 'parish-formation' ) ); ?><?php if ( $attempt->reviewed_at ) : ?> &mdash; <?php echo esc_html( self::format_utc_date( $attempt->reviewed_at ) ); ?><?php endif; ?></p>
+						<?php if ( $attempt->review_note ) : ?><p><strong><?php esc_html_e( 'Private note:', 'parish-formation' ); ?></strong> <?php echo nl2br( esc_html( $attempt->review_note ) ); ?></p><?php endif; ?>
+					<?php endif; ?>
+				</form>
+			</div>
+		<?php endforeach; ?>
 		<?php
 	}
 
@@ -445,6 +497,29 @@ final class Parish_Formation_Enrollments_Admin {
 		self::redirect_with_notice( 'completion_overridden' );
 	}
 
+	/** Process a staff assessment review. */
+	public static function handle_assessment_review() {
+		if ( ! current_user_can( 'pf_grade_assessments' ) ) {
+			wp_die( esc_html__( 'You do not have permission to grade assessments.', 'parish-formation' ) );
+		}
+		$enrollment_id = isset( $_POST['enrollment_id'] ) ? absint( $_POST['enrollment_id'] ) : 0;
+		$attempt_id    = isset( $_POST['attempt_id'] ) ? absint( $_POST['attempt_id'] ) : 0;
+		$decision      = isset( $_POST['review_decision'] ) ? sanitize_key( wp_unslash( $_POST['review_decision'] ) ) : '';
+		$note          = isset( $_POST['review_note'] ) ? sanitize_textarea_field( wp_unslash( $_POST['review_note'] ) ) : '';
+		$manual_points = isset( $_POST['manual_points'] ) && is_array( $_POST['manual_points'] ) ? wp_unslash( $_POST['manual_points'] ) : array();
+		check_admin_referer( 'pf_review_assessment_' . $attempt_id );
+
+		$result = Parish_Formation_Assessment_Repository::review( $attempt_id, $enrollment_id, $decision, $manual_points, $note, get_current_user_id() );
+		if ( is_wp_error( $result ) ) {
+			self::redirect_with_notice( $result->get_error_code(), $enrollment_id );
+		}
+		$enrollment = Parish_Formation_Enrollment_Repository::get_details( $enrollment_id );
+		if ( $enrollment ) {
+			Parish_Formation_Progress_Repository::sync_course_completion( $enrollment, Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id ) );
+		}
+		self::redirect_with_notice( 'assessment_reviewed', $enrollment_id );
+	}
+
 	/**
 	 * Render a whitelisted enrollment result notice.
 	 *
@@ -457,6 +532,9 @@ final class Parish_Formation_Enrollments_Admin {
 			'unenrolled'           => array( 'success', __( 'The participant was unenrolled successfully.', 'parish-formation' ) ),
 			'reset'                => array( 'success', __( 'The course was reset successfully.', 'parish-formation' ) ),
 			'completion_overridden' => array( 'success', __( 'The course was marked complete successfully.', 'parish-formation' ) ),
+			'assessment_reviewed'  => array( 'success', __( 'The assessment review was saved successfully.', 'parish-formation' ) ),
+			'invalid_attempt'      => array( 'error', __( 'That pending assessment attempt could not be found.', 'parish-formation' ) ),
+			'invalid_decision'     => array( 'error', __( 'Select Pass or Fail for the assessment review.', 'parish-formation' ) ),
 			'duplicate_enrollment' => array( 'warning', __( 'That user is already enrolled in this course.', 'parish-formation' ) ),
 			'invalid_user'         => array( 'error', __( 'Select a valid WordPress user.', 'parish-formation' ) ),
 			'invalid_course'       => array( 'error', __( 'Select a valid published course.', 'parish-formation' ) ),
@@ -484,12 +562,16 @@ final class Parish_Formation_Enrollments_Admin {
 	 * @param string $notice_code Whitelisted notice code.
 	 * @return void
 	 */
-	private static function redirect_with_notice( $notice_code ) {
-		$url = add_query_arg(
-			array(
+	private static function redirect_with_notice( $notice_code, $enrollment_id = 0 ) {
+		$args = array(
 				'page'      => 'parish-formation-enrollments',
 				'pf_notice' => sanitize_key( $notice_code ),
-			),
+			);
+		if ( $enrollment_id ) {
+			$args['enrollment_id'] = absint( $enrollment_id );
+		}
+		$url = add_query_arg(
+			$args,
 			admin_url( 'admin.php' )
 		);
 

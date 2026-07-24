@@ -78,7 +78,6 @@ final class Parish_Formation_Lesson_Settings {
 		);
 
 		$course_id   = absint( get_post_meta( $post->ID, self::COURSE_META_KEY, true ) );
-		$lesson_order = absint( get_post_meta( $post->ID, self::ORDER_META_KEY, true ) );
 		$is_required  = self::is_required( $post->ID );
 
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
@@ -95,21 +94,6 @@ final class Parish_Formation_Lesson_Settings {
 			<?php endforeach; ?>
 		</select>
 
-		<p>
-			<label for="pf-lesson-order"><strong><?php echo esc_html__( 'Lesson number', 'parish-formation' ); ?></strong></label>
-		</p>
-		<input
-			type="number"
-			id="pf-lesson-order"
-			name="pf_lesson_order"
-			value="<?php echo esc_attr( $lesson_order ); ?>"
-			min="0"
-			step="1"
-			class="small-text"
-		/>
-		<p class="description">
-			<?php echo esc_html__( 'Lower numbers appear first.', 'parish-formation' ); ?>
-		</p>
 		<p>
 			<label for="pf-is-required">
 				<input
@@ -147,30 +131,37 @@ final class Parish_Formation_Lesson_Settings {
 			return;
 		}
 
-		$course_id = isset( $_POST['pf_course_id'] ) ? absint( $_POST['pf_course_id'] ) : 0;
+		$old_course_id = absint( get_post_meta( $post_id, self::COURSE_META_KEY, true ) );
+		$course_id     = isset( $_POST['pf_course_id'] ) ? absint( $_POST['pf_course_id'] ) : 0;
 
 		if ( $course_id && Parish_Formation_Course_Post_Type::POST_TYPE === get_post_type( $course_id ) ) {
 			update_post_meta( $post_id, self::COURSE_META_KEY, $course_id );
 		} else {
 			delete_post_meta( $post_id, self::COURSE_META_KEY );
+			$course_id = 0;
 		}
 
-		$lesson_order = isset( $_POST['pf_lesson_order'] ) ? absint( $_POST['pf_lesson_order'] ) : 0;
-		update_post_meta( $post_id, self::ORDER_META_KEY, $lesson_order );
+		if ( $old_course_id !== $course_id ) {
+			delete_post_meta( $post_id, Parish_Formation_Course_Settings::CURRICULUM_ORDER_META_KEY );
+			if ( $course_id ) {
+				update_post_meta( $post_id, self::ORDER_META_KEY, self::next_lesson_order( $course_id, $post_id ) );
+			} else {
+				delete_post_meta( $post_id, self::ORDER_META_KEY );
+			}
+		}
 
 		$is_required = isset( $_POST['pf_is_required'] ) ? 1 : 0;
 		update_post_meta( $post_id, self::REQUIRED_META_KEY, $is_required );
 	}
 
 	/**
-	 * Add course and order columns to the Lessons list.
+	 * Add course and requirement columns to the Lessons list.
 	 *
 	 * @param array $columns Existing list-table columns.
 	 * @return array
 	 */
 	public static function add_list_columns( $columns ) {
 		$columns['pf_course']       = __( 'Course', 'parish-formation' );
-		$columns['pf_lesson_order'] = __( 'Lesson number', 'parish-formation' );
 		$columns['pf_is_required']  = __( 'Requirement', 'parish-formation' );
 
 		return $columns;
@@ -185,7 +176,6 @@ final class Parish_Formation_Lesson_Settings {
 	 */
 	public static function render_list_column( $column_name, $post_id ) {
 		$course_id   = absint( get_post_meta( $post_id, self::COURSE_META_KEY, true ) );
-		$lesson_order = absint( get_post_meta( $post_id, self::ORDER_META_KEY, true ) );
 		$is_required  = self::is_required( $post_id );
 
 		if ( 'pf_course' === $column_name ) {
@@ -194,16 +184,11 @@ final class Parish_Formation_Lesson_Settings {
 			<span
 				class="pf-lesson-quick-edit-data"
 				data-course-id="<?php echo esc_attr( $course_id ); ?>"
-				data-lesson-order="<?php echo esc_attr( $lesson_order ); ?>"
 				data-is-required="<?php echo esc_attr( $is_required ? '1' : '0' ); ?>"
 			>
 				<?php echo $course_title ? esc_html( $course_title ) : '&mdash;'; ?>
 			</span>
 			<?php
-		}
-
-		if ( 'pf_lesson_order' === $column_name ) {
-			echo esc_html( $lesson_order );
 		}
 
 		if ( 'pf_is_required' === $column_name ) {
@@ -214,7 +199,7 @@ final class Parish_Formation_Lesson_Settings {
 	}
 
 	/**
-	 * Render course and order fields in Quick Edit.
+	 * Render course and requirement fields in Quick Edit.
 	 *
 	 * @param string $column_name Current custom column.
 	 * @param string $post_type   Current post type.
@@ -240,12 +225,6 @@ final class Parish_Formation_Lesson_Settings {
 							</option>
 						<?php endforeach; ?>
 					</select>
-				</label>
-				<label>
-					<span class="title"><?php echo esc_html__( 'Lesson number', 'parish-formation' ); ?></span>
-					<span class="input-text-wrap">
-						<input type="number" name="pf_lesson_order" min="0" step="1" value="0" />
-					</span>
 				</label>
 				<label class="alignleft">
 					<input type="checkbox" name="pf_is_required" value="1" />
@@ -312,6 +291,32 @@ final class Parish_Formation_Lesson_Settings {
 				'order'          => 'ASC',
 			)
 		);
+	}
+
+	/** Get the next automatic lesson position for a course. */
+	private static function next_lesson_order( $course_id, $excluded_lesson_id ) {
+		$lesson_ids = get_posts(
+			array(
+				'post_type'      => Parish_Formation_Lesson_Post_Type::POST_TYPE,
+				'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future' ),
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'post__not_in'   => array( absint( $excluded_lesson_id ) ),
+				'meta_query'     => array(
+					array(
+						'key'     => self::COURSE_META_KEY,
+						'value'   => absint( $course_id ),
+						'compare' => '=',
+						'type'    => 'NUMERIC',
+					),
+				),
+			)
+		);
+		$maximum = 0;
+		foreach ( $lesson_ids as $lesson_id ) {
+			$maximum = max( $maximum, self::get_lesson_order( $lesson_id ) );
+		}
+		return $maximum + 1;
 	}
 
 	/**

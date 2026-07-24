@@ -43,7 +43,11 @@ final class Parish_Formation_Upgrader {
 			self::install_enrollments_table();
 		}
 
-		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() ) {
+		if ( version_compare( $installed_version, '0.6.0', '<' ) ) {
+			self::install_assessment_tables();
+		}
+
+		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() ) {
 			return;
 		}
 
@@ -52,6 +56,54 @@ final class Parish_Formation_Upgrader {
 			PARISH_FORMATION_DB_VERSION,
 			false
 		);
+	}
+
+	/** Create or update immutable assessment attempt and answer tables. */
+	private static function install_assessment_tables() {
+		global $wpdb;
+		$charset_collate = $wpdb->get_charset_collate();
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		$attempts = $wpdb->prefix . 'pf_assessment_attempts';
+		$answers  = $wpdb->prefix . 'pf_assessment_answers';
+		dbDelta( "CREATE TABLE {$attempts} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			enrollment_id bigint(20) unsigned NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			course_id bigint(20) unsigned NOT NULL,
+			assessment_id bigint(20) unsigned NOT NULL,
+			attempt_number int unsigned NOT NULL,
+			status varchar(20) NOT NULL,
+			score_points decimal(10,2) NOT NULL DEFAULT 0,
+			max_points decimal(10,2) NOT NULL DEFAULT 0,
+			correct_count int unsigned NOT NULL DEFAULT 0,
+			total_graded int unsigned NOT NULL DEFAULT 0,
+			passing_rule varchar(20) NOT NULL,
+			passing_value decimal(10,2) NOT NULL DEFAULT 0,
+			passed tinyint(1) DEFAULT NULL,
+			reviewed_by bigint(20) unsigned DEFAULT NULL,
+			reviewed_at datetime DEFAULT NULL,
+			review_note longtext DEFAULT NULL,
+			submitted_at datetime NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY enrollment_assessment_attempt (enrollment_id, assessment_id, attempt_number),
+			KEY user_assessment (user_id, assessment_id),
+			KEY enrollment_status (enrollment_id, status)
+		) {$charset_collate};" );
+		dbDelta( "CREATE TABLE {$answers} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			attempt_id bigint(20) unsigned NOT NULL,
+			question_id bigint(20) unsigned NOT NULL,
+			question_snapshot longtext NOT NULL,
+			answer longtext NOT NULL,
+			points_awarded decimal(10,2) NOT NULL DEFAULT 0,
+			is_correct tinyint(1) DEFAULT NULL,
+			requires_review tinyint(1) NOT NULL DEFAULT 0,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY attempt_question (attempt_id, question_id),
+			KEY question_id (question_id)
+		) {$charset_collate};" );
 	}
 
 	/**
@@ -160,5 +212,17 @@ final class Parish_Formation_Upgrader {
 		);
 
 		return $table_name === $found_table;
+	}
+
+	/** Determine whether both assessment tables exist. */
+	private static function assessment_tables_exist() {
+		global $wpdb;
+		foreach ( array( $wpdb->prefix . 'pf_assessment_attempts', $wpdb->prefix . 'pf_assessment_answers' ) as $table_name ) {
+			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
+			if ( $table_name !== $found ) {
+				return false;
+			}
+		}
+		return true;
 	}
 }
