@@ -47,7 +47,13 @@ final class Parish_Formation_Upgrader {
 			self::install_assessment_tables();
 		}
 
-		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() ) {
+		if ( version_compare( $installed_version, '0.7.0', '<' ) ) {
+			self::install_enrollments_table();
+			self::install_assessment_tables();
+			self::install_enrollment_runs_table();
+		}
+
+		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() ) {
 			return;
 		}
 
@@ -71,6 +77,7 @@ final class Parish_Formation_Upgrader {
 			user_id bigint(20) unsigned NOT NULL,
 			course_id bigint(20) unsigned NOT NULL,
 			assessment_id bigint(20) unsigned NOT NULL,
+			course_run int unsigned NOT NULL DEFAULT 1,
 			attempt_number int unsigned NOT NULL,
 			status varchar(20) NOT NULL,
 			score_points decimal(10,2) NOT NULL DEFAULT 0,
@@ -86,10 +93,14 @@ final class Parish_Formation_Upgrader {
 			submitted_at datetime NOT NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
-			UNIQUE KEY enrollment_assessment_attempt (enrollment_id, assessment_id, attempt_number),
+			UNIQUE KEY enrollment_assessment_run_attempt (enrollment_id, assessment_id, course_run, attempt_number),
 			KEY user_assessment (user_id, assessment_id),
 			KEY enrollment_status (enrollment_id, status)
 		) {$charset_collate};" );
+		$legacy_index = $wpdb->get_var( "SHOW INDEX FROM {$attempts} WHERE Key_name = 'enrollment_assessment_attempt'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		if ( $legacy_index ) {
+			$wpdb->query( "ALTER TABLE {$attempts} DROP INDEX enrollment_assessment_attempt" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
 		dbDelta( "CREATE TABLE {$answers} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			attempt_id bigint(20) unsigned NOT NULL,
@@ -124,11 +135,14 @@ final class Parish_Formation_Upgrader {
 			user_id bigint(20) unsigned NOT NULL,
 			course_id bigint(20) unsigned NOT NULL,
 			status varchar(20) NOT NULL DEFAULT 'enrolled',
+			current_run int unsigned NOT NULL DEFAULT 1,
 			enrolled_at datetime NOT NULL,
 			started_at datetime DEFAULT NULL,
 			completed_at datetime DEFAULT NULL,
 			completion_override_by bigint(20) unsigned DEFAULT NULL,
 			completion_override_at datetime DEFAULT NULL,
+			last_reset_by bigint(20) unsigned DEFAULT NULL,
+			last_reset_at datetime DEFAULT NULL,
 			expires_at datetime DEFAULT NULL,
 			enrollment_source varchar(30) NOT NULL DEFAULT 'manual',
 			created_by bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -142,6 +156,28 @@ final class Parish_Formation_Upgrader {
 		) {$charset_collate};";
 
 		dbDelta( $sql );
+	}
+
+	/** Create the immutable enrollment-run archive table. */
+	private static function install_enrollment_runs_table() {
+		global $wpdb;
+		$table_name      = $wpdb->prefix . 'pf_enrollment_runs';
+		$charset_collate = $wpdb->get_charset_collate();
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			enrollment_id bigint(20) unsigned NOT NULL,
+			run_number int unsigned NOT NULL,
+			status varchar(20) NOT NULL,
+			enrolled_at datetime NOT NULL,
+			started_at datetime DEFAULT NULL,
+			completed_at datetime DEFAULT NULL,
+			reset_by bigint(20) unsigned NOT NULL DEFAULT 0,
+			reset_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY enrollment_run (enrollment_id, run_number),
+			KEY reset_at (reset_at)
+		) {$charset_collate};" );
 	}
 
 	/**
@@ -224,5 +260,12 @@ final class Parish_Formation_Upgrader {
 			}
 		}
 		return true;
+	}
+
+	/** Determine whether the enrollment-run archive table exists. */
+	private static function enrollment_runs_table_exists() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'pf_enrollment_runs';
+		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
 	}
 }

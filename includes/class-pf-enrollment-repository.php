@@ -55,7 +55,7 @@ final class Parish_Formation_Enrollment_Repository {
 
 		return $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT enrollment.id, enrollment.user_id, enrollment.course_id, enrollment.status,
+				"SELECT enrollment.id, enrollment.user_id, enrollment.course_id, enrollment.status, enrollment.current_run,
 					enrollment.enrolled_at, enrollment.completed_at, enrollment.expires_at,
 					course.post_title AS course_title
 				FROM {$table_name} AS enrollment
@@ -86,7 +86,7 @@ final class Parish_Formation_Enrollment_Repository {
 
 		return $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT enrollment.id, enrollment.user_id, enrollment.course_id, enrollment.status,
+				"SELECT enrollment.id, enrollment.user_id, enrollment.course_id, enrollment.status, enrollment.current_run,
 					enrollment.enrolled_at, enrollment.completed_at, enrollment.expires_at,
 					course.post_title AS course_title, course.post_content AS course_content
 				FROM {$table_name} AS enrollment
@@ -232,45 +232,49 @@ final class Parish_Formation_Enrollment_Repository {
 	}
 
 	/**
-	 * Reset an enrollment and remove its lesson and assessment progress.
+	 * Reset an enrollment while preserving an immutable archive of its assessment activity.
 	 *
 	 * @param int $enrollment_id Enrollment ID.
+	 * @param int $staff_user_id Staff user performing the reset.
 	 * @return true|WP_Error True on success or error.
 	 */
-	public static function reset_course( $enrollment_id ) {
+	public static function reset_course( $enrollment_id, $staff_user_id = 0 ) {
 		global $wpdb;
 
 		$enrollments_table = $wpdb->prefix . 'pf_enrollments';
 		$progress_table    = $wpdb->prefix . 'pf_progress';
-		$attempts_table    = $wpdb->prefix . 'pf_assessment_attempts';
-		$answers_table     = $wpdb->prefix . 'pf_assessment_answers';
-		$enrollment_exists = $wpdb->get_var(
+		$runs_table        = $wpdb->prefix . 'pf_enrollment_runs';
+		$enrollment        = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT id FROM {$enrollments_table} WHERE id = %d AND status <> 'unenrolled'",
+				"SELECT * FROM {$enrollments_table} WHERE id = %d AND status <> 'unenrolled'",
 				absint( $enrollment_id )
 			)
 		);
 
-		if ( ! $enrollment_exists ) {
+		if ( ! $enrollment ) {
 			return new WP_Error( 'invalid_enrollment', __( 'The enrollment could not be found.', 'parish-formation' ) );
 		}
 
 		$now = current_time( 'mysql', true );
 		$wpdb->query( 'START TRANSACTION' );
+		$run_number = max( 1, absint( $enrollment->current_run ) );
+		$run_archived = $wpdb->insert(
+			$runs_table,
+			array(
+				'enrollment_id' => absint( $enrollment_id ),
+				'run_number'    => $run_number,
+				'status'        => sanitize_key( $enrollment->status ),
+				'enrolled_at'   => $enrollment->enrolled_at,
+				'started_at'    => $enrollment->started_at,
+				'completed_at'  => $enrollment->completed_at,
+				'reset_by'      => absint( $staff_user_id ),
+				'reset_at'      => $now,
+			),
+			array( '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%s' )
+		);
 
 		$progress_deleted = $wpdb->delete(
 			$progress_table,
-			array( 'enrollment_id' => absint( $enrollment_id ) ),
-			array( '%d' )
-		);
-		$answers_deleted = $wpdb->query(
-			$wpdb->prepare(
-				"DELETE answer FROM {$answers_table} AS answer INNER JOIN {$attempts_table} AS attempt ON attempt.id = answer.attempt_id WHERE attempt.enrollment_id = %d",
-				absint( $enrollment_id )
-			)
-		);
-		$attempts_deleted = $wpdb->delete(
-			$attempts_table,
 			array( 'enrollment_id' => absint( $enrollment_id ) ),
 			array( '%d' )
 		);
@@ -278,19 +282,22 @@ final class Parish_Formation_Enrollment_Repository {
 			$enrollments_table,
 			array(
 				'status'       => 'enrolled',
+				'current_run'  => $run_number + 1,
 				'enrolled_at'  => $now,
 				'started_at'   => null,
 				'completed_at' => null,
 				'completion_override_by' => null,
 				'completion_override_at' => null,
+				'last_reset_by' => absint( $staff_user_id ),
+				'last_reset_at' => $now,
 				'updated_at'   => $now,
 			),
 			array( 'id' => absint( $enrollment_id ) ),
-			array( '%s', '%s', null, null, null, null, '%s' ),
+			array( '%s', '%d', '%s', null, null, null, null, '%d', '%s', '%s' ),
 			array( '%d' )
 		);
 
-		if ( false === $progress_deleted || false === $answers_deleted || false === $attempts_deleted || false === $enrollment_reset ) {
+		if ( false === $run_archived || false === $progress_deleted || false === $enrollment_reset ) {
 			$wpdb->query( 'ROLLBACK' );
 
 			return new WP_Error( 'database_error', __( 'The course could not be reset.', 'parish-formation' ) );

@@ -26,7 +26,10 @@ final class Parish_Formation_Assessment_Repository {
 		global $wpdb;
 		return $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}pf_assessment_attempts WHERE enrollment_id = %d AND assessment_id = %d ORDER BY attempt_number DESC LIMIT 1",
+				"SELECT attempt.* FROM {$wpdb->prefix}pf_assessment_attempts AS attempt
+				INNER JOIN {$wpdb->prefix}pf_enrollments AS enrollment ON enrollment.id = attempt.enrollment_id
+				WHERE attempt.enrollment_id = %d AND attempt.assessment_id = %d AND attempt.course_run = enrollment.current_run
+				ORDER BY attempt.attempt_number DESC LIMIT 1",
 				absint( $enrollment_id ),
 				absint( $assessment_id )
 			)
@@ -128,8 +131,8 @@ final class Parish_Formation_Assessment_Repository {
 		$wpdb->query( 'START TRANSACTION' );
 		$saved = $wpdb->insert(
 			$wpdb->prefix . 'pf_assessment_attempts',
-			array( 'enrollment_id' => $enrollment->id, 'user_id' => $enrollment->user_id, 'course_id' => $enrollment->course_id, 'assessment_id' => $assessment_id, 'attempt_number' => $attempt_number, 'status' => $status, 'score_points' => $score, 'max_points' => $maximum, 'correct_count' => $correct_count, 'total_graded' => $total_graded, 'passing_rule' => $rule, 'passing_value' => $value, 'passed' => $needs_review ? null : ( $passed ? 1 : 0 ), 'submitted_at' => $now, 'created_at' => $now ),
-			array( '%d', '%d', '%d', '%d', '%d', '%s', '%f', '%f', '%d', '%d', '%s', '%f', '%d', '%s', '%s' )
+			array( 'enrollment_id' => $enrollment->id, 'user_id' => $enrollment->user_id, 'course_id' => $enrollment->course_id, 'assessment_id' => $assessment_id, 'course_run' => max( 1, absint( $enrollment->current_run ) ), 'attempt_number' => $attempt_number, 'status' => $status, 'score_points' => $score, 'max_points' => $maximum, 'correct_count' => $correct_count, 'total_graded' => $total_graded, 'passing_rule' => $rule, 'passing_value' => $value, 'passed' => $needs_review ? null : ( $passed ? 1 : 0 ), 'submitted_at' => $now, 'created_at' => $now ),
+			array( '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%f', '%f', '%d', '%d', '%s', '%f', '%d', '%s', '%s' )
 		);
 		if ( false === $saved ) {
 			$wpdb->query( 'ROLLBACK' );
@@ -151,7 +154,7 @@ final class Parish_Formation_Assessment_Repository {
 	/** Finalize a pending manual review with audited staff fields. */
 	public static function review( $attempt_id, $enrollment_id, $decision, $manual_points, $note, $reviewer_id ) {
 		global $wpdb;
-		$attempt = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}pf_assessment_attempts WHERE id = %d AND enrollment_id = %d", absint( $attempt_id ), absint( $enrollment_id ) ) );
+		$attempt = $wpdb->get_row( $wpdb->prepare( "SELECT attempt.* FROM {$wpdb->prefix}pf_assessment_attempts AS attempt INNER JOIN {$wpdb->prefix}pf_enrollments AS enrollment ON enrollment.id = attempt.enrollment_id WHERE attempt.id = %d AND attempt.enrollment_id = %d AND attempt.course_run = enrollment.current_run", absint( $attempt_id ), absint( $enrollment_id ) ) );
 		if ( ! $attempt || 'pending_review' !== $attempt->status ) {
 			return new WP_Error( 'invalid_attempt', __( 'That pending assessment attempt could not be found.', 'parish-formation' ) );
 		}
