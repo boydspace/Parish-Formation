@@ -410,6 +410,21 @@
 	color: #b42318;
 }
 
+.pf-invitation-registration {
+	display: grid;
+	gap: 16px;
+}
+
+.pf-invitation-registration label {
+	display: grid;
+	gap: 6px;
+	font-weight: 600;
+}
+
+.pf-invitation-registration .uk-button {
+	justify-self: start;
+}
+
 @media (max-width: 640px) {
 	.pf-course-catalog-grid {
 		grid-template-columns: 1fr;

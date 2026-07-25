@@ -19,6 +19,7 @@ LMS features such as sales, subscriptions, commissions, or marketplaces.
 - Required, optional, and sequential course sections
 - Manual enrollment, expiration, unenrollment, reopening, and course runs
 - Public course catalog with open self-enrollment, hidden courses, and protected access codes
+- Secure course invitations with optional email restriction, expiration, use limits, and invited-user registration
 - Responsive front-end My Formation experience with AJAX navigation
 - Automatic and staff-reviewed assessments with configurable passing rules
 - Staff progress, assessment, course, and CSV reporting

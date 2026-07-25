@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'PARISH_FORMATION_VERSION', '0.9.0' );
-define( 'PARISH_FORMATION_DB_VERSION', '0.9.2' );
+define( 'PARISH_FORMATION_DB_VERSION', '0.9.4' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -35,6 +35,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-course-repository.
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-course-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-lesson-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-enrollment-repository.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-invitation-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-progress-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-repository.php';
@@ -48,6 +49,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-verifica
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-invitations-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-certificates-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-notifications-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-lesson-settings.php';
@@ -119,6 +121,11 @@ add_action(
 
 add_action(
 	'admin_menu',
+	array( 'Parish_Formation_Invitations_Admin', 'register_menu' )
+);
+
+add_action(
+	'admin_menu',
 	array( 'Parish_Formation_Certificates_Admin', 'register_menu' )
 );
 
@@ -141,6 +148,21 @@ add_action(
 );
 
 add_action(
+	'admin_post_pf_create_invitation',
+	array( 'Parish_Formation_Invitations_Admin', 'handle_create' )
+);
+
+add_action(
+	'admin_post_pf_revoke_invitation',
+	array( 'Parish_Formation_Invitations_Admin', 'handle_revoke' )
+);
+
+add_action(
+	'admin_post_pf_resend_invitation',
+	array( 'Parish_Formation_Invitations_Admin', 'handle_resend' )
+);
+
+add_action(
 	'admin_post_pf_self_enroll',
 	array( 'Parish_Formation_Enrollment_Actions', 'self_enroll' )
 );
@@ -158,6 +180,21 @@ add_action(
 add_action(
 	'admin_post_nopriv_pf_access_code_enroll',
 	array( 'Parish_Formation_Enrollment_Actions', 'access_code_enroll' )
+);
+
+add_action(
+	'admin_post_pf_accept_invitation',
+	array( 'Parish_Formation_Enrollment_Actions', 'invitation_enroll' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_accept_invitation',
+	array( 'Parish_Formation_Enrollment_Actions', 'invitation_enroll' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_register_invitation',
+	array( 'Parish_Formation_Enrollment_Actions', 'register_from_invitation' )
 );
 
 add_action(

@@ -58,4 +58,42 @@
 			button.textContent = button.dataset.label;
 		}
 	} );
+
+	document.addEventListener( 'submit', async function ( event ) {
+		const form = event.target.closest( '.pf-invitation-accept-form' );
+		if ( ! form || typeof pfEnrollment === 'undefined' ) {
+			return;
+		}
+		event.preventDefault();
+		const button = form.querySelector( 'button[type="submit"]' );
+		const message = form.querySelector( '.pf-course-access-code-message' );
+		button.disabled = true;
+		button.textContent = pfEnrollment.submitting;
+		message.className = 'pf-course-access-code-message';
+		message.textContent = '';
+		try {
+			const response = await fetch( pfEnrollment.invitationEndpoint, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': pfEnrollment.nonce },
+				body: JSON.stringify( { token: form.querySelector( '[name="invitation_token"]' ).value } )
+			} );
+			const result = await response.json();
+			if ( ! response.ok ) {
+				throw new Error( result.message || pfEnrollment.defaultError );
+			}
+			message.classList.add( 'is-success' );
+			message.textContent = result.message;
+			const link = document.createElement( 'a' );
+			link.className = 'uk-button uk-button-primary';
+			link.href = result.course_url;
+			link.textContent = pfEnrollment.openFormation;
+			button.replaceWith( link );
+		} catch ( error ) {
+			message.classList.add( 'is-error' );
+			message.textContent = error.message || pfEnrollment.defaultError;
+			button.disabled = false;
+			button.textContent = button.dataset.label;
+		}
+	} );
 }() );

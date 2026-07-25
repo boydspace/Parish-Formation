@@ -12,6 +12,7 @@ final class Parish_Formation_Notifications {
 	/** Supported notification types grouped by recipient. */
 	public static function types() {
 		return array(
+			'course_invitation' => array( 'account', __( 'Course invitation', 'parish-formation' ) ),
 			'new_user_registration' => array( 'account', __( 'New WordPress user account', 'parish-formation' ) ),
 			'enrollment_confirmation' => array( 'participant', __( 'Enrollment confirmation', 'parish-formation' ) ),
 			'enrollment_expiration_reminder' => array( 'participant', __( 'Enrollment expiration reminder', 'parish-formation' ) ),
@@ -35,6 +36,7 @@ final class Parish_Formation_Notifications {
 	/** Default subject and body for every supported event. */
 	public static function default_templates() {
 		return array(
+			'course_invitation' => array( __( 'You are invited to {course_name}', 'parish-formation' ), __( 'Hello,\n\nYou have been invited to <strong>{course_name}</strong> at {site_name}.\n\n<a href="{invitation_url}">Accept Course Invitation</a>\n\nIf you do not already have an account, the invitation page will help you create one.', 'parish-formation' ) ),
 			'new_user_registration' => array( __( 'Set up your account at {site_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nAn account has been created for you at <strong>{site_name}</strong>. Your username is <strong>{username}</strong>.\n\n<a href="{password_setup_url}">Set Your Password</a>\n\nAfter setting your password, you can sign in at <a href="{login_url}">{login_url}</a>.', 'parish-formation' ) ),
 			'enrollment_confirmation' => array( __( 'You are enrolled in {course_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nYou have been enrolled in <strong>{course_name}</strong>.\n\n<a href="{formation_url}">Open My Formation</a>', 'parish-formation' ) ),
 			'enrollment_expiration_reminder' => array( __( 'Your access to {course_name} expires soon', 'parish-formation' ), __( 'Hello {participant_name},\n\nYour access to <strong>{course_name}</strong> expires on {expiration_date}. Please complete the remaining course work before that date.\n\n<a href="{formation_url}">Continue My Formation</a>', 'parish-formation' ) ),
@@ -59,6 +61,7 @@ final class Parish_Formation_Notifications {
 	public static function placeholders( $type ) {
 		$common = array( 'participant_name', 'course_name', 'formation_url', 'site_name' );
 		$specific = array(
+			'course_invitation' => array( 'invitation_url', 'expiration_date' ),
 			'new_user_registration' => array( 'username', 'login_url', 'password_setup_url' ),
 			'enrollment_expiration_reminder' => array( 'expiration_date' ), 'course_expired' => array( 'expiration_date' ),
 			'course_completed' => array( 'completion_date' ), 'assessment_submitted' => array( 'assessment_name' ),
@@ -104,7 +107,26 @@ final class Parish_Formation_Notifications {
 			'review_note' => __( 'Thank you for your thoughtful response.', 'parish-formation' ), 'certificate_code' => 'SAMPLE123456789ABCDE', 'certificate_url' => home_url( '/formation-certificate/SAMPLE123456789ABCDE/' ),
 			'certificate_pdf_url' => home_url( '/?sample-certificate-pdf=1' ), 'revocation_reason' => __( 'Sample administrative reason.', 'parish-formation' ), 'course_run' => '2',
 			'review_url' => admin_url( 'admin.php?page=parish-formation-assessment-reviews' ), 'report_url' => admin_url( 'admin.php?page=parish-formation-course-reports' ),
+			'invitation_url' => home_url( '/available-courses/?pf_invitation=sample-token' ),
 		);
+	}
+
+	/** Send a newly created email-restricted course invitation. */
+	public static function send_course_invitation( $invitation, $raw_token, $context_suffix = '' ) {
+		if ( ! $invitation || ! $invitation->restricted_email || ! self::is_enabled_for_course( 'course_invitation', $invitation->course_id ) ) {
+			return false;
+		}
+		$url = add_query_arg( 'pf_invitation', rawurlencode( $raw_token ), Parish_Formation_Shortcodes::get_course_catalog_url() );
+		$content = self::resolve_template(
+			'course_invitation',
+			array(
+				'course_name'     => get_the_title( $invitation->course_id ),
+				'invitation_url'  => $url,
+				'expiration_date' => $invitation->expires_at ? get_date_from_gmt( $invitation->expires_at, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) : __( 'No expiration', 'parish-formation' ),
+			)
+		);
+		$context = 'invitation_' . absint( $invitation->id ) . ( $context_suffix ? '_' . sanitize_key( $context_suffix ) : '' );
+		return self::send( 'course_invitation', $invitation->restricted_email, $content[0], self::types()['course_invitation'][1], $content[1], $context );
 	}
 
 	/** Render one resolved message inside the shared branded wrapper. */

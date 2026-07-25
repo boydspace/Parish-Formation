@@ -68,8 +68,14 @@ final class Parish_Formation_Upgrader {
 		if ( version_compare( $installed_version, '0.9.2', '<' ) ) {
 			self::discard_successful_notification_bodies();
 		}
+		if ( version_compare( $installed_version, '0.9.3', '<' ) ) {
+			self::install_invitations_table();
+		}
+		if ( version_compare( $installed_version, '0.9.4', '<' ) ) {
+			self::install_invitations_table();
+		}
 
-		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() ) {
+		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() || ! self::invitations_table_exists() ) {
 			return;
 		}
 
@@ -78,6 +84,35 @@ final class Parish_Formation_Upgrader {
 			PARISH_FORMATION_DB_VERSION,
 			false
 		);
+	}
+
+	/** Create or update secure course invitation records. */
+	private static function install_invitations_table() {
+		global $wpdb;
+		$table_name      = $wpdb->prefix . 'pf_invitations';
+		$charset_collate = $wpdb->get_charset_collate();
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			course_id bigint(20) unsigned NOT NULL,
+			token_hash char(64) NOT NULL,
+			token_encrypted longtext DEFAULT NULL,
+			token_hint varchar(12) NOT NULL,
+			restricted_email varchar(255) DEFAULT NULL,
+			expires_at datetime DEFAULT NULL,
+			max_uses int unsigned NOT NULL DEFAULT 0,
+			use_count int unsigned NOT NULL DEFAULT 0,
+			status varchar(20) NOT NULL DEFAULT 'active',
+			created_by bigint(20) unsigned NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			revoked_by bigint(20) unsigned DEFAULT NULL,
+			revoked_at datetime DEFAULT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY token_hash (token_hash),
+			KEY course_status (course_id, status),
+			KEY expires_at (expires_at)
+		) {$charset_collate};" );
 	}
 
 	/** Create or update the notification delivery audit table. */
@@ -368,6 +403,13 @@ final class Parish_Formation_Upgrader {
 	private static function notification_log_table_exists() {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'pf_notification_log';
+		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
+	}
+
+	/** Determine whether the invitations table exists. */
+	private static function invitations_table_exists() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'pf_invitations';
 		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
 	}
 }

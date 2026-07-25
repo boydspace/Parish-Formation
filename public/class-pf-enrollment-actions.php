@@ -35,6 +35,90 @@ final class Parish_Formation_Enrollment_Actions {
 				),
 			)
 		);
+		register_rest_route(
+			'parish-formation/v1',
+			'/invitation-enrollment',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( self::class, 'rest_invitation_enroll' ),
+				'permission_callback' => static function () { return is_user_logged_in(); },
+				'args'                => array( 'token' => array( 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ) ),
+			)
+		);
+	}
+
+	/** Accept an invitation through the non-JavaScript fallback. */
+	public static function invitation_enroll() {
+		$token      = isset( $_POST['invitation_token'] ) ? sanitize_text_field( wp_unslash( $_POST['invitation_token'] ) ) : '';
+		$return_url = add_query_arg( 'pf_invitation', rawurlencode( $token ), Parish_Formation_Shortcodes::get_course_catalog_url() );
+		if ( ! is_user_logged_in() ) {
+			wp_safe_redirect( wp_login_url( $return_url ) );
+			exit;
+		}
+		check_admin_referer( 'pf_accept_invitation', 'pf_invitation_nonce' );
+		$result = Parish_Formation_Invitation_Repository::accept( $token, get_current_user_id() );
+		if ( is_wp_error( $result ) ) {
+			wp_safe_redirect( add_query_arg( 'pf_invitation_notice', $result->get_error_code(), $return_url ) );
+			exit;
+		}
+		wp_safe_redirect( Parish_Formation_Shortcodes::get_my_formation_url() );
+		exit;
+	}
+
+	/** Accept an invitation over AJAX/REST. */
+	public static function rest_invitation_enroll( WP_REST_Request $request ) {
+		$result = Parish_Formation_Invitation_Repository::accept( sanitize_text_field( $request->get_param( 'token' ) ), get_current_user_id() );
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( $result->get_error_code(), $result->get_error_message(), array( 'status' => 400 ) );
+		}
+		$enrollment = Parish_Formation_Enrollment_Repository::get_details( $result );
+		$url = trailingslashit( Parish_Formation_Shortcodes::get_my_formation_url() ) . 'course/' . rawurlencode( get_post_field( 'post_name', $enrollment->course_id ) ) . '/';
+		return rest_ensure_response( array( 'message' => __( 'Invitation accepted. You are now enrolled.', 'parish-formation' ), 'course_url' => $url ) );
+	}
+
+	/** Register a new participant account from an email-restricted invitation. */
+	public static function register_from_invitation() {
+		$token = isset( $_POST['invitation_token'] ) ? sanitize_text_field( wp_unslash( $_POST['invitation_token'] ) ) : '';
+		check_admin_referer( 'pf_register_invitation', 'pf_invitation_registration_nonce' );
+		$invitation = Parish_Formation_Invitation_Repository::get_by_token( $token );
+		$base_url   = add_query_arg( 'pf_invitation', rawurlencode( $token ), Parish_Formation_Shortcodes::get_course_catalog_url() );
+		if ( ! $invitation ) {
+			self::registration_redirect( $base_url, 'invitation-unavailable' );
+		}
+		$email = isset( $_POST['user_email'] ) ? sanitize_email( wp_unslash( $_POST['user_email'] ) ) : '';
+		$login = isset( $_POST['user_login'] ) ? sanitize_user( wp_unslash( $_POST['user_login'] ), true ) : '';
+		$name  = isset( $_POST['display_name'] ) ? sanitize_text_field( wp_unslash( $_POST['display_name'] ) ) : '';
+		$pass  = isset( $_POST['user_password'] ) ? (string) wp_unslash( $_POST['user_password'] ) : '';
+		if ( ! is_email( $email ) || ! $login || strlen( $pass ) < 8 ) {
+			self::registration_redirect( $base_url, 'registration-invalid' );
+		}
+		if ( $invitation->restricted_email && strtolower( $email ) !== strtolower( $invitation->restricted_email ) ) {
+			self::registration_redirect( $base_url, 'invitation-email-mismatch' );
+		}
+		$valid = Parish_Formation_Invitation_Repository::validate_for_user( $invitation, (object) array( 'user_email' => $email ) );
+		if ( is_wp_error( $valid ) ) {
+			self::registration_redirect( $base_url, $valid->get_error_code() );
+		}
+		if ( email_exists( $email ) || username_exists( $login ) ) {
+			self::registration_redirect( $base_url, 'account-exists' );
+		}
+		$user_id = wp_insert_user( array( 'user_login' => $login, 'user_email' => $email, 'display_name' => $name ?: $login, 'user_pass' => $pass, 'role' => 'parish_formation_participant' ) );
+		if ( is_wp_error( $user_id ) ) {
+			self::registration_redirect( $base_url, 'registration-invalid' );
+		}
+		$result = Parish_Formation_Invitation_Repository::accept( $token, $user_id );
+		if ( is_wp_error( $result ) ) {
+			self::registration_redirect( $base_url, $result->get_error_code() );
+		}
+		wp_set_current_user( $user_id );
+		wp_set_auth_cookie( $user_id, true, is_ssl() );
+		wp_safe_redirect( Parish_Formation_Shortcodes::get_my_formation_url() );
+		exit;
+	}
+
+	private static function registration_redirect( $url, $notice ) {
+		wp_safe_redirect( add_query_arg( 'pf_invitation_notice', sanitize_key( $notice ), $url ) );
+		exit;
 	}
 
 	/** Enroll the current user in an open course. */

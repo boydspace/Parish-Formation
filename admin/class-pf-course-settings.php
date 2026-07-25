@@ -31,6 +31,7 @@ final class Parish_Formation_Course_Settings {
 	public const OPEN_ENROLLMENT_META_KEY = '_pf_open_enrollment';
 	public const ACCESS_CODE_ENABLED_META_KEY = '_pf_access_code_enabled';
 	public const ACCESS_CODE_HASH_META_KEY = '_pf_access_code_hash';
+	public const ACCESS_CODE_ENCRYPTED_META_KEY = '_pf_access_code_encrypted';
 	public const ACCESS_CODE_EXPIRES_META_KEY = '_pf_access_code_expires';
 	public const ACCESS_CODE_LIMIT_META_KEY = '_pf_access_code_limit';
 	public const ACCESS_CODE_USES_META_KEY = '_pf_access_code_uses';
@@ -93,6 +94,7 @@ final class Parish_Formation_Course_Settings {
 		$open_enrollment = (bool) get_post_meta( $post->ID, self::OPEN_ENROLLMENT_META_KEY, true );
 		$access_code_enabled = (bool) get_post_meta( $post->ID, self::ACCESS_CODE_ENABLED_META_KEY, true );
 		$access_code_saved = (bool) get_post_meta( $post->ID, self::ACCESS_CODE_HASH_META_KEY, true );
+		$access_code_value = self::decrypt_access_code( get_post_meta( $post->ID, self::ACCESS_CODE_ENCRYPTED_META_KEY, true ) );
 		$access_code_expires = sanitize_text_field( get_post_meta( $post->ID, self::ACCESS_CODE_EXPIRES_META_KEY, true ) );
 		$access_code_limit = absint( get_post_meta( $post->ID, self::ACCESS_CODE_LIMIT_META_KEY, true ) );
 		$access_code_uses = absint( get_post_meta( $post->ID, self::ACCESS_CODE_USES_META_KEY, true ) );
@@ -107,8 +109,9 @@ final class Parish_Formation_Course_Settings {
 		<p class="description"><?php esc_html_e( 'When enabled, this published course appears in the public formation catalog. Visitors must sign in or register before enrolling.', 'parish-formation' ); ?></p>
 		<h4><?php esc_html_e( 'Access Code', 'parish-formation' ); ?></h4>
 		<p><label><input type="checkbox" name="pf_access_code_enabled" value="1" <?php checked( $access_code_enabled ); ?>> <?php esc_html_e( 'Allow enrollment with a course access code', 'parish-formation' ); ?></label></p>
-		<p><label for="pf-access-code"><strong><?php esc_html_e( 'New access code', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code" name="pf_access_code" type="text" class="regular-text" autocomplete="new-password" value="" placeholder="<?php echo esc_attr( $access_code_saved ? __( 'A code is currently saved', 'parish-formation' ) : __( 'Enter an access code', 'parish-formation' ) ); ?>"></p>
-		<p class="description"><?php esc_html_e( 'Codes are stored securely and cannot be displayed later. Leave this blank to keep the existing code.', 'parish-formation' ); ?></p>
+		<p><label for="pf-access-code"><strong><?php esc_html_e( 'Access code', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code" name="pf_access_code" type="text" class="regular-text" autocomplete="off" value="<?php echo esc_attr( $access_code_value ); ?>" placeholder="<?php echo esc_attr( $access_code_saved ? __( 'Enter the code once more to make it viewable', 'parish-formation' ) : __( 'Enter an access code', 'parish-formation' ) ); ?>"></p>
+		<p class="description"><?php esc_html_e( 'The code is encrypted for authorized administrators and separately hashed for participant validation. Changing it resets the usage count.', 'parish-formation' ); ?></p>
+		<?php if ( $access_code_saved && ! $access_code_value ) : ?><p class="description"><strong><?php esc_html_e( 'This code was saved before viewable codes were supported. Enter it once more, or enter a replacement, and update the course.', 'parish-formation' ); ?></strong></p><?php endif; ?>
 		<?php if ( $access_code_saved ) : ?><p><label><input type="checkbox" name="pf_access_code_clear" value="1"> <?php esc_html_e( 'Remove the saved access code', 'parish-formation' ); ?></label></p><?php endif; ?>
 		<p><label for="pf-access-code-expires"><strong><?php esc_html_e( 'Code expiration date', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code-expires" name="pf_access_code_expires" type="date" value="<?php echo esc_attr( $access_code_expires ); ?>"> <span class="description"><?php esc_html_e( 'Optional. The code remains valid through this date in the site timezone.', 'parish-formation' ); ?></span></p>
 		<p><label for="pf-access-code-limit"><strong><?php esc_html_e( 'Maximum successful uses', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code-limit" name="pf_access_code_limit" type="number" min="0" max="1000000" step="1" value="<?php echo esc_attr( $access_code_limit ); ?>" class="small-text"> <span class="description"><?php esc_html_e( 'Use 0 for unlimited. A new code resets the usage count.', 'parish-formation' ); ?></span></p>
@@ -257,10 +260,15 @@ final class Parish_Formation_Course_Settings {
 		$access_code = isset( $_POST['pf_access_code'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['pf_access_code'] ) ) ) : '';
 		if ( isset( $_POST['pf_access_code_clear'] ) ) {
 			delete_post_meta( $post_id, self::ACCESS_CODE_HASH_META_KEY );
+			delete_post_meta( $post_id, self::ACCESS_CODE_ENCRYPTED_META_KEY );
 			delete_post_meta( $post_id, self::ACCESS_CODE_USES_META_KEY );
 		} elseif ( '' !== $access_code ) {
-			update_post_meta( $post_id, self::ACCESS_CODE_HASH_META_KEY, wp_hash_password( $access_code ) );
-			update_post_meta( $post_id, self::ACCESS_CODE_USES_META_KEY, 0 );
+			$existing_code = self::decrypt_access_code( get_post_meta( $post_id, self::ACCESS_CODE_ENCRYPTED_META_KEY, true ) );
+			if ( ! hash_equals( $existing_code, $access_code ) ) {
+				update_post_meta( $post_id, self::ACCESS_CODE_HASH_META_KEY, wp_hash_password( $access_code ) );
+				update_post_meta( $post_id, self::ACCESS_CODE_ENCRYPTED_META_KEY, self::encrypt_access_code( $access_code ) );
+				update_post_meta( $post_id, self::ACCESS_CODE_USES_META_KEY, 0 );
+			}
 		}
 		$access_code_expires = isset( $_POST['pf_access_code_expires'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_access_code_expires'] ) ) : '';
 		if ( $access_code_expires && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $access_code_expires ) ) {
@@ -302,6 +310,34 @@ final class Parish_Formation_Course_Settings {
 			delete_post_meta( $post_id, self::NOTIFICATION_STAFF_EMAILS_META_KEY );
 		}
 
+	}
+
+	/** Encrypt a viewable administrative copy without changing participant validation. */
+	private static function encrypt_access_code( $code ) {
+		if ( ! function_exists( 'openssl_encrypt' ) ) {
+			return '';
+		}
+		$key        = hash( 'sha256', wp_salt( 'auth' ), true );
+		$iv         = random_bytes( 12 );
+		$tag        = '';
+		$ciphertext = openssl_encrypt( $code, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag );
+		return false === $ciphertext ? '' : base64_encode( $iv . $tag . $ciphertext );
+	}
+
+	/** Decrypt the administrative access-code copy for authorized editing screens. */
+	private static function decrypt_access_code( $stored ) {
+		if ( ! $stored || ! function_exists( 'openssl_decrypt' ) ) {
+			return '';
+		}
+		$payload = base64_decode( $stored, true );
+		if ( false === $payload || strlen( $payload ) < 29 ) {
+			return '';
+		}
+		$iv         = substr( $payload, 0, 12 );
+		$tag        = substr( $payload, 12, 16 );
+		$ciphertext = substr( $payload, 28 );
+		$plain      = openssl_decrypt( $ciphertext, 'aes-256-gcm', hash( 'sha256', wp_salt( 'auth' ), true ), OPENSSL_RAW_DATA, $iv, $tag );
+		return false === $plain ? '' : $plain;
 	}
 
 	/** Save a drag-and-drop curriculum order over AJAX. */

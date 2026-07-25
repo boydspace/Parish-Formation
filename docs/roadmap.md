@@ -83,7 +83,7 @@ medical information.
 - Course-level open self-enrollment. **Implemented**
 - Safe login and registration handoff. **Implemented**
 - Course access codes with expiration and usage limits. **Implemented**
-- Secure invitation links with optional email restrictions.
+- Secure invitation links with optional email restrictions. **Implemented**
 - Enrollment source and access audit history.
 
 ### 1.1.0 — Staff communication and notes

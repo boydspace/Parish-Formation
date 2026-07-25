@@ -159,6 +159,14 @@ final class Parish_Formation_Enrollment_Repository {
 		return self::create( $user_id, $course_id, 'access_code', 0 );
 	}
 
+	/** Create an enrollment authorized by a secure invitation. */
+	public static function create_invitation_enrollment( $user_id, $course_id, $created_by = 0 ) {
+		if ( ! get_userdata( $user_id ) || Parish_Formation_Course_Post_Type::POST_TYPE !== get_post_type( $course_id ) || 'publish' !== get_post_status( $course_id ) ) {
+			return new WP_Error( 'invalid_invitation', __( 'This course invitation is not available.', 'parish-formation' ) );
+		}
+		return self::create( $user_id, $course_id, 'invitation', $created_by );
+	}
+
 	/** Create or reactivate an enrollment from a validated source. */
 	private static function create( $user_id, $course_id, $source, $created_by, $expires_at = null ) {
 		global $wpdb;

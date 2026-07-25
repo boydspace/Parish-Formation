@@ -92,6 +92,7 @@ final class Parish_Formation_Shortcodes {
 				'pfEnrollment',
 				array(
 					'endpoint'      => rest_url( 'parish-formation/v1/access-code-enrollment' ),
+					'invitationEndpoint' => rest_url( 'parish-formation/v1/invitation-enrollment' ),
 					'nonce'         => wp_create_nonce( 'wp_rest' ),
 					'submitting'    => __( 'Checking…', 'parish-formation' ),
 					'defaultError'  => __( 'The course enrollment could not be completed.', 'parish-formation' ),
@@ -170,6 +171,10 @@ final class Parish_Formation_Shortcodes {
 		$current_url = remove_query_arg( 'pf_enrollment', self::current_url() );
 		$formation_url = self::get_my_formation_url();
 		$notice      = isset( $_GET['pf_enrollment'] ) ? sanitize_key( wp_unslash( $_GET['pf_enrollment'] ) ) : '';
+		$invitation_token = isset( $_GET['pf_invitation'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_invitation'] ) ) : '';
+		if ( $invitation_token ) {
+			return self::render_invitation( $invitation_token, $current_url );
+		}
 
 		ob_start();
 		?>
@@ -249,6 +254,63 @@ final class Parish_Formation_Shortcodes {
 		return ob_get_clean();
 	}
 
+	/** Render secure invitation acceptance, login, or registration. */
+	private static function render_invitation( $token, $current_url ) {
+		$invitation = Parish_Formation_Invitation_Repository::get_by_token( $token );
+		$notice     = isset( $_GET['pf_invitation_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_invitation_notice'] ) ) : '';
+		$messages   = array(
+			'invitation-unavailable' => __( 'This invitation is no longer available.', 'parish-formation' ),
+			'invitation-expired' => __( 'This invitation has expired.', 'parish-formation' ),
+			'invitation-used' => __( 'This invitation has already reached its usage limit.', 'parish-formation' ),
+			'invitation-email-mismatch' => __( 'Sign in or register using the email address that received this invitation.', 'parish-formation' ),
+			'registration-invalid' => __( 'Enter a valid email, username, name, and a password of at least eight characters.', 'parish-formation' ),
+			'account-exists' => __( 'An account already uses that email or username. Log in to accept the invitation.', 'parish-formation' ),
+		);
+		if ( ! $invitation ) {
+			return '<div class="uk-alert uk-alert-danger"><p>' . esc_html( $messages['invitation-unavailable'] ) . '</p></div>';
+		}
+		if ( 'active' !== $invitation->status || ( $invitation->expires_at && strtotime( $invitation->expires_at . ' UTC' ) < time() ) || ( $invitation->max_uses && $invitation->use_count >= $invitation->max_uses ) ) {
+			$key = 'active' !== $invitation->status ? 'invitation-unavailable' : ( $invitation->expires_at && strtotime( $invitation->expires_at . ' UTC' ) < time() ? 'invitation-expired' : 'invitation-used' );
+			return '<div class="uk-alert uk-alert-warning"><p>' . esc_html( $messages[ $key ] ) . '</p></div>';
+		}
+		$invitation_url = add_query_arg( 'pf_invitation', rawurlencode( $token ), $current_url );
+		$known_account  = $invitation->restricted_email ? (bool) get_user_by( 'email', $invitation->restricted_email ) : false;
+		$show_login     = ! $invitation->restricted_email || $known_account;
+		$show_register  = ! $invitation->restricted_email || ! $known_account;
+		ob_start();
+		?>
+		<div class="pf-invitation-page uk-container uk-container-small uk-section"><div class="uk-card uk-card-default uk-card-body">
+			<h2 class="uk-card-title"><?php esc_html_e( 'Course Invitation', 'parish-formation' ); ?></h2>
+			<h3><?php echo esc_html( $invitation->course_title ); ?></h3>
+			<?php if ( isset( $messages[ $notice ] ) ) : ?><div class="uk-alert uk-alert-danger"><p><?php echo esc_html( $messages[ $notice ] ); ?></p></div><?php endif; ?>
+			<?php if ( is_user_logged_in() ) : $valid = Parish_Formation_Invitation_Repository::validate_for_user( $invitation, wp_get_current_user() ); ?>
+				<?php if ( is_wp_error( $valid ) ) : ?><div class="uk-alert uk-alert-danger"><p><?php echo esc_html( $valid->get_error_message() ); ?></p></div><?php else : ?>
+				<form class="pf-invitation-accept-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="pf_accept_invitation"><input type="hidden" name="invitation_token" value="<?php echo esc_attr( $token ); ?>"><?php wp_nonce_field( 'pf_accept_invitation', 'pf_invitation_nonce' ); ?>
+					<button class="uk-button uk-button-primary" type="submit" data-label="<?php esc_attr_e( 'Accept Invitation', 'parish-formation' ); ?>"><?php esc_html_e( 'Accept Invitation', 'parish-formation' ); ?></button><p class="pf-course-access-code-message" aria-live="polite"></p>
+				</form><?php endif; ?>
+			<?php else : ?>
+				<?php if ( $show_login ) : ?>
+					<?php if ( $known_account ) : ?><p><?php esc_html_e( 'An account already exists for the invited email address. Log in to accept this invitation.', 'parish-formation' ); ?></p><?php endif; ?>
+					<p><a class="uk-button uk-button-primary" href="<?php echo esc_url( wp_login_url( $invitation_url ) ); ?>"><?php esc_html_e( 'Log In to Accept', 'parish-formation' ); ?></a></p>
+				<?php endif; ?>
+				<?php if ( $show_register ) : ?>
+				<?php if ( $show_login ) : ?><hr><?php endif; ?><h3><?php esc_html_e( 'Create an Account', 'parish-formation' ); ?></h3>
+				<?php if ( $invitation->restricted_email ) : ?><p><?php esc_html_e( 'No account exists for the invited email address. Create one to accept the invitation.', 'parish-formation' ); ?></p><?php endif; ?>
+				<form class="pf-invitation-registration" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="pf_register_invitation"><input type="hidden" name="invitation_token" value="<?php echo esc_attr( $token ); ?>"><?php wp_nonce_field( 'pf_register_invitation', 'pf_invitation_registration_nonce' ); ?>
+					<label><?php esc_html_e( 'Full name', 'parish-formation' ); ?><input class="uk-input" name="display_name" type="text" required></label>
+					<label><?php esc_html_e( 'Email address', 'parish-formation' ); ?><input class="uk-input" name="user_email" type="email" required value="<?php echo esc_attr( $invitation->restricted_email ); ?>" <?php echo $invitation->restricted_email ? 'readonly' : ''; ?>></label>
+					<label><?php esc_html_e( 'Username', 'parish-formation' ); ?><input class="uk-input" name="user_login" type="text" required autocomplete="username"></label>
+					<label><?php esc_html_e( 'Password', 'parish-formation' ); ?><input class="uk-input" name="user_password" type="password" minlength="8" required autocomplete="new-password"></label>
+					<button class="uk-button uk-button-primary" type="submit"><?php esc_html_e( 'Create Account and Enroll', 'parish-formation' ); ?></button>
+				</form>
+				<?php endif; ?>
+			<?php endif; ?>
+		</div></div>
+		<?php return ob_get_clean();
+	}
+
 	/** Find the published page containing the participant dashboard shortcode. */
 	public static function get_my_formation_url() {
 		$page_ids = get_posts(
@@ -268,6 +330,17 @@ final class Parish_Formation_Shortcodes {
 		}
 
 		return home_url( '/my-formation/' );
+	}
+
+	/** Find the published page containing the public course catalog. */
+	public static function get_course_catalog_url() {
+		$page_ids = get_posts( array( 'post_type' => 'page', 'post_status' => 'publish', 'posts_per_page' => -1, 'fields' => 'ids', 'no_found_rows' => true ) );
+		foreach ( $page_ids as $page_id ) {
+			if ( has_shortcode( get_post_field( 'post_content', $page_id ), 'parish_formation_courses' ) ) {
+				return get_permalink( $page_id );
+			}
+		}
+		return home_url( '/available-courses/' );
 	}
 
 	/** Register the authenticated course-view endpoint used by AJAX navigation. */
