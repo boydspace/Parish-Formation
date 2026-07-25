@@ -10,7 +10,7 @@ final class Parish_Formation_Invitations_Admin {
 
 	/** Register the invitation submenu. */
 	public static function register_menu() {
-		add_submenu_page( 'parish-formation', __( 'Course Invitations', 'parish-formation' ), __( 'Course Invitations', 'parish-formation' ), 'pf_manage_enrollments', 'parish-formation-invitations', array( self::class, 'render_page' ), 30.5 );
+		add_submenu_page( null, __( 'Course Invitations', 'parish-formation' ), __( 'Course Invitations', 'parish-formation' ), 'pf_manage_enrollments', 'parish-formation-invitations', array( self::class, 'render_page' ) );
 	}
 
 	/** Render invitation creation and recent activity. */

@@ -1,5 +1,6 @@
 ( function () {
 	'use strict';
+	window.pfInitializeNotificationAdmin = function () {
 
 	const tabs = document.querySelectorAll( '.pf-notification-template-tab' );
 	const panel = document.getElementById( 'pf-notification-template-panel' );
@@ -9,6 +10,19 @@
 	if ( ! tabs.length || ! panel || typeof pfNotificationAdmin === 'undefined' ) {
 		return;
 	}
+
+	const initialTextarea = document.getElementById( 'pf_notification_template_body' );
+	const initialBody = document.getElementById( 'pf-notification-initial-body' );
+	const initialContent = initialBody ? initialBody.value : ( initialTextarea ? initialTextarea.value : '' );
+	const restoreInitialContent = function ( attempt ) {
+		const editor = window.tinymce && window.tinymce.get( 'pf_notification_template_body' );
+		if ( editor ) {
+			if ( initialContent && ! editor.getContent() ) { editor.setContent( initialContent ); }
+			return;
+		}
+		if ( attempt < 30 ) { window.setTimeout( function () { restoreInitialContent( attempt + 1 ); }, 100 ); }
+	};
+	restoreInitialContent( 0 );
 
 	const setEditorContent = function ( content ) {
 		if ( window.tinymce && window.tinymce.get( 'pf_notification_template_body' ) ) {
@@ -120,4 +134,6 @@
 	if ( previewLink ) {
 		previewLink.addEventListener( 'click', function ( event ) { event.preventDefault(); } );
 	}
+	};
+	window.pfInitializeNotificationAdmin();
 }() );

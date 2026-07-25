@@ -10,7 +10,7 @@ final class Parish_Formation_Certificates_Admin {
 	/** Register the certificate submenu. */
 	public static function register_menu() {
 		add_submenu_page(
-			'parish-formation',
+			null,
 			esc_html__( 'Certificates', 'parish-formation' ),
 			esc_html__( 'Certificates', 'parish-formation' ),
 			'pf_view_reports',

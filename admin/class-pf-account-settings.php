@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Admin settings for public participant accounts. */
 final class Parish_Formation_Account_Settings {
 	public static function register_menu() {
-		add_submenu_page( 'parish-formation', __( 'Account Settings', 'parish-formation' ), __( 'Account Settings', 'parish-formation' ), 'pf_manage_settings', 'parish-formation-account-settings', array( self::class, 'render_page' ), 35 );
+		add_submenu_page( null, __( 'Account Settings', 'parish-formation' ), __( 'Account Settings', 'parish-formation' ), 'pf_manage_settings', 'parish-formation-account-settings', array( self::class, 'render_page' ) );
 	}
 
 	public static function render_page() {

@@ -21,7 +21,7 @@ final class Parish_Formation_Enrollments_Admin {
 	 */
 	public static function register_menu() {
 		add_submenu_page(
-			'parish-formation',
+			null,
 			esc_html__( 'Enrollments', 'parish-formation' ),
 			esc_html__( 'Enrollments', 'parish-formation' ),
 			'pf_manage_enrollments',
@@ -36,7 +36,7 @@ final class Parish_Formation_Enrollments_Admin {
 			$menu_title .= ' <span class="awaiting-mod"><span class="pending-count">' . esc_html( number_format_i18n( $pending_count ) ) . '</span></span>';
 		}
 		add_submenu_page(
-			'parish-formation',
+			null,
 			esc_html__( 'Assessment Reviews', 'parish-formation' ),
 			$menu_title,
 			'pf_grade_assessments',
@@ -45,7 +45,7 @@ final class Parish_Formation_Enrollments_Admin {
 			31
 		);
 		add_submenu_page(
-			'parish-formation',
+			null,
 			esc_html__( 'Course Reports', 'parish-formation' ),
 			esc_html__( 'Course Reports', 'parish-formation' ),
 			'pf_view_reports',

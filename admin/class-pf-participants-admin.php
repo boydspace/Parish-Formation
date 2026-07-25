@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Search and manage formation participant profiles. */
 final class Parish_Formation_Participants_Admin {
 	public static function register_menu() {
-		add_submenu_page( 'parish-formation', __( 'Participants', 'parish-formation' ), __( 'Participants', 'parish-formation' ), 'pf_manage_enrollments', 'parish-formation-participants', array( self::class, 'render_page' ), 29 );
+		add_submenu_page( null, __( 'Participants', 'parish-formation' ), __( 'Participants', 'parish-formation' ), 'pf_manage_enrollments', 'parish-formation-participants', array( self::class, 'render_page' ) );
 	}
 
 	public static function render_page() {

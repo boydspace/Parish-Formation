@@ -50,6 +50,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-assessment-actions.p
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-verification.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin-hubs.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-account-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-participants-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
@@ -117,6 +118,37 @@ add_action(
 add_action(
 	'admin_menu',
 	array( 'Parish_Formation_Admin', 'register_menu' )
+);
+
+add_action(
+	'admin_enqueue_scripts',
+	array( 'Parish_Formation_Admin', 'enqueue_assets' )
+);
+
+add_action(
+	'wp_ajax_pf_refresh_dashboard',
+	array( 'Parish_Formation_Admin', 'ajax_refresh_dashboard' )
+);
+
+add_action(
+	'admin_menu',
+	array( 'Parish_Formation_Admin_Hubs', 'register_menu' ),
+	20
+);
+
+add_action(
+	'admin_enqueue_scripts',
+	array( 'Parish_Formation_Admin_Hubs', 'enqueue_assets' )
+);
+
+add_action(
+	'wp_ajax_pf_load_admin_hub_tab',
+	array( 'Parish_Formation_Admin_Hubs', 'ajax_load_tab' )
+);
+
+add_action(
+	'admin_init',
+	array( 'Parish_Formation_Admin_Hubs', 'redirect_legacy_pages' )
 );
 
 add_action(

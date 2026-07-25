@@ -9,12 +9,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Parish_Formation_Notifications_Admin {
 	/** Register the notifications submenu. */
 	public static function register_menu() {
-		add_submenu_page( 'parish-formation', esc_html__( 'Email Notifications', 'parish-formation' ), esc_html__( 'Email Notifications', 'parish-formation' ), 'pf_manage_settings', 'parish-formation-notifications', array( self::class, 'render_page' ), 34 );
+		add_submenu_page( null, esc_html__( 'Email Notifications', 'parish-formation' ), esc_html__( 'Email Notifications', 'parish-formation' ), 'pf_manage_settings', 'parish-formation-notifications', array( self::class, 'render_page' ) );
 	}
 
 	/** Load the AJAX tab controller only on this settings screen. */
 	public static function enqueue_assets( $hook_suffix ) {
-		if ( 'parish-formation_page_parish-formation-notifications' !== $hook_suffix ) {
+		if ( false === strpos( $hook_suffix, 'parish-formation-notifications' ) && 'parish-formation_page_parish-formation-settings' !== $hook_suffix ) {
 			return;
 		}
 		$action_nonces = array();
@@ -132,6 +132,7 @@ final class Parish_Formation_Notifications_Admin {
 				<input type="hidden" name="action" value="pf_save_notification_template"><input type="hidden" name="template_type" value="<?php echo esc_attr( $template_type ); ?>"><?php wp_nonce_field( 'pf_save_notification_template_' . $template_type ); ?>
 				<p><label for="pf-template-subject"><strong><?php esc_html_e( 'Subject', 'parish-formation' ); ?></strong></label><br><input id="pf-template-subject" name="template_subject" type="text" class="large-text" required value="<?php echo esc_attr( $template[0] ); ?>"></p>
 				<p><strong><?php esc_html_e( 'Message', 'parish-formation' ); ?></strong></p>
+				<input id="pf-notification-initial-body" type="hidden" value="<?php echo esc_attr( $template[1] ); ?>">
 				<?php wp_editor( $template[1], 'pf_notification_template_body', array( 'textarea_name' => 'template_body', 'textarea_rows' => 12, 'media_buttons' => false, 'teeny' => false ) ); ?>
 				<p><strong><?php esc_html_e( 'Available placeholders:', 'parish-formation' ); ?></strong> <span id="pf-notification-placeholders"><?php echo esc_html( implode( ', ', array_map( static function ( $placeholder ) { return '{' . $placeholder . '}'; }, Parish_Formation_Notifications::placeholders( $template_type ) ) ) ); ?></span></p>
 				<?php submit_button( __( 'Save Template', 'parish-formation' ) ); ?>
