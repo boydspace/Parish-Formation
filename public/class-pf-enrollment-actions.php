@@ -86,10 +86,7 @@ final class Parish_Formation_Enrollment_Actions {
 			self::registration_redirect( $base_url, 'invitation-unavailable' );
 		}
 		$email = isset( $_POST['user_email'] ) ? sanitize_email( wp_unslash( $_POST['user_email'] ) ) : '';
-		$login = isset( $_POST['user_login'] ) ? sanitize_user( wp_unslash( $_POST['user_login'] ), true ) : '';
-		$name  = isset( $_POST['display_name'] ) ? sanitize_text_field( wp_unslash( $_POST['display_name'] ) ) : '';
-		$pass  = isset( $_POST['user_password'] ) ? (string) wp_unslash( $_POST['user_password'] ) : '';
-		if ( ! is_email( $email ) || ! $login || strlen( $pass ) < 8 ) {
+		if ( ! is_email( $email ) ) {
 			self::registration_redirect( $base_url, 'registration-invalid' );
 		}
 		if ( $invitation->restricted_email && strtolower( $email ) !== strtolower( $invitation->restricted_email ) ) {
@@ -99,19 +96,30 @@ final class Parish_Formation_Enrollment_Actions {
 		if ( is_wp_error( $valid ) ) {
 			self::registration_redirect( $base_url, $valid->get_error_code() );
 		}
-		if ( email_exists( $email ) || username_exists( $login ) ) {
-			self::registration_redirect( $base_url, 'account-exists' );
+		$account = Parish_Formation_Account_Service::create_participant(
+			array(
+				'email' => $email,
+				'first_name' => isset( $_POST['first_name'] ) ? wp_unslash( $_POST['first_name'] ) : '',
+				'last_name' => isset( $_POST['last_name'] ) ? wp_unslash( $_POST['last_name'] ) : '',
+				'phone' => isset( $_POST['cell_phone'] ) ? wp_unslash( $_POST['cell_phone'] ) : '',
+				'password' => isset( $_POST['user_password'] ) ? wp_unslash( $_POST['user_password'] ) : '',
+				'verify_password' => isset( $_POST['verify_password'] ) ? wp_unslash( $_POST['verify_password'] ) : '',
+			),
+			'invitation'
+		);
+		if ( is_wp_error( $account ) ) {
+			self::registration_redirect( $base_url, $account->get_error_code() );
 		}
-		$user_id = wp_insert_user( array( 'user_login' => $login, 'user_email' => $email, 'display_name' => $name ?: $login, 'user_pass' => $pass, 'role' => 'parish_formation_participant' ) );
-		if ( is_wp_error( $user_id ) ) {
-			self::registration_redirect( $base_url, 'registration-invalid' );
-		}
+		$user_id = $account['user_id'];
 		$result = Parish_Formation_Invitation_Repository::accept( $token, $user_id );
 		if ( is_wp_error( $result ) ) {
 			self::registration_redirect( $base_url, $result->get_error_code() );
 		}
-		wp_set_current_user( $user_id );
-		wp_set_auth_cookie( $user_id, true, is_ssl() );
+		if ( $account['generated_password'] ) {
+			wp_send_new_user_notifications( $user_id, 'user' );
+			wp_safe_redirect( wp_login_url( Parish_Formation_Shortcodes::get_my_formation_url() ) ); exit;
+		}
+		wp_set_current_user( $user_id ); wp_set_auth_cookie( $user_id, true, is_ssl() );
 		wp_safe_redirect( Parish_Formation_Shortcodes::get_my_formation_url() );
 		exit;
 	}

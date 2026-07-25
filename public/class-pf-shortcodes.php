@@ -265,6 +265,11 @@ final class Parish_Formation_Shortcodes {
 			'invitation-email-mismatch' => __( 'Sign in or register using the email address that received this invitation.', 'parish-formation' ),
 			'registration-invalid' => __( 'Enter a valid email, username, name, and a password of at least eight characters.', 'parish-formation' ),
 			'account-exists' => __( 'An account already uses that email or username. Log in to accept the invitation.', 'parish-formation' ),
+			'first-name-required' => __( 'First name is required.', 'parish-formation' ),
+			'last-name-required' => __( 'Last name is required.', 'parish-formation' ),
+			'phone-required' => __( 'Cell phone number is required.', 'parish-formation' ),
+			'password-invalid' => __( 'Your password must contain at least eight characters.', 'parish-formation' ),
+			'password-mismatch' => __( 'The passwords do not match.', 'parish-formation' ),
 		);
 		if ( ! $invitation ) {
 			return '<div class="uk-alert uk-alert-danger"><p>' . esc_html( $messages['invitation-unavailable'] ) . '</p></div>';
@@ -277,6 +282,7 @@ final class Parish_Formation_Shortcodes {
 		$known_account  = $invitation->restricted_email ? (bool) get_user_by( 'email', $invitation->restricted_email ) : false;
 		$show_login     = ! $invitation->restricted_email || $known_account;
 		$show_register  = ! $invitation->restricted_email || ! $known_account;
+		$account_settings = Parish_Formation_Account_Service::settings();
 		ob_start();
 		?>
 		<div class="pf-invitation-page uk-container uk-container-small uk-section"><div class="uk-card uk-card-default uk-card-body">
@@ -299,10 +305,10 @@ final class Parish_Formation_Shortcodes {
 				<?php if ( $invitation->restricted_email ) : ?><p><?php esc_html_e( 'No account exists for the invited email address. Create one to accept the invitation.', 'parish-formation' ); ?></p><?php endif; ?>
 				<form class="pf-invitation-registration" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<input type="hidden" name="action" value="pf_register_invitation"><input type="hidden" name="invitation_token" value="<?php echo esc_attr( $token ); ?>"><?php wp_nonce_field( 'pf_register_invitation', 'pf_invitation_registration_nonce' ); ?>
-					<label><?php esc_html_e( 'Full name', 'parish-formation' ); ?><input class="uk-input" name="display_name" type="text" required></label>
+					<div class="pf-account-name-grid"><label><?php esc_html_e( 'First name', 'parish-formation' ); ?><input class="uk-input" name="first_name" type="text" <?php echo $account_settings['require_first_name'] ? 'required' : ''; ?> autocomplete="given-name"></label><label><?php esc_html_e( 'Last name', 'parish-formation' ); ?><input class="uk-input" name="last_name" type="text" <?php echo $account_settings['require_last_name'] ? 'required' : ''; ?> autocomplete="family-name"></label></div>
 					<label><?php esc_html_e( 'Email address', 'parish-formation' ); ?><input class="uk-input" name="user_email" type="email" required value="<?php echo esc_attr( $invitation->restricted_email ); ?>" <?php echo $invitation->restricted_email ? 'readonly' : ''; ?>></label>
-					<label><?php esc_html_e( 'Username', 'parish-formation' ); ?><input class="uk-input" name="user_login" type="text" required autocomplete="username"></label>
-					<label><?php esc_html_e( 'Password', 'parish-formation' ); ?><input class="uk-input" name="user_password" type="password" minlength="8" required autocomplete="new-password"></label>
+					<label><?php esc_html_e( 'Cell phone number', 'parish-formation' ); ?><input class="uk-input" name="cell_phone" type="tel" <?php echo $account_settings['require_phone'] ? 'required' : ''; ?> autocomplete="tel"></label>
+					<?php if ( 'required' === $account_settings['password_mode'] ) : ?><div class="pf-account-name-grid"><label><?php esc_html_e( 'Password', 'parish-formation' ); ?><input class="uk-input" name="user_password" type="password" minlength="8" required autocomplete="new-password"></label><label><?php esc_html_e( 'Verify password', 'parish-formation' ); ?><input class="uk-input" name="verify_password" type="password" minlength="8" required autocomplete="new-password"></label></div><?php else : ?><p><?php esc_html_e( 'We will email you a secure link to set your password.', 'parish-formation' ); ?></p><?php endif; ?>
 					<button class="uk-button uk-button-primary" type="submit"><?php esc_html_e( 'Create Account and Enroll', 'parish-formation' ); ?></button>
 				</form>
 				<?php endif; ?>

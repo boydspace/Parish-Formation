@@ -425,6 +425,43 @@
 	justify-self: start;
 }
 
+.pf-account-card {
+	max-width: 720px;
+	margin: 0 auto;
+}
+
+.pf-account-form {
+	display: grid;
+	gap: 16px;
+}
+
+.pf-account-form label:not(.pf-account-check) {
+	display: grid;
+	gap: 6px;
+	font-weight: 600;
+}
+
+.pf-account-name-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+}
+
+.pf-account-form .uk-button {
+	justify-self: start;
+}
+
+.pf-account-honeypot {
+	position: absolute !important;
+	left: -10000px !important;
+}
+
+@media (max-width: 640px) {
+	.pf-account-name-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
 @media (max-width: 640px) {
 	.pf-course-catalog-grid {
 		grid-template-columns: 1fr;

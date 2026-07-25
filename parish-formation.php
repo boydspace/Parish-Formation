@@ -28,6 +28,7 @@ if ( file_exists( PARISH_FORMATION_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-upgrader.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-capabilities.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-account-service.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-block.php';
@@ -41,12 +42,15 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-reposit
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-notifications.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-shortcodes.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-account-shortcodes.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-account-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-enrollment-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-progress-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-assessment-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-verification.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-account-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-invitations-admin.php';
@@ -116,6 +120,11 @@ add_action(
 
 add_action(
 	'admin_menu',
+	array( 'Parish_Formation_Account_Settings', 'register_menu' )
+);
+
+add_action(
+	'admin_menu',
 	array( 'Parish_Formation_Enrollments_Admin', 'register_menu' )
 );
 
@@ -145,6 +154,26 @@ add_action(
 add_action(
 	'admin_post_pf_create_enrollment',
 	array( 'Parish_Formation_Enrollments_Admin', 'handle_create' )
+);
+
+add_action(
+	'admin_post_pf_save_account_settings',
+	array( 'Parish_Formation_Account_Settings', 'handle_save' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_account_login',
+	array( 'Parish_Formation_Account_Actions', 'login' )
+);
+
+add_action(
+	'admin_post_pf_account_login',
+	array( 'Parish_Formation_Account_Actions', 'login' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_account_register',
+	array( 'Parish_Formation_Account_Actions', 'register' )
 );
 
 add_action(
@@ -324,6 +353,16 @@ add_action(
 add_action(
 	'init',
 	array( 'Parish_Formation_Shortcodes', 'register' )
+);
+
+add_action(
+	'init',
+	array( 'Parish_Formation_Account_Shortcodes', 'register' )
+);
+
+add_action(
+	'wp_enqueue_scripts',
+	array( 'Parish_Formation_Account_Shortcodes', 'enqueue_assets' )
 );
 
 add_action(
