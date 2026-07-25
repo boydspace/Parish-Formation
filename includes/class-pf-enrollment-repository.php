@@ -368,6 +368,7 @@ final class Parish_Formation_Enrollment_Repository {
 		if ( is_wp_error( $certificate ) && 'certificate_not_eligible' !== $certificate->get_error_code() ) {
 			return $certificate;
 		}
+		Parish_Formation_Notifications::send_course_completed( $enrollment_id );
 
 		return true;
 	}

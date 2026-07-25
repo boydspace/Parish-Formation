@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Parish Formation
  * Description:       Provides focused online formation tools for parishes.
- * Version:           0.8.0
+ * Version:           0.9.0
  * Requires PHP:      8.3
  * Author:            Father Andrew M. Boyd
  * Author URI:        https://fatherboyd.com
@@ -15,8 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PARISH_FORMATION_VERSION', '0.8.0' );
-define( 'PARISH_FORMATION_DB_VERSION', '0.8.1' );
+define( 'PARISH_FORMATION_VERSION', '0.9.0' );
+define( 'PARISH_FORMATION_DB_VERSION', '0.9.2' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -38,6 +38,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-enrollment-reposit
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-progress-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-repository.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-notifications.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-shortcodes.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-progress-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-assessment-actions.php';
@@ -47,12 +48,17 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-certificates-admin.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-notifications-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-lesson-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-assessment-settings.php';
 
 register_activation_hook(
 	PARISH_FORMATION_PLUGIN_FILE,
 	array( 'Parish_Formation_Upgrader', 'maybe_upgrade' )
+);
+register_deactivation_hook(
+	PARISH_FORMATION_PLUGIN_FILE,
+	array( 'Parish_Formation_Notifications', 'clear_scheduled_events' )
 );
 
 register_activation_hook(
@@ -63,6 +69,28 @@ register_activation_hook(
 add_action(
 	'plugins_loaded',
 	array( 'Parish_Formation_Upgrader', 'maybe_upgrade' )
+);
+add_action(
+	'init',
+	array( 'Parish_Formation_Notifications', 'schedule_events' )
+);
+add_action(
+	'pf_daily_notification_events',
+	array( 'Parish_Formation_Notifications', 'process_expiration_notifications' )
+);
+add_filter(
+	'wp_new_user_notification_email',
+	array( 'Parish_Formation_Notifications', 'filter_new_user_email' ),
+	10,
+	3
+);
+add_action(
+	'wp_mail_succeeded',
+	array( 'Parish_Formation_Notifications', 'log_wp_mail_succeeded' )
+);
+add_action(
+	'wp_mail_failed',
+	array( 'Parish_Formation_Notifications', 'log_wp_mail_failed' )
 );
 
 add_action(
@@ -91,6 +119,19 @@ add_action(
 add_action(
 	'admin_menu',
 	array( 'Parish_Formation_Certificates_Admin', 'register_menu' )
+);
+
+add_action(
+	'admin_menu',
+	array( 'Parish_Formation_Notifications_Admin', 'register_menu' )
+);
+add_action(
+	'admin_enqueue_scripts',
+	array( 'Parish_Formation_Notifications_Admin', 'enqueue_assets' )
+);
+add_action(
+	'wp_ajax_pf_load_notification_template',
+	array( 'Parish_Formation_Notifications_Admin', 'ajax_load_template' )
 );
 
 add_action(
@@ -140,6 +181,34 @@ add_action(
 add_action(
 	'admin_post_pf_export_certificates',
 	array( 'Parish_Formation_Certificates_Admin', 'handle_export' )
+);
+add_action(
+	'admin_post_pf_save_notification_settings',
+	array( 'Parish_Formation_Notifications_Admin', 'handle_save' )
+);
+add_action(
+	'admin_post_pf_send_test_notification',
+	array( 'Parish_Formation_Notifications_Admin', 'handle_test' )
+);
+add_action(
+	'admin_post_pf_save_notification_template',
+	array( 'Parish_Formation_Notifications_Admin', 'handle_template_save' )
+);
+add_action(
+	'admin_post_pf_reset_notification_template',
+	array( 'Parish_Formation_Notifications_Admin', 'handle_template_reset' )
+);
+add_action(
+	'admin_post_pf_test_notification_template',
+	array( 'Parish_Formation_Notifications_Admin', 'handle_template_test' )
+);
+add_action(
+	'admin_post_pf_save_notification_design',
+	array( 'Parish_Formation_Notifications_Admin', 'handle_design_save' )
+);
+add_action(
+	'admin_post_pf_retry_notification',
+	array( 'Parish_Formation_Notifications_Admin', 'handle_retry' )
 );
 add_action(
 	'admin_post_pf_download_certificate',

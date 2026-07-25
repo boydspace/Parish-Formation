@@ -119,7 +119,9 @@ final class Parish_Formation_Certificate_Repository {
 			}
 			return new WP_Error( 'certificate_database_error', __( 'The certificate record could not be issued.', 'parish-formation' ) );
 		}
-		return self::get_for_enrollment_run( $enrollment->id, $course_run );
+		$issued = self::get_for_enrollment_run( $enrollment->id, $course_run );
+		Parish_Formation_Notifications::send_certificate_event( 'certificate_issued', $issued );
+		return $issued;
 	}
 
 	/** Revoke an issued certificate with an audited reason. */
@@ -140,7 +142,11 @@ final class Parish_Formation_Certificate_Repository {
 			array( '%s', '%s', '%d', '%s' ),
 			array( '%d', '%s' )
 		);
-		return $updated ? true : new WP_Error( 'certificate_database_error', __( 'The certificate could not be revoked.', 'parish-formation' ) );
+		if ( ! $updated ) {
+			return new WP_Error( 'certificate_database_error', __( 'The certificate could not be revoked.', 'parish-formation' ) );
+		}
+		Parish_Formation_Notifications::send_certificate_event( 'certificate_revoked', self::get_by_id( $certificate_id ), $reason );
+		return true;
 	}
 
 	/** Reissue a revoked certificate as a new immutable record. */
@@ -171,7 +177,12 @@ final class Parish_Formation_Certificate_Repository {
 			),
 			array( '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
 		);
-		return $saved ? self::get_by_id( $wpdb->insert_id ) : new WP_Error( 'certificate_database_error', __( 'The replacement certificate could not be issued.', 'parish-formation' ) );
+		if ( ! $saved ) {
+			return new WP_Error( 'certificate_database_error', __( 'The replacement certificate could not be issued.', 'parish-formation' ) );
+		}
+		$replacement = self::get_by_id( $wpdb->insert_id );
+		Parish_Formation_Notifications::send_certificate_event( 'certificate_reissued', $replacement );
+		return $replacement;
 	}
 
 	/** Generate a collision-resistant human-readable verification code. */

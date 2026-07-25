@@ -6,6 +6,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Parish_Formation_Assessment_Repository {
+	/** Get one immutable assessment attempt. */
+	public static function get_attempt( $attempt_id ) {
+		global $wpdb;
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}pf_assessment_attempts WHERE id = %d LIMIT 1", absint( $attempt_id ) ) );
+	}
 
 	/** Get published internal questions in authored order. */
 	public static function get_questions( $assessment_id ) {

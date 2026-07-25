@@ -41,6 +41,7 @@ final class Parish_Formation_Assessment_Actions {
 		if ( is_wp_error( $result ) ) {
 			$return_url = add_query_arg( 'pf_assessment_error', $result->get_error_message(), $return_url );
 		} else {
+			Parish_Formation_Notifications::send_assessment_submission( $enrollment_id, $assessment_id, $result );
 			Parish_Formation_Progress_Repository::sync_course_completion( $enrollment, Parish_Formation_Course_Repository::get_published_lessons( $course_id ) );
 			$return_url = add_query_arg( 'pf_assessment_result', sanitize_key( $result->status ), $return_url );
 		}
@@ -63,6 +64,7 @@ final class Parish_Formation_Assessment_Actions {
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
+		Parish_Formation_Notifications::send_assessment_submission( $enrollment_id, $assessment_id, $result );
 		$lessons = Parish_Formation_Course_Repository::get_published_lessons( $course_id );
 		Parish_Formation_Progress_Repository::sync_course_completion( $enrollment, $lessons );
 		$progress = Parish_Formation_Progress_Repository::get_summary( $enrollment_id, $lessons, $course_id );

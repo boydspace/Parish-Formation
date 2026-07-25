@@ -59,8 +59,17 @@ final class Parish_Formation_Upgrader {
 		if ( version_compare( $installed_version, '0.8.1', '<' ) ) {
 			self::install_certificates_table();
 		}
+		if ( version_compare( $installed_version, '0.9.0', '<' ) ) {
+			self::install_notification_log_table();
+		}
+		if ( version_compare( $installed_version, '0.9.1', '<' ) ) {
+			self::install_notification_log_table();
+		}
+		if ( version_compare( $installed_version, '0.9.2', '<' ) ) {
+			self::discard_successful_notification_bodies();
+		}
 
-		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() ) {
+		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() ) {
 			return;
 		}
 
@@ -69,6 +78,38 @@ final class Parish_Formation_Upgrader {
 			PARISH_FORMATION_DB_VERSION,
 			false
 		);
+	}
+
+	/** Create or update the notification delivery audit table. */
+	private static function install_notification_log_table() {
+		global $wpdb;
+		$table_name      = $wpdb->prefix . 'pf_notification_log';
+		$charset_collate = $wpdb->get_charset_collate();
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			notification_type varchar(80) NOT NULL,
+			recipient varchar(255) NOT NULL,
+			subject varchar(255) NOT NULL,
+			message_body longtext DEFAULT NULL,
+			status varchar(20) NOT NULL,
+			context_key varchar(64) NOT NULL,
+			error_message longtext DEFAULT NULL,
+			sent_at datetime DEFAULT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY notification_recipient_context (notification_type, recipient(120), context_key),
+			KEY status_created (status, created_at)
+		) {$charset_collate};" );
+	}
+
+	/** Successful messages do not need full content retained for retry. */
+	private static function discard_successful_notification_bodies() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'pf_notification_log';
+		if ( $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) ) ) {
+			$wpdb->query( "UPDATE {$table_name} SET message_body = NULL WHERE status = 'sent'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
 	}
 
 	/** Create or update immutable assessment attempt and answer tables. */
@@ -320,6 +361,13 @@ final class Parish_Formation_Upgrader {
 	private static function certificates_table_exists() {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'pf_certificates';
+		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
+	}
+
+	/** Determine whether the notification log table exists. */
+	private static function notification_log_table_exists() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'pf_notification_log';
 		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
 	}
 }

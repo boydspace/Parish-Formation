@@ -26,6 +26,8 @@ final class Parish_Formation_Course_Settings {
 	public const CERTIFICATE_VALIDITY_DAYS_META_KEY = '_pf_certificate_validity_days';
 	public const CERTIFICATE_SIGNATORY_NAME_META_KEY = '_pf_certificate_signatory_name';
 	public const CERTIFICATE_SIGNATORY_TITLE_META_KEY = '_pf_certificate_signatory_title';
+	public const NOTIFICATION_DISABLED_META_KEY = '_pf_notification_disabled';
+	public const NOTIFICATION_STAFF_EMAILS_META_KEY = '_pf_notification_staff_emails';
 
 	/** Shared curriculum order metadata for lessons and assessments. */
 	public const CURRICULUM_ORDER_META_KEY = '_pf_curriculum_order';
@@ -79,6 +81,8 @@ final class Parish_Formation_Course_Settings {
 		$validity_days = absint( get_post_meta( $post->ID, self::CERTIFICATE_VALIDITY_DAYS_META_KEY, true ) );
 		$signatory_name = get_post_meta( $post->ID, self::CERTIFICATE_SIGNATORY_NAME_META_KEY, true );
 		$signatory_title = get_post_meta( $post->ID, self::CERTIFICATE_SIGNATORY_TITLE_META_KEY, true );
+		$notification_disabled = (array) get_post_meta( $post->ID, self::NOTIFICATION_DISABLED_META_KEY, true );
+		$notification_staff_emails = get_post_meta( $post->ID, self::NOTIFICATION_STAFF_EMAILS_META_KEY, true );
 
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
 		?>
@@ -109,6 +113,13 @@ final class Parish_Formation_Course_Settings {
 		<input id="pf-certificate-signatory-name" name="pf_certificate_signatory_name" type="text" class="regular-text" value="<?php echo esc_attr( $signatory_name ); ?>"></p>
 		<p><label for="pf-certificate-signatory-title"><strong><?php esc_html_e( 'Signatory title', 'parish-formation' ); ?></strong></label><br>
 		<input id="pf-certificate-signatory-title" name="pf_certificate_signatory_title" type="text" class="regular-text" value="<?php echo esc_attr( $signatory_title ); ?>"></p>
+		<hr>
+		<h3><?php esc_html_e( 'Course Email Notifications', 'parish-formation' ); ?></h3>
+		<p><?php esc_html_e( 'These settings override the global notification settings for this course.', 'parish-formation' ); ?></p>
+		<fieldset><legend class="screen-reader-text"><?php esc_html_e( 'Enabled course emails', 'parish-formation' ); ?></legend>
+		<?php foreach ( Parish_Formation_Notifications::types() as $type => $definition ) : if ( 'account' === $definition[0] ) { continue; } ?><label style="display:block;margin:6px 0"><input type="checkbox" name="pf_notification_enabled[<?php echo esc_attr( $type ); ?>]" value="1" <?php checked( ! in_array( $type, $notification_disabled, true ) ); ?>> <?php echo esc_html( $definition[1] ); ?></label><?php endforeach; ?>
+		</fieldset>
+		<p><label for="pf-notification-staff-emails"><strong><?php esc_html_e( 'Course-specific staff recipients', 'parish-formation' ); ?></strong></label><br><textarea id="pf-notification-staff-emails" name="pf_notification_staff_emails" class="widefat" rows="3"><?php echo esc_textarea( $notification_staff_emails ); ?></textarea><span class="description"><?php esc_html_e( 'Leave blank to use the global staff recipients. Separate addresses with commas or new lines.', 'parish-formation' ); ?></span></p>
 		<?php
 	}
 
@@ -227,6 +238,23 @@ final class Parish_Formation_Course_Settings {
 		}
 		$validity_days = isset( $_POST['pf_certificate_validity_days'] ) ? min( 36500, absint( $_POST['pf_certificate_validity_days'] ) ) : 0;
 		update_post_meta( $post_id, self::CERTIFICATE_VALIDITY_DAYS_META_KEY, $validity_days );
+		$posted_notifications = isset( $_POST['pf_notification_enabled'] ) && is_array( $_POST['pf_notification_enabled'] ) ? wp_unslash( $_POST['pf_notification_enabled'] ) : array();
+		$disabled_notifications = array();
+		foreach ( Parish_Formation_Notifications::types() as $type => $definition ) {
+			if ( 'account' === $definition[0] ) {
+				continue;
+			}
+			if ( ! isset( $posted_notifications[ $type ] ) ) {
+				$disabled_notifications[] = $type;
+			}
+		}
+		update_post_meta( $post_id, self::NOTIFICATION_DISABLED_META_KEY, $disabled_notifications );
+		$staff_emails = isset( $_POST['pf_notification_staff_emails'] ) ? Parish_Formation_Notifications::sanitize_email_list( wp_unslash( $_POST['pf_notification_staff_emails'] ) ) : '';
+		if ( $staff_emails ) {
+			update_post_meta( $post_id, self::NOTIFICATION_STAFF_EMAILS_META_KEY, $staff_emails );
+		} else {
+			delete_post_meta( $post_id, self::NOTIFICATION_STAFF_EMAILS_META_KEY );
+		}
 
 	}
 

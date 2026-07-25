@@ -840,6 +840,7 @@ final class Parish_Formation_Enrollments_Admin {
 		if ( is_wp_error( $result ) ) {
 			self::redirect_with_notice( $result->get_error_code() );
 		}
+		Parish_Formation_Notifications::send_participant_event( 'enrollment_confirmation', $result, array(), 'created' );
 
 		self::redirect_with_notice( 'created' );
 	}
@@ -862,6 +863,7 @@ final class Parish_Formation_Enrollments_Admin {
 		if ( is_wp_error( $result ) ) {
 			self::redirect_with_notice( $result->get_error_code() );
 		}
+		Parish_Formation_Notifications::send_participant_event( 'unenrolled', $enrollment_id, array(), 'unenrolled' );
 
 		self::redirect_with_notice( 'unenrolled' );
 	}
@@ -884,6 +886,7 @@ final class Parish_Formation_Enrollments_Admin {
 		if ( is_wp_error( $result ) ) {
 			self::redirect_with_notice( $result->get_error_code() );
 		}
+		Parish_Formation_Notifications::send_participant_event( 'course_reset', $enrollment_id, array(), 'reset' );
 
 		self::redirect_with_notice( 'reset' );
 	}
@@ -933,6 +936,7 @@ final class Parish_Formation_Enrollments_Admin {
 		if ( $enrollment ) {
 			Parish_Formation_Progress_Repository::sync_course_completion( $enrollment, Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id ) );
 		}
+		Parish_Formation_Notifications::send_assessment_reviewed( $enrollment_id, Parish_Formation_Assessment_Repository::get_attempt( $attempt_id ), $note );
 		self::redirect_with_notice( 'assessment_reviewed', $enrollment_id );
 	}
 
