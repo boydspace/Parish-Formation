@@ -21,6 +21,8 @@ LMS features such as sales, subscriptions, commissions, or marketplaces.
 - Public course catalog with open self-enrollment, hidden courses, and protected access codes
 - Secure course invitations with optional email restriction, expiration, use limits, and invited-user registration
 - Configurable participant login and registration forms with automatic usernames and profile requirements
+- Single-use passwordless login by emailed magic link or six-digit code
+- Searchable participant administration with profile, enrollment, and account-security details
 - Responsive front-end My Formation experience with AJAX navigation
 - Automatic and staff-reviewed assessments with configurable passing rules
 - Staff progress, assessment, course, and CSV reporting
@@ -56,6 +58,8 @@ data is preserved when the plugin is deactivated or uninstalled.
 - `[formation-certificate]` — public certificate verification form.
 - `[parish_formation_certificate_verification]` — compatibility alias for the
   certificate verification form.
+
+- `[parish_formation_account_button]` displays a context-aware login or logout button.
 
 ## Roles and capabilities
 

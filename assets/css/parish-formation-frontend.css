@@ -451,6 +451,18 @@
 	justify-self: start;
 }
 
+.pf-account-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.pf-account-code-form {
+	margin-top: 22px;
+	padding-top: 22px;
+	border-top: 1px solid #dcdcde;
+}
+
 .pf-account-honeypot {
 	position: absolute !important;
 	left: -10000px !important;

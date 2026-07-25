@@ -8,12 +8,19 @@ final class Parish_Formation_Account_Service {
 	public const SETTINGS_OPTION = 'parish_formation_account_settings';
 	public const PHONE_META_KEY = '_pf_cell_phone';
 	public const SOURCE_META_KEY = '_pf_account_source';
+	public const LAST_LOGIN_META_KEY = '_pf_last_login_at';
+
+	/** Record the most recent successful WordPress login. */
+	public static function record_login( $user_login, $user ) {
+		if ( $user instanceof WP_User ) { update_user_meta( $user->ID, self::LAST_LOGIN_META_KEY, current_time( 'mysql', true ) ); }
+	}
 
 	/** Return normalized account settings. */
 	public static function settings() {
 		$saved = get_option( self::SETTINGS_OPTION, array() );
 		return array(
 			'public_registration' => isset( $saved['public_registration'] ) ? (bool) $saved['public_registration'] : (bool) get_option( 'users_can_register' ),
+			'passwordless_login'  => ! isset( $saved['passwordless_login'] ) || (bool) $saved['passwordless_login'],
 			'require_first_name'  => ! empty( $saved['require_first_name'] ),
 			'require_last_name'   => ! empty( $saved['require_last_name'] ),
 			'require_phone'       => ! empty( $saved['require_phone'] ),
@@ -22,6 +29,35 @@ final class Parish_Formation_Account_Service {
 			'registration_redirect' => isset( $saved['registration_redirect'] ) ? esc_url_raw( $saved['registration_redirect'] ) : Parish_Formation_Shortcodes::get_my_formation_url(),
 		);
 	}
+
+	/** Create a short-lived, single-use passwordless login request. */
+	public static function create_passwordless_request( $user_id, $redirect_url = '' ) {
+		$user = get_userdata( absint( $user_id ) );
+		if ( ! $user ) { return false; }
+		$request = strtolower( wp_generate_password( 24, false, false ) );
+		$token   = wp_generate_password( 48, false, false );
+		$code    = (string) wp_rand( 100000, 999999 );
+		$fallback = self::settings()['login_redirect'];
+		$data    = array( 'user_id' => $user->ID, 'redirect_url' => wp_validate_redirect( $redirect_url, $fallback ), 'email_key' => self::passwordless_email_key( $user->user_email ), 'token_hash' => self::passwordless_hash( $token ), 'code_hash' => self::passwordless_hash( $code ) );
+		set_transient( 'pf_pwless_' . $request, $data, 15 * MINUTE_IN_SECONDS );
+		set_transient( $data['email_key'], $request, 15 * MINUTE_IN_SECONDS );
+		return array( 'request' => $request, 'token' => $token, 'code' => $code, 'user' => $user );
+	}
+
+	public static function consume_passwordless_token( $request, $token ) { return self::consume_passwordless_request( sanitize_key( $request ), 'token_hash', (string) $token ); }
+	public static function consume_passwordless_code( $email, $code ) {
+		$request = get_transient( self::passwordless_email_key( sanitize_email( $email ) ) );
+		return $request ? self::consume_passwordless_request( sanitize_key( $request ), 'code_hash', preg_replace( '/\D+/', '', (string) $code ) ) : false;
+	}
+	public static function consume_passwordless_request_code( $request, $code ) { return self::consume_passwordless_request( sanitize_key( $request ), 'code_hash', preg_replace( '/\D+/', '', (string) $code ) ); }
+	private static function consume_passwordless_request( $request, $hash_key, $credential ) {
+		$data = get_transient( 'pf_pwless_' . $request );
+		if ( ! is_array( $data ) || empty( $data[ $hash_key] ) || ! hash_equals( $data[ $hash_key], self::passwordless_hash( $credential ) ) ) { return false; }
+		delete_transient( 'pf_pwless_' . $request ); delete_transient( $data['email_key'] );
+		return array( 'user_id' => absint( $data['user_id'] ), 'redirect_url' => wp_validate_redirect( $data['redirect_url'] ?? '', self::settings()['login_redirect'] ) );
+	}
+	private static function passwordless_hash( $value ) { return hash_hmac( 'sha256', (string) $value, wp_salt( 'auth' ) ); }
+	private static function passwordless_email_key( $email ) { return 'pf_pwless_email_' . substr( hash_hmac( 'sha256', strtolower( trim( (string) $email ) ), wp_salt( 'nonce' ) ), 0, 32 ); }
 
 	/** Create a Formation Participant using normalized form values. */
 	public static function create_participant( $values, $source = 'public_registration' ) {

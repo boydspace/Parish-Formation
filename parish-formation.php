@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Parish Formation
  * Description:       Provides focused online formation tools for parishes.
- * Version:           0.9.0
+ * Version:           1.0.1
  * Requires PHP:      8.3
  * Author:            Father Andrew M. Boyd
  * Author URI:        https://fatherboyd.com
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PARISH_FORMATION_VERSION', '0.9.0' );
+define( 'PARISH_FORMATION_VERSION', '1.0.1' );
 define( 'PARISH_FORMATION_DB_VERSION', '0.9.4' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
@@ -51,6 +51,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-actions.
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-verification.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-account-settings.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-participants-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-invitations-admin.php';
@@ -125,6 +126,52 @@ add_action(
 
 add_action(
 	'admin_menu',
+	array( 'Parish_Formation_Participants_Admin', 'register_menu' )
+);
+
+add_action(
+	'wp_login',
+	array( 'Parish_Formation_Account_Service', 'record_login' ),
+	10,
+	2
+);
+
+add_filter(
+	'show_admin_bar',
+	static function ( $show ) { return current_user_can( 'manage_options' ) ? $show : false; }
+);
+
+add_filter(
+	'login_url',
+	array( 'Parish_Formation_Account_Shortcodes', 'filter_login_url' ),
+	10,
+	2
+);
+
+add_filter(
+	'register_url',
+	array( 'Parish_Formation_Account_Shortcodes', 'filter_register_url' )
+);
+
+add_filter(
+	'lostpassword_url',
+	array( 'Parish_Formation_Account_Shortcodes', 'filter_lostpassword_url' )
+);
+
+add_filter(
+	'retrieve_password_message',
+	array( 'Parish_Formation_Account_Actions', 'filter_password_reset_message' ),
+	10,
+	3
+);
+
+add_action(
+	'login_init',
+	array( 'Parish_Formation_Account_Actions', 'redirect_core_login' )
+);
+
+add_action(
+	'admin_menu',
 	array( 'Parish_Formation_Enrollments_Admin', 'register_menu' )
 );
 
@@ -162,6 +209,16 @@ add_action(
 );
 
 add_action(
+	'admin_post_pf_update_participant',
+	array( 'Parish_Formation_Participants_Admin', 'handle_update' )
+);
+
+add_action(
+	'admin_post_pf_send_participant_password_reset',
+	array( 'Parish_Formation_Participants_Admin', 'handle_password_reset' )
+);
+
+add_action(
 	'admin_post_nopriv_pf_account_login',
 	array( 'Parish_Formation_Account_Actions', 'login' )
 );
@@ -172,8 +229,58 @@ add_action(
 );
 
 add_action(
+	'admin_post_pf_account_logout',
+	array( 'Parish_Formation_Account_Actions', 'logout' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_account_reset_password',
+	array( 'Parish_Formation_Account_Actions', 'reset_password' )
+);
+
+add_action(
 	'admin_post_nopriv_pf_account_register',
 	array( 'Parish_Formation_Account_Actions', 'register' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_request_passwordless_login',
+	array( 'Parish_Formation_Account_Actions', 'request_passwordless' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_verify_passwordless_code',
+	array( 'Parish_Formation_Account_Actions', 'verify_passwordless_code' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_passwordless_magic',
+	array( 'Parish_Formation_Account_Actions', 'magic_login' )
+);
+
+add_action(
+	'admin_post_pf_passwordless_magic',
+	array( 'Parish_Formation_Account_Actions', 'magic_login' )
+);
+
+add_action(
+	'wp_ajax_nopriv_pf_ajax_request_passwordless_login',
+	array( 'Parish_Formation_Account_Actions', 'ajax_request_passwordless' )
+);
+
+add_action(
+	'wp_ajax_pf_ajax_request_passwordless_login',
+	array( 'Parish_Formation_Account_Actions', 'ajax_request_passwordless' )
+);
+
+add_action(
+	'wp_ajax_nopriv_pf_ajax_verify_passwordless_code',
+	array( 'Parish_Formation_Account_Actions', 'ajax_verify_passwordless_code' )
+);
+
+add_action(
+	'wp_ajax_pf_ajax_verify_passwordless_code',
+	array( 'Parish_Formation_Account_Actions', 'ajax_verify_passwordless_code' )
 );
 
 add_action(

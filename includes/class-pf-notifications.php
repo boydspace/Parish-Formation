@@ -13,6 +13,7 @@ final class Parish_Formation_Notifications {
 	public static function types() {
 		return array(
 			'course_invitation' => array( 'account', __( 'Course invitation', 'parish-formation' ) ),
+			'passwordless_login' => array( 'account', __( 'Passwordless login', 'parish-formation' ) ),
 			'new_user_registration' => array( 'account', __( 'New WordPress user account', 'parish-formation' ) ),
 			'enrollment_confirmation' => array( 'participant', __( 'Enrollment confirmation', 'parish-formation' ) ),
 			'enrollment_expiration_reminder' => array( 'participant', __( 'Enrollment expiration reminder', 'parish-formation' ) ),
@@ -37,6 +38,7 @@ final class Parish_Formation_Notifications {
 	public static function default_templates() {
 		return array(
 			'course_invitation' => array( __( 'You are invited to {course_name}', 'parish-formation' ), __( 'Hello,\n\nYou have been invited to <strong>{course_name}</strong> at {site_name}.\n\n<a href="{invitation_url}">Accept Course Invitation</a>\n\nIf you do not already have an account, the invitation page will help you create one.', 'parish-formation' ) ),
+			'passwordless_login' => array( __( 'Your secure login for {site_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nUse the button below to securely log in. This link and code expire in 15 minutes and can each be used only once.\n\n<a href="{magic_login_url}">Log In Securely</a>\n\nOr enter this one-time code on the login page: <strong>{login_code}</strong>\n\nIf you did not request this email, you can safely ignore it.', 'parish-formation' ) ),
 			'new_user_registration' => array( __( 'Set up your account at {site_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nAn account has been created for you at <strong>{site_name}</strong>. Your username is <strong>{username}</strong>.\n\n<a href="{password_setup_url}">Set Your Password</a>\n\nAfter setting your password, you can sign in at <a href="{login_url}">{login_url}</a>.', 'parish-formation' ) ),
 			'enrollment_confirmation' => array( __( 'You are enrolled in {course_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nYou have been enrolled in <strong>{course_name}</strong>.\n\n<a href="{formation_url}">Open My Formation</a>', 'parish-formation' ) ),
 			'enrollment_expiration_reminder' => array( __( 'Your access to {course_name} expires soon', 'parish-formation' ), __( 'Hello {participant_name},\n\nYour access to <strong>{course_name}</strong> expires on {expiration_date}. Please complete the remaining course work before that date.\n\n<a href="{formation_url}">Continue My Formation</a>', 'parish-formation' ) ),
@@ -62,6 +64,7 @@ final class Parish_Formation_Notifications {
 		$common = array( 'participant_name', 'course_name', 'formation_url', 'site_name' );
 		$specific = array(
 			'course_invitation' => array( 'invitation_url', 'expiration_date' ),
+			'passwordless_login' => array( 'magic_login_url', 'login_code' ),
 			'new_user_registration' => array( 'username', 'login_url', 'password_setup_url' ),
 			'enrollment_expiration_reminder' => array( 'expiration_date' ), 'course_expired' => array( 'expiration_date' ),
 			'course_completed' => array( 'completion_date' ), 'assessment_submitted' => array( 'assessment_name' ),
@@ -101,13 +104,14 @@ final class Parish_Formation_Notifications {
 	public static function sample_values() {
 		return array(
 			'participant_name' => __( 'Jordan Smith', 'parish-formation' ), 'course_name' => __( 'Baptism Preparation', 'parish-formation' ), 'formation_url' => home_url( '/my-formation/' ),
-			'username' => 'jordan.smith', 'login_url' => wp_login_url(), 'password_setup_url' => network_site_url( 'wp-login.php?action=rp&key=sample-key&login=jordan.smith', 'login' ),
+			'username' => 'jordan.smith', 'login_url' => wp_login_url(), 'password_setup_url' => Parish_Formation_Account_Shortcodes::get_password_reset_url( 'sample-key', 'jordan.smith' ),
 			'expiration_date' => wp_date( get_option( 'date_format' ), strtotime( '+14 days' ) ), 'completion_date' => wp_date( get_option( 'date_format' ) ), 'assessment_name' => __( 'Course Assessment', 'parish-formation' ),
 			'score' => '9/10 (90%)', 'passing_score' => '9/10', 'attempts_message' => __( 'You may try again.', 'parish-formation' ), 'assessment_result' => __( 'Passed', 'parish-formation' ),
 			'review_note' => __( 'Thank you for your thoughtful response.', 'parish-formation' ), 'certificate_code' => 'SAMPLE123456789ABCDE', 'certificate_url' => home_url( '/formation-certificate/SAMPLE123456789ABCDE/' ),
 			'certificate_pdf_url' => home_url( '/?sample-certificate-pdf=1' ), 'revocation_reason' => __( 'Sample administrative reason.', 'parish-formation' ), 'course_run' => '2',
 			'review_url' => admin_url( 'admin.php?page=parish-formation-assessment-reviews' ), 'report_url' => admin_url( 'admin.php?page=parish-formation-course-reports' ),
 			'invitation_url' => home_url( '/available-courses/?pf_invitation=sample-token' ),
+			'magic_login_url' => home_url( '/?sample-magic-login=1' ), 'login_code' => '123456',
 		);
 	}
 
@@ -369,6 +373,9 @@ final class Parish_Formation_Notifications {
 		if ( ! $setup_url ) {
 			return $email;
 		}
+		$query = array();
+		parse_str( (string) wp_parse_url( html_entity_decode( $setup_url ), PHP_URL_QUERY ), $query );
+		if ( ! empty( $query['key'] ) && ! empty( $query['login'] ) ) { $setup_url = Parish_Formation_Account_Shortcodes::get_password_reset_url( sanitize_text_field( $query['key'] ), sanitize_user( $query['login'], true ) ); }
 		$content = self::resolve_template( 'new_user_registration', array( 'participant_name' => $user->display_name ?: $user->user_login, 'username' => $user->user_login, 'site_name' => $blogname, 'login_url' => wp_login_url(), 'password_setup_url' => $setup_url ) );
 		$context = 'new_user_' . absint( $user->ID ) . '_' . sanitize_key( $user->user_registered );
 		$email['subject'] = sanitize_text_field( wp_strip_all_tags( $content[0] ) );

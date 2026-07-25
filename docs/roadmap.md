@@ -86,12 +86,12 @@ medical information.
 - Secure invitation links with optional email restrictions. **Implemented**
 - Enrollment source and access audit history.
 
-### 1.0.1 — Participant accounts (in progress)
+### 1.0.1 — Participant accounts (completed)
 
 - Configurable login and registration shortcodes. **Implemented**
 - Automatic usernames and extended participant profile fields. **Implemented**
-- Dedicated participant administration.
-- Passwordless magic-link login and optional one-time passcodes.
+- Dedicated participant administration. **Implemented**
+- Passwordless magic-link login and optional one-time passcodes. **Implemented**
 
 ### 1.1.0 — Staff communication and notes
 
