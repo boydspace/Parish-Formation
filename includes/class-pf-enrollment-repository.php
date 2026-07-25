@@ -363,6 +363,11 @@ final class Parish_Formation_Enrollment_Repository {
 		}
 
 		$wpdb->query( 'COMMIT' );
+		$completed_enrollment = self::get_details( $enrollment_id );
+		$certificate          = Parish_Formation_Certificate_Repository::maybe_issue( $completed_enrollment, $staff_user_id );
+		if ( is_wp_error( $certificate ) && 'certificate_not_eligible' !== $certificate->get_error_code() ) {
+			return $certificate;
+		}
 
 		return true;
 	}

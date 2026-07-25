@@ -83,6 +83,7 @@ final class Parish_Formation_Enrollments_Admin {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Course Reports', 'parish-formation' ); ?></h1>
+			<?php self::render_certificate_notice(); ?>
 			<p><?php esc_html_e( 'Current course-run progress and completion readiness for each participant.', 'parish-formation' ); ?></p>
 			<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
 				<input type="hidden" name="page" value="parish-formation-course-reports" />
@@ -121,7 +122,17 @@ final class Parish_Formation_Enrollments_Admin {
 							<td><?php echo esc_html( $row->report_assessments ); ?></td>
 							<td><?php echo $row->completed_at ? esc_html( self::format_utc_date( $row->completed_at ) ) : '&mdash;'; ?></td>
 							<td><?php echo esc_html( $row->archived_runs ); ?></td>
-							<td><?php echo $row->certificate_eligible ? '<span style="color:#008a20;font-weight:600;">' . esc_html__( 'Eligible', 'parish-formation' ) . '</span>' : esc_html__( 'Not eligible', 'parish-formation' ); ?></td>
+							<td>
+				<?php echo wp_kses( $row->certificate_display, array( 'a' => array( 'href' => true ), 'span' => array( 'style' => true ), 'br' => array(), 'small' => array() ) ); ?>
+								<?php if ( $row->certificate_can_issue ) : ?>
+									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:6px;">
+										<input type="hidden" name="action" value="pf_issue_certificate">
+										<input type="hidden" name="enrollment_id" value="<?php echo esc_attr( $row->id ); ?>">
+										<?php wp_nonce_field( 'pf_issue_certificate_' . $row->id ); ?>
+										<button type="submit" class="button button-small"><?php esc_html_e( 'Issue Certificate', 'parish-formation' ); ?></button>
+									</form>
+								<?php endif; ?>
+							</td>
 						</tr>
 					<?php endforeach; ?>
 					</tbody>
@@ -129,6 +140,52 @@ final class Parish_Formation_Enrollments_Admin {
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	/** Issue a certificate manually for an eligible completed enrollment. */
+	public static function handle_issue_certificate() {
+		if ( ! current_user_can( 'pf_manage_enrollments' ) || ! current_user_can( 'pf_view_reports' ) ) {
+			wp_die( esc_html__( 'You do not have permission to issue certificates.', 'parish-formation' ) );
+		}
+		$enrollment_id = isset( $_POST['enrollment_id'] ) ? absint( $_POST['enrollment_id'] ) : 0;
+		check_admin_referer( 'pf_issue_certificate_' . $enrollment_id );
+		$enrollment = Parish_Formation_Enrollment_Repository::get_details( $enrollment_id );
+		if ( ! $enrollment ) {
+			$result = new WP_Error( 'certificate_invalid_enrollment' );
+		} elseif ( ! get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_ENABLED_META_KEY, true ) ) {
+			$result = new WP_Error( 'certificate_not_enabled' );
+		} else {
+			$result = Parish_Formation_Certificate_Repository::maybe_issue( $enrollment, get_current_user_id() );
+		}
+		$notice     = is_wp_error( $result ) ? sanitize_key( $result->get_error_code() ) : 'certificate_issued';
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'                  => 'parish-formation-course-reports',
+					'pf_certificate_notice' => $notice,
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+
+	/** Render a whitelisted certificate action notice. */
+	private static function render_certificate_notice() {
+		$code = isset( $_GET['pf_certificate_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_certificate_notice'] ) ) : '';
+		$notices = array(
+			'certificate_issued'       => array( 'success', __( 'The certificate was issued successfully.', 'parish-formation' ) ),
+			'certificate_not_eligible' => array( 'error', __( 'The participant is not eligible for a certificate.', 'parish-formation' ) ),
+			'certificate_invalid_user' => array( 'error', __( 'The certificate participant could not be found.', 'parish-formation' ) ),
+			'certificate_invalid_enrollment' => array( 'error', __( 'The certificate enrollment could not be found.', 'parish-formation' ) ),
+			'certificate_not_enabled'  => array( 'error', __( 'Certificates are not enabled for this course.', 'parish-formation' ) ),
+			'certificate_code_error'   => array( 'error', __( 'A verification code could not be created.', 'parish-formation' ) ),
+			'certificate_database_error' => array( 'error', __( 'The certificate could not be issued.', 'parish-formation' ) ),
+		);
+		if ( ! isset( $notices[ $code ] ) ) {
+			return;
+		}
+		printf( '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>', esc_attr( $notices[ $code ][0] ), esc_html( $notices[ $code ][1] ) );
 	}
 
 	/** Download the filtered participant/course report as a CSV file. */
@@ -1059,6 +1116,26 @@ final class Parish_Formation_Enrollments_Admin {
 				}
 			}
 			$row->certificate_eligible = 'completed' === $row->status && $required_passed === $required_pass_total;
+			$certificate_enabled       = (bool) get_post_meta( $row->course_id, Parish_Formation_Course_Settings::CERTIFICATE_ENABLED_META_KEY, true );
+			$certificate               = Parish_Formation_Certificate_Repository::get_for_enrollment_run( $row->id, $row->current_run );
+			if ( $certificate ) {
+				$certificate_url = add_query_arg( array( 'page' => 'parish-formation-certificates', 'certificate_id' => $certificate->id ), admin_url( 'admin.php' ) );
+				$code_link       = '<a href="' . esc_url( $certificate_url ) . '"><small>' . esc_html( $certificate->verification_code ) . '</small></a>';
+				if ( 'revoked' === $certificate->status ) {
+					$row->certificate_display = '<span style="color:#b32d2e;font-weight:600;">' . esc_html__( 'Revoked', 'parish-formation' ) . '</span><br>' . $code_link;
+				} elseif ( $certificate->expires_at && strtotime( $certificate->expires_at . ' UTC' ) < time() ) {
+					$row->certificate_display = '<span style="color:#996800;font-weight:600;">' . esc_html__( 'Expired', 'parish-formation' ) . '</span><br>' . $code_link;
+				} else {
+					$row->certificate_display = '<span style="color:#008a20;font-weight:600;">' . esc_html__( 'Issued', 'parish-formation' ) . '</span><br>' . $code_link;
+				}
+			} elseif ( ! $certificate_enabled ) {
+				$row->certificate_display = esc_html__( 'Disabled', 'parish-formation' );
+			} elseif ( $row->certificate_eligible ) {
+				$row->certificate_display = esc_html__( 'Eligible — not issued', 'parish-formation' );
+			} else {
+				$row->certificate_display = esc_html__( 'Not eligible', 'parish-formation' );
+			}
+			$row->certificate_can_issue = $certificate_enabled && $row->certificate_eligible && ! $certificate && current_user_can( 'pf_manage_enrollments' );
 		}
 		return $rows;
 	}

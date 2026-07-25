@@ -43,7 +43,10 @@ final class Parish_Formation_Shortcodes {
 
 		$post = get_queried_object();
 
-		if ( ! $post instanceof WP_Post || ! has_shortcode( $post->post_content, 'parish_formation_my_courses' ) ) {
+		$has_course_shortcode       = $post instanceof WP_Post && has_shortcode( $post->post_content, 'parish_formation_my_courses' );
+		$has_verification_shortcode = $post instanceof WP_Post && ( has_shortcode( $post->post_content, 'formation-certificate' ) || has_shortcode( $post->post_content, 'parish_formation_certificate_verification' ) );
+
+		if ( ! $has_course_shortcode && ! $has_verification_shortcode ) {
 			return;
 		}
 
@@ -54,6 +57,7 @@ final class Parish_Formation_Shortcodes {
 			PARISH_FORMATION_UIKIT_VERSION
 		);
 
+		if ( $has_course_shortcode ) {
 		wp_enqueue_script(
 			'parish-formation-assessment-submission',
 			PARISH_FORMATION_PLUGIN_URL . 'assets/js/assessment-submission.js',
@@ -71,13 +75,18 @@ final class Parish_Formation_Shortcodes {
 				'error'      => __( 'The assessment could not be submitted.', 'parish-formation' ),
 			)
 		);
+		}
 
 		wp_enqueue_style(
 			'parish-formation-frontend',
 			PARISH_FORMATION_PLUGIN_URL . 'assets/css/parish-formation-frontend.css',
 			array( 'parish-formation-uikit' ),
-			PARISH_FORMATION_VERSION
+			(string) filemtime( PARISH_FORMATION_PLUGIN_DIR . 'assets/css/parish-formation-frontend.css' )
 		);
+
+		if ( ! $has_course_shortcode ) {
+			return;
+		}
 
 		wp_enqueue_script(
 			'parish-formation-course-navigation',
@@ -144,6 +153,10 @@ final class Parish_Formation_Shortcodes {
 				esc_html__( 'Log in', 'parish-formation' )
 			);
 		}
+		$certificate_uuid = isset( $_GET['pf_certificate'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_certificate'] ) ) : '';
+		if ( $certificate_uuid ) {
+			return self::render_certificate( $certificate_uuid );
+		}
 
 		$route = self::get_pretty_route();
 		if ( is_wp_error( $route ) ) {
@@ -171,6 +184,7 @@ final class Parish_Formation_Shortcodes {
 					$course_lessons = Parish_Formation_Course_Repository::get_published_lessons( $enrollment->course_id );
 					$curriculum     = Parish_Formation_Course_Repository::get_published_curriculum( $enrollment->course_id );
 					$progress       = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $course_lessons, $enrollment->course_id );
+					$certificate    = Parish_Formation_Certificate_Repository::get_for_enrollment_run( $enrollment->id, $enrollment->current_run );
 					self::reconcile_course_completion( $enrollment, $course_lessons, $progress );
 					$current_item = self::get_current_curriculum_item( $curriculum, $enrollment->id );
 					$current_lesson = $current_item && 'lesson' === $current_item['type'] ? $current_item['post'] : null;
@@ -246,12 +260,66 @@ final class Parish_Formation_Shortcodes {
 								</a>
 							</p>
 						<?php endif; ?>
+						<?php if ( $certificate && 'issued' === $certificate->status ) : ?>
+							<p><a class="uk-button uk-button-default" href="<?php echo esc_url( add_query_arg( 'pf_certificate', $certificate->certificate_uuid, self::current_url() ) ); ?>"><?php esc_html_e( 'View Certificate', 'parish-formation' ); ?></a></p>
+						<?php endif; ?>
 					</li>
 				<?php endforeach; ?>
 			</ul>
 		</div>
 		<?php
 
+		return (string) ob_get_clean();
+	}
+
+	/** Render an access-controlled printable certificate. */
+	private static function render_certificate( $certificate_uuid ) {
+		$certificate = Parish_Formation_Certificate_Repository::get_by_uuid( $certificate_uuid );
+		if ( ! $certificate || absint( $certificate->user_id ) !== get_current_user_id() ) {
+			return '<div class="uk-alert uk-alert-danger"><p>' . esc_html__( 'This certificate could not be found or you do not have access to it.', 'parish-formation' ) . '</p></div>';
+		}
+		$back_url = remove_query_arg( 'pf_certificate', self::current_url() );
+		$pdf_url  = wp_nonce_url(
+			add_query_arg(
+				array(
+					'action'      => 'pf_download_certificate',
+					'certificate' => $certificate->certificate_uuid,
+				),
+				admin_url( 'admin-post.php' )
+			),
+			'pf_download_certificate_' . $certificate->certificate_uuid
+		);
+		$expired  = $certificate->expires_at && strtotime( $certificate->expires_at . ' UTC' ) < current_time( 'timestamp', true );
+		$verification_url = Parish_Formation_Certificate_Verification::get_verification_url( $certificate->verification_code );
+		ob_start();
+		?>
+		<div class="pf-certificate-page uk-container uk-container-small uk-section">
+			<div class="pf-certificate-actions uk-margin-bottom">
+				<a class="uk-button uk-button-default" href="<?php echo esc_url( $back_url ); ?>">&larr; <?php esc_html_e( 'My Formation', 'parish-formation' ); ?></a>
+				<button class="uk-button uk-button-primary" type="button" onclick="window.print();"><?php esc_html_e( 'Print Certificate', 'parish-formation' ); ?></button>
+				<a class="uk-button uk-button-secondary" href="<?php echo esc_url( $pdf_url ); ?>"><?php esc_html_e( 'Download PDF', 'parish-formation' ); ?></a>
+			</div>
+			<?php if ( 'issued' !== $certificate->status ) : ?><div class="uk-alert uk-alert-danger"><p><?php esc_html_e( 'This certificate is no longer valid.', 'parish-formation' ); ?></p></div><?php endif; ?>
+			<?php if ( $expired ) : ?><div class="uk-alert uk-alert-warning"><p><?php esc_html_e( 'This certificate has expired.', 'parish-formation' ); ?></p></div><?php endif; ?>
+			<article class="pf-certificate" aria-label="<?php esc_attr_e( 'Completion certificate', 'parish-formation' ); ?>">
+				<p class="pf-certificate-issuer"><?php echo esc_html( $certificate->issuer_name ); ?></p>
+				<h1><?php echo esc_html( $certificate->certificate_title ); ?></h1>
+				<p><?php esc_html_e( 'This certifies that', 'parish-formation' ); ?></p>
+				<h2><?php echo esc_html( $certificate->participant_name ); ?></h2>
+				<p><?php esc_html_e( 'has successfully completed', 'parish-formation' ); ?></p>
+				<h3><?php echo esc_html( $certificate->course_title ); ?></h3>
+				<p><?php echo esc_html( sprintf( __( 'Completed %s', 'parish-formation' ), self::format_utc_date( $certificate->completed_at ) ) ); ?></p>
+				<?php if ( $certificate->signatory_name ) : ?>
+					<div class="pf-certificate-signature"><span><?php echo esc_html( $certificate->signatory_name ); ?></span><?php if ( $certificate->signatory_title ) : ?><small><?php echo esc_html( $certificate->signatory_title ); ?></small><?php endif; ?></div>
+				<?php endif; ?>
+				<footer>
+					<span><?php echo esc_html( sprintf( __( 'Verification code: %s', 'parish-formation' ), $certificate->verification_code ) ); ?></span>
+					<span><a href="<?php echo esc_url( $verification_url ); ?>"><?php esc_html_e( 'Verify certificate', 'parish-formation' ); ?></a></span>
+					<?php if ( $certificate->expires_at ) : ?><span><?php echo esc_html( sprintf( __( 'Valid through: %s', 'parish-formation' ), self::format_utc_date( $certificate->expires_at ) ) ); ?></span><?php endif; ?>
+				</footer>
+			</article>
+		</div>
+		<?php
 		return (string) ob_get_clean();
 	}
 

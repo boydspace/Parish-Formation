@@ -1,0 +1,10 @@
+{
+    "name": "fatherboyd/parish-formation",
+    "description": "Online formation tools for parishes.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.3",
+        "dompdf/dompdf": "^3.1"
+    }
+}

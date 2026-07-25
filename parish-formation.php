@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Parish Formation
  * Description:       Provides focused online formation tools for parishes.
- * Version:           0.7.0
+ * Version:           0.8.0
  * Requires PHP:      8.3
  * Author:            Father Andrew M. Boyd
  * Author URI:        https://fatherboyd.com
@@ -15,12 +15,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PARISH_FORMATION_VERSION', '0.7.0' );
-define( 'PARISH_FORMATION_DB_VERSION', '0.7.0' );
+define( 'PARISH_FORMATION_VERSION', '0.8.0' );
+define( 'PARISH_FORMATION_DB_VERSION', '0.8.1' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PARISH_FORMATION_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+if ( file_exists( PARISH_FORMATION_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
+	require_once PARISH_FORMATION_PLUGIN_DIR . 'vendor/autoload.php';
+}
 
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-upgrader.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-capabilities.php';
@@ -33,12 +37,16 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-lesson-post-type.p
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-enrollment-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-progress-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-repository.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-shortcodes.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-progress-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-assessment-actions.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-actions.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-verification.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-certificates-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-lesson-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-assessment-settings.php';
 
@@ -61,6 +69,14 @@ add_action(
 	'plugins_loaded',
 	array( 'Parish_Formation_Capabilities', 'maybe_install' )
 );
+add_action(
+	'init',
+	array( 'Parish_Formation_Certificate_Verification', 'register_routes' )
+);
+add_action(
+	'template_redirect',
+	array( 'Parish_Formation_Certificate_Verification', 'maybe_render' )
+);
 
 add_action(
 	'admin_menu',
@@ -70,6 +86,11 @@ add_action(
 add_action(
 	'admin_menu',
 	array( 'Parish_Formation_Enrollments_Admin', 'register_menu' )
+);
+
+add_action(
+	'admin_menu',
+	array( 'Parish_Formation_Certificates_Admin', 'register_menu' )
 );
 
 add_action(
@@ -103,6 +124,34 @@ add_action(
 add_action(
 	'admin_post_pf_export_course_reports',
 	array( 'Parish_Formation_Enrollments_Admin', 'handle_course_reports_export' )
+);
+add_action(
+	'admin_post_pf_issue_certificate',
+	array( 'Parish_Formation_Enrollments_Admin', 'handle_issue_certificate' )
+);
+add_action(
+	'admin_post_pf_revoke_certificate',
+	array( 'Parish_Formation_Certificates_Admin', 'handle_revoke' )
+);
+add_action(
+	'admin_post_pf_reissue_certificate',
+	array( 'Parish_Formation_Certificates_Admin', 'handle_reissue' )
+);
+add_action(
+	'admin_post_pf_export_certificates',
+	array( 'Parish_Formation_Certificates_Admin', 'handle_export' )
+);
+add_action(
+	'admin_post_pf_download_certificate',
+	array( 'Parish_Formation_Certificate_Actions', 'download_pdf' )
+);
+add_action(
+	'admin_post_pf_public_certificate_pdf',
+	array( 'Parish_Formation_Certificate_Actions', 'public_pdf' )
+);
+add_action(
+	'admin_post_nopriv_pf_public_certificate_pdf',
+	array( 'Parish_Formation_Certificate_Actions', 'public_pdf' )
 );
 
 add_action(

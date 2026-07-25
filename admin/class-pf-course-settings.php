@@ -19,6 +19,14 @@ final class Parish_Formation_Course_Settings {
 	 */
 	private const COMPLETION_MESSAGE_META_KEY = '_pf_completion_message';
 
+	/** Certificate configuration metadata. */
+	public const CERTIFICATE_ENABLED_META_KEY = '_pf_certificate_enabled';
+	public const CERTIFICATE_TITLE_META_KEY = '_pf_certificate_title';
+	public const CERTIFICATE_ISSUER_META_KEY = '_pf_certificate_issuer';
+	public const CERTIFICATE_VALIDITY_DAYS_META_KEY = '_pf_certificate_validity_days';
+	public const CERTIFICATE_SIGNATORY_NAME_META_KEY = '_pf_certificate_signatory_name';
+	public const CERTIFICATE_SIGNATORY_TITLE_META_KEY = '_pf_certificate_signatory_title';
+
 	/** Shared curriculum order metadata for lessons and assessments. */
 	public const CURRICULUM_ORDER_META_KEY = '_pf_curriculum_order';
 
@@ -65,6 +73,12 @@ final class Parish_Formation_Course_Settings {
 	 */
 	public static function render_meta_box( $post ) {
 		$completion_message = get_post_meta( $post->ID, self::COMPLETION_MESSAGE_META_KEY, true );
+		$certificate_enabled = (bool) get_post_meta( $post->ID, self::CERTIFICATE_ENABLED_META_KEY, true );
+		$certificate_title = get_post_meta( $post->ID, self::CERTIFICATE_TITLE_META_KEY, true );
+		$certificate_issuer = get_post_meta( $post->ID, self::CERTIFICATE_ISSUER_META_KEY, true );
+		$validity_days = absint( get_post_meta( $post->ID, self::CERTIFICATE_VALIDITY_DAYS_META_KEY, true ) );
+		$signatory_name = get_post_meta( $post->ID, self::CERTIFICATE_SIGNATORY_NAME_META_KEY, true );
+		$signatory_title = get_post_meta( $post->ID, self::CERTIFICATE_SIGNATORY_TITLE_META_KEY, true );
 
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
 		?>
@@ -82,6 +96,19 @@ final class Parish_Formation_Course_Settings {
 		<p class="description">
 			<?php echo esc_html__( 'Enter the parish instructions participants should see after completing this course.', 'parish-formation' ); ?>
 		</p>
+		<hr>
+		<h3><?php esc_html_e( 'Completion Certificate', 'parish-formation' ); ?></h3>
+		<p><label><input type="checkbox" name="pf_certificate_enabled" value="1" <?php checked( $certificate_enabled ); ?>> <?php esc_html_e( 'Issue a certificate when an eligible participant completes this course', 'parish-formation' ); ?></label></p>
+		<p><label for="pf-certificate-title"><strong><?php esc_html_e( 'Certificate title', 'parish-formation' ); ?></strong></label><br>
+		<input id="pf-certificate-title" name="pf_certificate_title" type="text" class="widefat" value="<?php echo esc_attr( $certificate_title ); ?>" placeholder="<?php esc_attr_e( 'Certificate of Completion', 'parish-formation' ); ?>"></p>
+		<p><label for="pf-certificate-issuer"><strong><?php esc_html_e( 'Issuing organization', 'parish-formation' ); ?></strong></label><br>
+		<input id="pf-certificate-issuer" name="pf_certificate_issuer" type="text" class="widefat" value="<?php echo esc_attr( $certificate_issuer ); ?>" placeholder="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>"></p>
+		<p><label for="pf-certificate-validity"><strong><?php esc_html_e( 'Validity period in days', 'parish-formation' ); ?></strong></label><br>
+		<input id="pf-certificate-validity" name="pf_certificate_validity_days" type="number" min="0" max="36500" step="1" value="<?php echo esc_attr( $validity_days ); ?>" class="small-text"> <span class="description"><?php esc_html_e( 'Use 0 for no expiration.', 'parish-formation' ); ?></span></p>
+		<p><label for="pf-certificate-signatory-name"><strong><?php esc_html_e( 'Signatory name', 'parish-formation' ); ?></strong></label><br>
+		<input id="pf-certificate-signatory-name" name="pf_certificate_signatory_name" type="text" class="regular-text" value="<?php echo esc_attr( $signatory_name ); ?>"></p>
+		<p><label for="pf-certificate-signatory-title"><strong><?php esc_html_e( 'Signatory title', 'parish-formation' ); ?></strong></label><br>
+		<input id="pf-certificate-signatory-title" name="pf_certificate_signatory_title" type="text" class="regular-text" value="<?php echo esc_attr( $signatory_title ); ?>"></p>
 		<?php
 	}
 
@@ -183,6 +210,23 @@ final class Parish_Formation_Course_Settings {
 		} else {
 			update_post_meta( $post_id, self::COMPLETION_MESSAGE_META_KEY, $completion_message );
 		}
+
+		update_post_meta( $post_id, self::CERTIFICATE_ENABLED_META_KEY, isset( $_POST['pf_certificate_enabled'] ) ? 1 : 0 );
+		$certificate_fields = array(
+			self::CERTIFICATE_TITLE_META_KEY           => isset( $_POST['pf_certificate_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_title'] ) ) : '',
+			self::CERTIFICATE_ISSUER_META_KEY          => isset( $_POST['pf_certificate_issuer'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_issuer'] ) ) : '',
+			self::CERTIFICATE_SIGNATORY_NAME_META_KEY  => isset( $_POST['pf_certificate_signatory_name'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_signatory_name'] ) ) : '',
+			self::CERTIFICATE_SIGNATORY_TITLE_META_KEY => isset( $_POST['pf_certificate_signatory_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_signatory_title'] ) ) : '',
+		);
+		foreach ( $certificate_fields as $meta_key => $value ) {
+			if ( '' === $value ) {
+				delete_post_meta( $post_id, $meta_key );
+			} else {
+				update_post_meta( $post_id, $meta_key, $value );
+			}
+		}
+		$validity_days = isset( $_POST['pf_certificate_validity_days'] ) ? min( 36500, absint( $_POST['pf_certificate_validity_days'] ) ) : 0;
+		update_post_meta( $post_id, self::CERTIFICATE_VALIDITY_DAYS_META_KEY, $validity_days );
 
 	}
 

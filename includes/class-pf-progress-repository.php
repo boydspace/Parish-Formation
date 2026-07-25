@@ -236,6 +236,11 @@ final class Parish_Formation_Progress_Repository {
 		if ( false === $updated ) {
 			return new WP_Error( 'database_error', __( 'Course completion could not be saved.', 'parish-formation' ) );
 		}
+		$completed_enrollment = Parish_Formation_Enrollment_Repository::get_details( $enrollment->id );
+		$certificate          = Parish_Formation_Certificate_Repository::maybe_issue( $completed_enrollment );
+		if ( is_wp_error( $certificate ) && 'certificate_not_eligible' !== $certificate->get_error_code() ) {
+			return $certificate;
+		}
 
 		return true;
 	}

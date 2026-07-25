@@ -53,7 +53,14 @@ final class Parish_Formation_Upgrader {
 			self::install_enrollment_runs_table();
 		}
 
-		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() ) {
+		if ( version_compare( $installed_version, '0.8.0', '<' ) ) {
+			self::install_certificates_table();
+		}
+		if ( version_compare( $installed_version, '0.8.1', '<' ) ) {
+			self::install_certificates_table();
+		}
+
+		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() ) {
 			return;
 		}
 
@@ -180,6 +187,46 @@ final class Parish_Formation_Upgrader {
 		) {$charset_collate};" );
 	}
 
+	/** Create the immutable completion-certificate record table. */
+	private static function install_certificates_table() {
+		global $wpdb;
+		$table_name      = $wpdb->prefix . 'pf_certificates';
+		$charset_collate = $wpdb->get_charset_collate();
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			certificate_uuid char(36) NOT NULL,
+			verification_code varchar(64) NOT NULL,
+			enrollment_id bigint(20) unsigned NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			course_id bigint(20) unsigned NOT NULL,
+			course_run int unsigned NOT NULL,
+			issue_number int unsigned NOT NULL DEFAULT 1,
+			status varchar(20) NOT NULL DEFAULT 'issued',
+			participant_name varchar(255) NOT NULL,
+			course_title varchar(255) NOT NULL,
+			certificate_title varchar(255) NOT NULL,
+			issuer_name varchar(255) NOT NULL,
+			signatory_name varchar(255) DEFAULT NULL,
+			signatory_title varchar(255) DEFAULT NULL,
+			completed_at datetime NOT NULL,
+			issued_at datetime NOT NULL,
+			expires_at datetime DEFAULT NULL,
+			issued_by bigint(20) unsigned NOT NULL DEFAULT 0,
+			revoked_at datetime DEFAULT NULL,
+			revoked_by bigint(20) unsigned DEFAULT NULL,
+			revocation_reason longtext DEFAULT NULL,
+			reissue_of bigint(20) unsigned DEFAULT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY certificate_uuid (certificate_uuid),
+			UNIQUE KEY verification_code (verification_code),
+			UNIQUE KEY enrollment_run_issue (enrollment_id, course_run, issue_number),
+			KEY enrollment_run (enrollment_id, course_run),
+			KEY user_course (user_id, course_id),
+			KEY status_expires (status, expires_at)
+		) {$charset_collate};" );
+	}
+
 	/**
 	 * Create or update the lesson progress table.
 	 *
@@ -266,6 +313,13 @@ final class Parish_Formation_Upgrader {
 	private static function enrollment_runs_table_exists() {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'pf_enrollment_runs';
+		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
+	}
+
+	/** Determine whether the certificate table exists. */
+	private static function certificates_table_exists() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'pf_certificates';
 		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
 	}
 }

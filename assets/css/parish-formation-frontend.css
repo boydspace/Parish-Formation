@@ -167,3 +167,190 @@
 		padding: 40px 24px;
 	}
 }
+
+.pf-certificate {
+	padding: clamp(35px, 7vw, 80px);
+	border: 12px double #c9a227;
+	background: #fffdf7;
+	color: #252525;
+	text-align: center;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.pf-certificate-issuer {
+	font-size: 1.15rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.pf-certificate h1 {
+	margin: 24px 0 42px;
+	font-family: Georgia, serif;
+	font-size: clamp(2rem, 5vw, 3.5rem);
+}
+
+.pf-certificate h2 {
+	margin: 18px 0;
+	font-family: Georgia, serif;
+	font-size: clamp(1.8rem, 4vw, 3rem);
+}
+
+.pf-certificate h3 {
+	margin: 18px 0 36px;
+	font-size: clamp(1.3rem, 3vw, 2rem);
+}
+
+.pf-certificate-signature {
+	display: inline-flex;
+	min-width: 260px;
+	margin: 55px auto 35px;
+	padding-top: 8px;
+	border-top: 1px solid #333;
+	flex-direction: column;
+}
+
+.pf-certificate-signature small,
+.pf-certificate footer span {
+	display: block;
+}
+
+.pf-certificate footer {
+	display: flex;
+	margin-top: 45px;
+	font-size: 0.78rem;
+	justify-content: space-between;
+	gap: 20px;
+}
+
+.pf-verification-page {
+	max-width: 960px;
+}
+
+.pf-verification-page > .uk-card {
+	padding: clamp(28px, 5vw, 56px);
+}
+
+.pf-verification-form {
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+}
+
+.pf-verification-field {
+	flex: 1;
+}
+
+.pf-verification-result {
+	padding: 24px;
+	border-left: 5px solid #32a56a;
+	background: #f4fbf7;
+}
+
+.pf-verification-result.is-invalid {
+	border-left-color: #d63638;
+	background: #fcf0f1;
+}
+
+.pf-verification-details {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	margin-top: 20px;
+	border-top: 1px solid #dce8e1;
+	border-left: 1px solid #dce8e1;
+}
+
+.pf-verification-details > div {
+	min-width: 0;
+	padding: 16px;
+	border-right: 1px solid #dce8e1;
+	border-bottom: 1px solid #dce8e1;
+}
+
+.pf-verification-details span,
+.pf-verification-details strong {
+	display: block;
+}
+
+.pf-verification-details span {
+	margin-bottom: 4px;
+	color: #59636f;
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.pf-verification-code {
+	grid-column: 1 / -1;
+}
+
+.pf-verification-code code {
+	font-size: 1rem;
+	word-break: break-all;
+}
+
+.pf-verification-actions {
+	display: flex;
+	margin: 24px 0 0;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+	.pf-verification-form {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.pf-verification-details {
+		grid-template-columns: 1fr;
+	}
+
+	.pf-verification-code {
+		grid-column: auto;
+	}
+}
+
+@page {
+	size: letter landscape;
+	margin: 0.25in;
+}
+
+@media print {
+	body * {
+		visibility: hidden !important;
+	}
+
+	.pf-certificate-page,
+	.pf-certificate-page * {
+		visibility: visible !important;
+	}
+
+	.pf-certificate-page {
+		position: fixed;
+		top: 0.25in;
+		left: 0.25in;
+		width: 10in;
+		height: 7.5in;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+		overflow: hidden;
+	}
+
+	.pf-certificate-actions,
+	.pf-certificate-page > .uk-alert {
+		display: none !important;
+	}
+
+	.pf-certificate {
+		width: 10in;
+		height: 7.5in;
+		padding: 0.52in 0.65in;
+		border-width: 8px;
+		box-sizing: border-box;
+		box-shadow: none;
+		overflow: hidden;
+	}
+}
