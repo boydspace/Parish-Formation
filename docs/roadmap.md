@@ -2,104 +2,115 @@
 
 ## Purpose
 
-Parish Formation is a focused WordPress system for parish formation courses. It is
-not intended to become a commercial learning management system, marketplace,
-social network, or academic gradebook.
+Parish Formation is a focused WordPress system for parish formation courses. It
+is not a commercial LMS, marketplace, social network, or academic gradebook.
+
+The plugin supports parish programs such as sacramental preparation, liturgical
+minister training, catechist formation, and volunteer compliance education.
 
 ## Technical direction
 
 - Use WordPress users for participant accounts.
-- Use custom post types for courses and lessons.
-- Use the block editor for lesson content.
-- Use custom tables only for data that needs relational querying, such as
-  enrollments and lesson progress.
-- Use custom capabilities instead of checking role names.
-- Keep the plugin version separate from the database schema version.
-- Make activation and upgrade routines safe to run more than once.
-- Provide participant features on front-end pages; participants should not need
-  access to WordPress administration screens.
-- Add AJAX or REST endpoints only when they materially improve the participant
-  experience.
-- Bundle UIkit locally for participant-interface styling and pin its version.
+- Use custom post types and the block editor for formation content.
+- Use custom tables for relational enrollment, progress, assessment,
+  certificate, and notification records.
+- Use custom capabilities so parish responsibilities can be delegated safely.
+- Keep participant workflows on front-end pages.
+- Use AJAX or REST where it meaningfully improves the interface.
+- Bundle participant-interface dependencies locally.
+- Preserve data on deactivation and uninstall unless a future administrator
+  deliberately confirms deletion.
 
-## Data and privacy boundaries
+## Privacy boundary
 
-The plugin may store information needed for enrollment, formation progress,
-participant responses, staff notes about formation status, and completion.
+Store only information needed for enrollment, formation progress, responses,
+staff administration, and completion. Do not store counseling records,
+psychological evaluations, tribunal information, sensitive pastoral
+disclosures, prenuptial investigation documents, full sacramental records, or
+medical information.
 
-The plugin must not be designed to store counseling records, psychological
-evaluations, tribunal information, sensitive pastoral disclosures, prenuptial
-investigation documents, full sacramental records, or medical information.
-
-Deactivation must preserve plugin data. Uninstall must also preserve data unless
-a future administrator-facing deletion option is deliberately enabled and
-confirmed. Any future deletion process must account for WordPress multisite.
-
-## Milestones
+## Completed milestones
 
 ### 0.1.0 — Plugin foundation
 
-- Bootstrap and constants.
-- Versioned activation and upgrade structure.
-- Formation roles and custom capabilities.
-- Parish Formation admin menu and status dashboard.
-- Conservative uninstall behavior.
-- Internal roadmap.
+- Bootstrap, versioned upgrades, custom roles and capabilities.
+- Parish Formation administration menu and conservative uninstall behavior.
 
-### 0.2.0 — Courses and lessons (complete)
+### 0.2.0 — Courses and lessons
 
-- Course and lesson custom post types.
-- Block-editor lesson content.
-- Course assignment and lesson ordering.
-- Required and optional lessons.
-- Course introduction and completion content.
-- Course lesson summary for staff.
+- Course and lesson post types with block-editor content.
+- Required and optional lessons, assignment, and ordering.
 
-### 0.3.0 — Enrollment (complete)
+### 0.3.0 — Enrollment
 
-- Enrollment database table with appropriate indexes and uniqueness rules.
-- Manual enrollment by authorized parish staff.
-- Enrollment status and important dates.
-- Optional enrollment expiration.
-- Reversible unenrollment and re-enrollment.
+- Manual enrollment, expiration, unenrollment, and re-enrollment.
 
-### 0.4.0 — Participant course experience (complete)
+### 0.4.0 — Participant experience
 
-- Front-end My Formation page.
-- Enrolled-course and lesson views.
-- Sequential progression through required lessons.
-- Participant lesson-completion action with nonce and authorization checks.
-- Explicit optional-lesson skipping.
-- Progress percentages, course completion, and completion dates.
-- Responsive UIkit learning interface with persistent course navigation.
-- Staff course reset for testing and reopening a participant's course.
+- My Formation front end, sequential progression, optional skipping, progress,
+  completion, AJAX navigation, and course reset.
 
-### 0.5.0 — Staff progress visibility (complete)
+### 0.5.0 — Staff visibility
 
-- Participant and course progress views.
-- Detailed lesson completion and timestamps.
-- Staff participant search and status filters.
-- Audited staff completion overrides.
-- Course reset and reopening controls.
+- Participant progress, filters, detail, completion overrides, and reopening.
 
-### Later releases
+### 0.6.0–0.7.0 — Assessments and reporting
 
-- Formation questions and acknowledgements.
-- Private staff notes.
-- CSV exports.
-- Reminder emails and WordPress cron integration.
-- Completion certificates and certificate numbering.
-- Access codes and invitation links.
+- Block-based questions and ordered course assessments.
+- Automatic and manual grading, passing rules, attempt limits, progression
+  gates, staff review, audit history, and CSV reports.
 
-Quizzes, certificates, reminder emails, couples, access codes, and advanced
-reporting are intentionally excluded from the first usable release.
+### 0.8.0 — Certificates
+
+- Course certificate settings, automatic/manual issuance, verification codes,
+  public verification, letter-size PDF generation, certificate administration,
+  revocation, reissuance, and CSV reporting.
+
+### 0.9.0 — Email notifications
+
+- Branded HTML design and editable AJAX-loaded templates.
+- Participant, staff, certificate, assessment, expiration, and WordPress
+  new-user notifications.
+- Global and course-level controls, WordPress cron reminders, duplicate
+  protection, activity logs, and failed-message retry.
+- Compatible with SMTP transport plugins through WordPress `wp_mail()`.
+
+## Planned milestones
+
+### 1.0.0 — Enrollment access
+
+- Public course catalog.
+- Course-level open self-enrollment.
+- Safe login and registration handoff.
+- Course access codes with expiration and usage limits.
+- Secure invitation links with optional email restrictions.
+- Enrollment source and access audit history.
+
+### 1.1.0 — Staff communication and notes
+
+- Private, access-controlled staff notes.
+- Manual participant reminders using notification templates.
+- Note and reminder audit history.
+
+### 1.2.0 — Acknowledgements and responses
+
+- Dedicated participant acknowledgements.
+- Response review and exports independent of graded assessments.
+
+### 1.3.0 — Certificate branding
+
+- Optional signature image and additional certificate design controls.
+
+### 1.4.0 — Production hardening
+
+- Privacy export/erasure integration and retention controls.
+- Accessibility and multisite review.
+- Performance, upgrade, and release-package testing.
 
 ## Development rules
 
 - Support PHP 8.3 and follow WordPress coding and security practices.
-- Sanitize input, escape output, verify nonces, and check the narrowest suitable
-  capability.
-- Store PHP files as UTF-8 without a byte-order mark.
-- Build and test one meaningful feature at a time.
-- Lint every edited PHP file.
-- Do not commit a feature until its browser test is approved.
+- Sanitize input, escape output, verify nonces, and check narrow capabilities.
+- Build and browser-test one meaningful checkpoint at a time.
+- Lint edited PHP files and validate JavaScript before milestone approval.
+- Do not commit a milestone until its browser test is approved.

@@ -28,6 +28,7 @@ final class Parish_Formation_Course_Settings {
 	public const CERTIFICATE_SIGNATORY_TITLE_META_KEY = '_pf_certificate_signatory_title';
 	public const NOTIFICATION_DISABLED_META_KEY = '_pf_notification_disabled';
 	public const NOTIFICATION_STAFF_EMAILS_META_KEY = '_pf_notification_staff_emails';
+	public const OPEN_ENROLLMENT_META_KEY = '_pf_open_enrollment';
 
 	/** Shared curriculum order metadata for lessons and assessments. */
 	public const CURRICULUM_ORDER_META_KEY = '_pf_curriculum_order';
@@ -83,9 +84,14 @@ final class Parish_Formation_Course_Settings {
 		$signatory_title = get_post_meta( $post->ID, self::CERTIFICATE_SIGNATORY_TITLE_META_KEY, true );
 		$notification_disabled = (array) get_post_meta( $post->ID, self::NOTIFICATION_DISABLED_META_KEY, true );
 		$notification_staff_emails = get_post_meta( $post->ID, self::NOTIFICATION_STAFF_EMAILS_META_KEY, true );
+		$open_enrollment = (bool) get_post_meta( $post->ID, self::OPEN_ENROLLMENT_META_KEY, true );
 
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
 		?>
+		<h3><?php esc_html_e( 'Enrollment Access', 'parish-formation' ); ?></h3>
+		<p><label><input type="checkbox" name="pf_open_enrollment" value="1" <?php checked( $open_enrollment ); ?>> <?php esc_html_e( 'Allow signed-in users to enroll themselves in this course', 'parish-formation' ); ?></label></p>
+		<p class="description"><?php esc_html_e( 'When enabled, this published course appears in the public formation catalog. Visitors must sign in or register before enrolling.', 'parish-formation' ); ?></p>
+		<hr>
 		<p>
 			<label for="pf-completion-message">
 				<?php echo esc_html__( 'Completion message', 'parish-formation' ); ?>
@@ -223,6 +229,7 @@ final class Parish_Formation_Course_Settings {
 		}
 
 		update_post_meta( $post_id, self::CERTIFICATE_ENABLED_META_KEY, isset( $_POST['pf_certificate_enabled'] ) ? 1 : 0 );
+		update_post_meta( $post_id, self::OPEN_ENROLLMENT_META_KEY, isset( $_POST['pf_open_enrollment'] ) ? 1 : 0 );
 		$certificate_fields = array(
 			self::CERTIFICATE_TITLE_META_KEY           => isset( $_POST['pf_certificate_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_title'] ) ) : '',
 			self::CERTIFICATE_ISSUER_META_KEY          => isset( $_POST['pf_certificate_issuer'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_issuer'] ) ) : '',

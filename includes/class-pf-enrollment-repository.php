@@ -114,6 +114,34 @@ final class Parish_Formation_Enrollment_Repository {
 	 * @return int|WP_Error Enrollment ID or error.
 	 */
 	public static function create_manual( $user_id, $course_id, $created_by, $expires_at = null ) {
+		return self::create( $user_id, $course_id, 'manual', $created_by, $expires_at );
+	}
+
+	/**
+	 * Create an enrollment initiated by the participant.
+	 *
+	 * @param int $user_id   Participant user ID.
+	 * @param int $course_id Course post ID.
+	 * @return int|WP_Error Enrollment ID or error.
+	 */
+	public static function create_self_enrollment( $user_id, $course_id ) {
+		if ( ! get_userdata( $user_id ) ) {
+			return new WP_Error( 'invalid_user', __( 'Your user account could not be found.', 'parish-formation' ) );
+		}
+
+		if ( Parish_Formation_Course_Post_Type::POST_TYPE !== get_post_type( $course_id ) || 'publish' !== get_post_status( $course_id ) ) {
+			return new WP_Error( 'invalid_course', __( 'This course is not available for enrollment.', 'parish-formation' ) );
+		}
+
+		if ( ! get_post_meta( $course_id, Parish_Formation_Course_Settings::OPEN_ENROLLMENT_META_KEY, true ) ) {
+			return new WP_Error( 'enrollment_closed', __( 'Open enrollment is not available for this course.', 'parish-formation' ) );
+		}
+
+		return self::create( $user_id, $course_id, 'self', 0 );
+	}
+
+	/** Create or reactivate an enrollment from a validated source. */
+	private static function create( $user_id, $course_id, $source, $created_by, $expires_at = null ) {
 		global $wpdb;
 
 		$table_name = $wpdb->prefix . 'pf_enrollments';
@@ -145,7 +173,7 @@ final class Parish_Formation_Enrollment_Repository {
 						'completion_override_by' => null,
 						'completion_override_at' => null,
 						'expires_at'        => $expires_at,
-						'enrollment_source' => 'manual',
+						'enrollment_source' => sanitize_key( $source ),
 						'created_by'        => absint( $created_by ),
 						'updated_at'        => $now,
 					),
@@ -172,7 +200,7 @@ final class Parish_Formation_Enrollment_Repository {
 				'course_id'        => absint( $course_id ),
 				'status'           => 'enrolled',
 				'enrolled_at'      => $now,
-				'enrollment_source' => 'manual',
+				'enrollment_source' => sanitize_key( $source ),
 				'expires_at'        => $expires_at,
 				'created_by'       => absint( $created_by ),
 				'created_at'       => $now,

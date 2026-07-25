@@ -40,6 +40,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-reposit
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-notifications.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-shortcodes.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-enrollment-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-progress-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-assessment-actions.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-certificate-actions.php';
@@ -137,6 +138,16 @@ add_action(
 add_action(
 	'admin_post_pf_create_enrollment',
 	array( 'Parish_Formation_Enrollments_Admin', 'handle_create' )
+);
+
+add_action(
+	'admin_post_pf_self_enroll',
+	array( 'Parish_Formation_Enrollment_Actions', 'self_enroll' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_self_enroll',
+	array( 'Parish_Formation_Enrollment_Actions', 'self_enroll' )
 );
 
 add_action(

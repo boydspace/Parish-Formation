@@ -25,6 +25,7 @@ final class Parish_Formation_Shortcodes {
 	public static function register() {
 		add_rewrite_endpoint( 'course', EP_PAGES );
 		add_shortcode( 'parish_formation_my_courses', array( self::class, 'render_my_courses' ) );
+		add_shortcode( 'parish_formation_courses', array( self::class, 'render_course_catalog' ) );
 		if ( '1' !== get_option( 'parish_formation_pretty_routes_060', '0' ) ) {
 			flush_rewrite_rules( false );
 			update_option( 'parish_formation_pretty_routes_060', '1', false );
@@ -44,9 +45,10 @@ final class Parish_Formation_Shortcodes {
 		$post = get_queried_object();
 
 		$has_course_shortcode       = $post instanceof WP_Post && has_shortcode( $post->post_content, 'parish_formation_my_courses' );
+		$has_catalog_shortcode      = $post instanceof WP_Post && has_shortcode( $post->post_content, 'parish_formation_courses' );
 		$has_verification_shortcode = $post instanceof WP_Post && ( has_shortcode( $post->post_content, 'formation-certificate' ) || has_shortcode( $post->post_content, 'parish_formation_certificate_verification' ) );
 
-		if ( ! $has_course_shortcode && ! $has_verification_shortcode ) {
+		if ( ! $has_course_shortcode && ! $has_catalog_shortcode && ! $has_verification_shortcode ) {
 			return;
 		}
 
@@ -105,6 +107,87 @@ final class Parish_Formation_Shortcodes {
 				'error'    => __( 'This course section could not be loaded.', 'parish-formation' ),
 			)
 		);
+	}
+
+	/** Render published courses that permit open self-enrollment. */
+	public static function render_course_catalog() {
+		$courses = get_posts(
+			array(
+				'post_type'      => Parish_Formation_Course_Post_Type::POST_TYPE,
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+				'meta_key'       => Parish_Formation_Course_Settings::OPEN_ENROLLMENT_META_KEY,
+				'meta_value'     => '1',
+			)
+		);
+		$current_url = remove_query_arg( 'pf_enrollment', self::current_url() );
+		$formation_url = self::get_my_formation_url();
+		$notice      = isset( $_GET['pf_enrollment'] ) ? sanitize_key( wp_unslash( $_GET['pf_enrollment'] ) ) : '';
+
+		ob_start();
+		?>
+		<div class="parish-formation-course-catalog uk-container uk-container-large uk-section">
+			<?php if ( 'success' === $notice ) : ?>
+				<div class="uk-alert uk-alert-success"><p><?php esc_html_e( 'You are now enrolled.', 'parish-formation' ); ?> <a class="uk-alert-link" href="<?php echo esc_url( $formation_url ); ?>"><?php esc_html_e( 'Open My Formation', 'parish-formation' ); ?></a></p></div>
+			<?php elseif ( 'already-enrolled' === $notice ) : ?>
+				<div class="uk-alert uk-alert-primary"><p><?php esc_html_e( 'You are already enrolled in that course.', 'parish-formation' ); ?></p></div>
+			<?php elseif ( 'error' === $notice ) : ?>
+				<div class="uk-alert uk-alert-danger"><p><?php esc_html_e( 'The course enrollment could not be completed.', 'parish-formation' ); ?></p></div>
+			<?php endif; ?>
+
+			<?php if ( ! $courses ) : ?>
+				<div class="uk-alert uk-alert-primary"><p><?php esc_html_e( 'No courses are currently open for self-enrollment.', 'parish-formation' ); ?></p></div>
+			<?php else : ?>
+				<div class="pf-course-catalog-grid">
+					<?php foreach ( $courses as $course ) :
+						$enrollment = is_user_logged_in() ? Parish_Formation_Enrollment_Repository::get_for_user_course( get_current_user_id(), $course->ID ) : null;
+						$excerpt    = has_excerpt( $course ) ? $course->post_excerpt : wp_trim_words( wp_strip_all_tags( strip_shortcodes( $course->post_content ) ), 32 );
+						?>
+						<article class="pf-course-catalog-card uk-card uk-card-default uk-card-body">
+							<?php if ( has_post_thumbnail( $course ) ) : ?><div class="pf-course-catalog-image"><?php echo get_the_post_thumbnail( $course, 'large', array( 'class' => 'uk-width-1-1' ) ); ?></div><?php endif; ?>
+							<h3 class="uk-card-title"><?php echo esc_html( $course->post_title ); ?></h3>
+							<?php if ( $excerpt ) : ?><p><?php echo esc_html( $excerpt ); ?></p><?php endif; ?>
+							<?php if ( $enrollment ) : ?>
+								<div class="pf-course-catalog-enrollment"><span class="uk-label uk-label-success"><?php echo esc_html( 'completed' === $enrollment->status ? __( 'Completed', 'parish-formation' ) : __( 'Enrolled', 'parish-formation' ) ); ?></span><a class="uk-button uk-button-primary" href="<?php echo esc_url( trailingslashit( $formation_url ) . 'course/' . rawurlencode( $course->post_name ) . '/' ); ?>"><?php esc_html_e( 'Open My Formation', 'parish-formation' ); ?></a></div>
+							<?php elseif ( is_user_logged_in() ) : ?>
+								<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+									<input type="hidden" name="action" value="pf_self_enroll"><input type="hidden" name="course_id" value="<?php echo esc_attr( $course->ID ); ?>"><input type="hidden" name="return_url" value="<?php echo esc_attr( $current_url ); ?>">
+									<?php wp_nonce_field( 'pf_self_enroll_' . $course->ID, 'pf_self_enroll_nonce' ); ?>
+									<button type="submit" class="uk-button uk-button-primary"><?php esc_html_e( 'Enroll in Course', 'parish-formation' ); ?></button>
+								</form>
+							<?php else : ?>
+								<div class="pf-course-catalog-actions"><a class="uk-button uk-button-primary" href="<?php echo esc_url( wp_login_url( $current_url ) ); ?>"><?php esc_html_e( 'Log In to Enroll', 'parish-formation' ); ?></a><?php if ( get_option( 'users_can_register' ) ) : ?><a class="uk-button uk-button-default" href="<?php echo esc_url( add_query_arg( 'redirect_to', $current_url, wp_registration_url() ) ); ?>"><?php esc_html_e( 'Create Account', 'parish-formation' ); ?></a><?php endif; ?></div>
+							<?php endif; ?>
+						</article>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/** Find the published page containing the participant dashboard shortcode. */
+	private static function get_my_formation_url() {
+		$page_ids = get_posts(
+			array(
+				'post_type'      => 'page',
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+			)
+		);
+
+		foreach ( $page_ids as $page_id ) {
+			if ( has_shortcode( get_post_field( 'post_content', $page_id ), 'parish_formation_my_courses' ) ) {
+				return get_permalink( $page_id );
+			}
+		}
+
+		return home_url( '/my-formation/' );
 	}
 
 	/** Register the authenticated course-view endpoint used by AJAX navigation. */

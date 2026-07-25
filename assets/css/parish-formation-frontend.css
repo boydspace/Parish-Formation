@@ -312,6 +312,67 @@
 	}
 }
 
+.pf-course-catalog-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 20px;
+}
+
+.pf-course-catalog-card {
+	display: flex;
+	min-width: 0;
+	align-items: flex-start;
+	flex-direction: column;
+	gap: 16px;
+	overflow: hidden;
+}
+
+.pf-course-catalog-card .uk-card-title,
+.pf-course-catalog-card p,
+.pf-course-catalog-card form {
+	margin: 0;
+}
+
+.pf-course-catalog-card p {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+	white-space: normal;
+	word-break: normal;
+}
+
+.pf-course-catalog-image {
+	margin: -40px -40px 4px;
+}
+
+.pf-course-catalog-image img {
+	display: block;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+}
+
+.pf-course-catalog-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.pf-course-catalog-enrollment {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+@media (max-width: 640px) {
+	.pf-course-catalog-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.pf-course-catalog-image {
+		margin: -30px -30px 4px;
+	}
+}
+
 @page {
 	size: letter landscape;
 	margin: 0.25in;

@@ -1,0 +1,96 @@
+# Parish Formation
+
+Parish Formation is a focused WordPress plugin for delivering and tracking
+parish formation courses. It supports sacramental preparation, ministry
+training, catechist formation, and similar parish programs without commercial
+LMS features such as sales, subscriptions, commissions, or marketplaces.
+
+## Requirements
+
+- WordPress 6.0 or later
+- PHP 8.3 or later
+- Pretty permalinks are recommended
+- An SMTP plugin such as FluentSMTP is recommended for production email
+
+## Current features
+
+- Block-editor courses, lessons, assessments, and questions
+- Drag-and-drop curriculum ordering
+- Required, optional, and sequential course sections
+- Manual enrollment, expiration, unenrollment, reopening, and course runs
+- Responsive front-end My Formation experience with AJAX navigation
+- Automatic and staff-reviewed assessments with configurable passing rules
+- Staff progress, assessment, course, and CSV reporting
+- Verifiable web and PDF completion certificates
+- Certificate revocation and replacement issuance
+- Editable branded participant and staff email notifications
+- WordPress new-user account email replacement
+- Custom Formation Participant, Coordinator, and Administrator permissions
+
+## Installation
+
+1. Copy the `parish-formation` folder into `wp-content/plugins/`.
+2. Activate **Parish Formation** in WordPress.
+3. Create and publish a page containing `[parish_formation_my_courses]`.
+4. Create and publish a page containing `[parish_formation_courses]` for the
+   open course catalog.
+5. Create and publish a page containing `[formation-certificate]` for public
+   certificate verification.
+6. Configure **Parish Formation → Email Notifications**.
+7. Configure an SMTP transport plugin for production delivery.
+
+Database upgrades run automatically and are designed to be repeatable. Plugin
+data is preserved when the plugin is deactivated or uninstalled.
+
+## Shortcodes
+
+- `[parish_formation_my_courses]` — participant course dashboard and learning
+  interface.
+- `[parish_formation_courses]` — public catalog of courses enabled for open
+  self-enrollment.
+- `[formation-certificate]` — public certificate verification form.
+- `[parish_formation_certificate_verification]` — compatibility alias for the
+  certificate verification form.
+
+## Roles and capabilities
+
+- **Formation Participant** accesses front-end formation.
+- **Formation Coordinator** manages courses, enrollments, assessments, grading,
+  and reports.
+- **Formation Administrator** additionally manages plugin-wide settings, roles,
+  and privileged overrides.
+
+The plugin checks custom capabilities rather than relying on role names.
+
+## Email delivery
+
+Parish Formation creates recipients, templates, branding, and event history,
+then sends through WordPress `wp_mail()`. SMTP plugins remain responsible for
+authentication, transport, provider responses, and final delivery diagnostics.
+An **Accepted by Mailer** status means WordPress handed the message to the
+configured mail system; it does not guarantee inbox delivery.
+
+## Privacy
+
+Parish Formation should contain only course enrollment, progress, assessment,
+response, completion, and administrative information. It is not designed for
+counseling records, tribunal information, psychological or medical information,
+full sacramental records, or other sensitive pastoral case files.
+
+Successful email bodies are not retained. Failed bodies are retained only while
+needed for an administrator-initiated retry.
+
+## Development
+
+The plugin version and database schema version are maintained separately.
+Source changes should follow WordPress security practices, support PHP 8.3, and
+be linted and browser-tested before commit.
+
+See [docs/roadmap.md](docs/roadmap.md) for completed and planned milestones.
+
+## Author and license
+
+Created by [Father Andrew M. Boyd](https://fatherboyd.com). Plugin information:
+[fatherboyd.com/plugins](https://fatherboyd.com/plugins).
+
+Licensed under GPL-2.0-or-later.
