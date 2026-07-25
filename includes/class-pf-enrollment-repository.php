@@ -140,6 +140,25 @@ final class Parish_Formation_Enrollment_Repository {
 		return self::create( $user_id, $course_id, 'self', 0 );
 	}
 
+	/**
+	 * Create an enrollment authorized by a course access code.
+	 *
+	 * @param int $user_id   Participant user ID.
+	 * @param int $course_id Course post ID.
+	 * @return int|WP_Error Enrollment ID or error.
+	 */
+	public static function create_access_code_enrollment( $user_id, $course_id ) {
+		if ( ! get_userdata( $user_id ) ) {
+			return new WP_Error( 'invalid_user', __( 'Your user account could not be found.', 'parish-formation' ) );
+		}
+
+		if ( Parish_Formation_Course_Post_Type::POST_TYPE !== get_post_type( $course_id ) || 'publish' !== get_post_status( $course_id ) ) {
+			return new WP_Error( 'invalid_course', __( 'This course is not available for enrollment.', 'parish-formation' ) );
+		}
+
+		return self::create( $user_id, $course_id, 'access_code', 0 );
+	}
+
 	/** Create or reactivate an enrollment from a validated source. */
 	private static function create( $user_id, $course_id, $source, $created_by, $expires_at = null ) {
 		global $wpdb;

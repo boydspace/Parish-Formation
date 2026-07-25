@@ -318,6 +318,16 @@
 	gap: 20px;
 }
 
+.pf-catalog-code-entry {
+	max-width: 720px;
+	margin-bottom: 24px;
+}
+
+.pf-catalog-code-entry .uk-card-title,
+.pf-catalog-code-entry > p {
+	margin-top: 0;
+}
+
 .pf-course-catalog-card {
 	display: flex;
 	min-width: 0;
@@ -363,6 +373,43 @@
 	gap: 12px;
 }
 
+.pf-course-access-code-form {
+	width: 100%;
+}
+
+.pf-course-access-code-form label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: 600;
+}
+
+.pf-course-access-code-form > div {
+	display: flex;
+	gap: 10px;
+}
+
+.pf-course-access-code-form .uk-input {
+	min-width: 0;
+	flex: 1;
+}
+
+.pf-course-access-code-message {
+	margin-top: 8px !important;
+	font-weight: 600;
+}
+
+.pf-course-access-code-message:empty {
+	display: none;
+}
+
+.pf-course-access-code-message.is-success {
+	color: #147d43;
+}
+
+.pf-course-access-code-message.is-error {
+	color: #b42318;
+}
+
 @media (max-width: 640px) {
 	.pf-course-catalog-grid {
 		grid-template-columns: 1fr;
@@ -370,6 +417,11 @@
 
 	.pf-course-catalog-image {
 		margin: -30px -30px 4px;
+	}
+
+	.pf-course-access-code-form > div {
+		align-items: stretch;
+		flex-direction: column;
 	}
 }
 

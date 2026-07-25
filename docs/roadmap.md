@@ -77,12 +77,12 @@ medical information.
 
 ## Planned milestones
 
-### 1.0.0 — Enrollment access
+### 1.0.0 — Enrollment access (in progress)
 
-- Public course catalog.
-- Course-level open self-enrollment.
-- Safe login and registration handoff.
-- Course access codes with expiration and usage limits.
+- Public course catalog. **Implemented**
+- Course-level open self-enrollment. **Implemented**
+- Safe login and registration handoff. **Implemented**
+- Course access codes with expiration and usage limits. **Implemented**
 - Secure invitation links with optional email restrictions.
 - Enrollment source and access audit history.
 

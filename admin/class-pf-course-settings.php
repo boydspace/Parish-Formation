@@ -29,6 +29,12 @@ final class Parish_Formation_Course_Settings {
 	public const NOTIFICATION_DISABLED_META_KEY = '_pf_notification_disabled';
 	public const NOTIFICATION_STAFF_EMAILS_META_KEY = '_pf_notification_staff_emails';
 	public const OPEN_ENROLLMENT_META_KEY = '_pf_open_enrollment';
+	public const ACCESS_CODE_ENABLED_META_KEY = '_pf_access_code_enabled';
+	public const ACCESS_CODE_HASH_META_KEY = '_pf_access_code_hash';
+	public const ACCESS_CODE_EXPIRES_META_KEY = '_pf_access_code_expires';
+	public const ACCESS_CODE_LIMIT_META_KEY = '_pf_access_code_limit';
+	public const ACCESS_CODE_USES_META_KEY = '_pf_access_code_uses';
+	public const CATALOG_VISIBLE_META_KEY = '_pf_catalog_visible';
 
 	/** Shared curriculum order metadata for lessons and assessments. */
 	public const CURRICULUM_ORDER_META_KEY = '_pf_curriculum_order';
@@ -85,12 +91,28 @@ final class Parish_Formation_Course_Settings {
 		$notification_disabled = (array) get_post_meta( $post->ID, self::NOTIFICATION_DISABLED_META_KEY, true );
 		$notification_staff_emails = get_post_meta( $post->ID, self::NOTIFICATION_STAFF_EMAILS_META_KEY, true );
 		$open_enrollment = (bool) get_post_meta( $post->ID, self::OPEN_ENROLLMENT_META_KEY, true );
+		$access_code_enabled = (bool) get_post_meta( $post->ID, self::ACCESS_CODE_ENABLED_META_KEY, true );
+		$access_code_saved = (bool) get_post_meta( $post->ID, self::ACCESS_CODE_HASH_META_KEY, true );
+		$access_code_expires = sanitize_text_field( get_post_meta( $post->ID, self::ACCESS_CODE_EXPIRES_META_KEY, true ) );
+		$access_code_limit = absint( get_post_meta( $post->ID, self::ACCESS_CODE_LIMIT_META_KEY, true ) );
+		$access_code_uses = absint( get_post_meta( $post->ID, self::ACCESS_CODE_USES_META_KEY, true ) );
+		$catalog_visible = ! metadata_exists( 'post', $post->ID, self::CATALOG_VISIBLE_META_KEY ) || (bool) get_post_meta( $post->ID, self::CATALOG_VISIBLE_META_KEY, true );
 
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
 		?>
 		<h3><?php esc_html_e( 'Enrollment Access', 'parish-formation' ); ?></h3>
+		<p><label><input type="checkbox" name="pf_catalog_visible" value="1" <?php checked( $catalog_visible ); ?>> <?php esc_html_e( 'Show this course in the public course catalog', 'parish-formation' ); ?></label></p>
+		<p class="description"><?php esc_html_e( 'Hidden courses are not advertised in the catalog. Participants can still enroll using a valid access code.', 'parish-formation' ); ?></p>
 		<p><label><input type="checkbox" name="pf_open_enrollment" value="1" <?php checked( $open_enrollment ); ?>> <?php esc_html_e( 'Allow signed-in users to enroll themselves in this course', 'parish-formation' ); ?></label></p>
 		<p class="description"><?php esc_html_e( 'When enabled, this published course appears in the public formation catalog. Visitors must sign in or register before enrolling.', 'parish-formation' ); ?></p>
+		<h4><?php esc_html_e( 'Access Code', 'parish-formation' ); ?></h4>
+		<p><label><input type="checkbox" name="pf_access_code_enabled" value="1" <?php checked( $access_code_enabled ); ?>> <?php esc_html_e( 'Allow enrollment with a course access code', 'parish-formation' ); ?></label></p>
+		<p><label for="pf-access-code"><strong><?php esc_html_e( 'New access code', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code" name="pf_access_code" type="text" class="regular-text" autocomplete="new-password" value="" placeholder="<?php echo esc_attr( $access_code_saved ? __( 'A code is currently saved', 'parish-formation' ) : __( 'Enter an access code', 'parish-formation' ) ); ?>"></p>
+		<p class="description"><?php esc_html_e( 'Codes are stored securely and cannot be displayed later. Leave this blank to keep the existing code.', 'parish-formation' ); ?></p>
+		<?php if ( $access_code_saved ) : ?><p><label><input type="checkbox" name="pf_access_code_clear" value="1"> <?php esc_html_e( 'Remove the saved access code', 'parish-formation' ); ?></label></p><?php endif; ?>
+		<p><label for="pf-access-code-expires"><strong><?php esc_html_e( 'Code expiration date', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code-expires" name="pf_access_code_expires" type="date" value="<?php echo esc_attr( $access_code_expires ); ?>"> <span class="description"><?php esc_html_e( 'Optional. The code remains valid through this date in the site timezone.', 'parish-formation' ); ?></span></p>
+		<p><label for="pf-access-code-limit"><strong><?php esc_html_e( 'Maximum successful uses', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code-limit" name="pf_access_code_limit" type="number" min="0" max="1000000" step="1" value="<?php echo esc_attr( $access_code_limit ); ?>" class="small-text"> <span class="description"><?php esc_html_e( 'Use 0 for unlimited. A new code resets the usage count.', 'parish-formation' ); ?></span></p>
+		<?php if ( $access_code_saved ) : ?><p class="description"><?php echo esc_html( sprintf( __( 'Successful uses: %d', 'parish-formation' ), $access_code_uses ) ); ?></p><?php endif; ?>
 		<hr>
 		<p>
 			<label for="pf-completion-message">
@@ -230,6 +252,23 @@ final class Parish_Formation_Course_Settings {
 
 		update_post_meta( $post_id, self::CERTIFICATE_ENABLED_META_KEY, isset( $_POST['pf_certificate_enabled'] ) ? 1 : 0 );
 		update_post_meta( $post_id, self::OPEN_ENROLLMENT_META_KEY, isset( $_POST['pf_open_enrollment'] ) ? 1 : 0 );
+		update_post_meta( $post_id, self::CATALOG_VISIBLE_META_KEY, isset( $_POST['pf_catalog_visible'] ) ? 1 : 0 );
+		update_post_meta( $post_id, self::ACCESS_CODE_ENABLED_META_KEY, isset( $_POST['pf_access_code_enabled'] ) ? 1 : 0 );
+		$access_code = isset( $_POST['pf_access_code'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['pf_access_code'] ) ) ) : '';
+		if ( isset( $_POST['pf_access_code_clear'] ) ) {
+			delete_post_meta( $post_id, self::ACCESS_CODE_HASH_META_KEY );
+			delete_post_meta( $post_id, self::ACCESS_CODE_USES_META_KEY );
+		} elseif ( '' !== $access_code ) {
+			update_post_meta( $post_id, self::ACCESS_CODE_HASH_META_KEY, wp_hash_password( $access_code ) );
+			update_post_meta( $post_id, self::ACCESS_CODE_USES_META_KEY, 0 );
+		}
+		$access_code_expires = isset( $_POST['pf_access_code_expires'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_access_code_expires'] ) ) : '';
+		if ( $access_code_expires && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $access_code_expires ) ) {
+			update_post_meta( $post_id, self::ACCESS_CODE_EXPIRES_META_KEY, $access_code_expires );
+		} else {
+			delete_post_meta( $post_id, self::ACCESS_CODE_EXPIRES_META_KEY );
+		}
+		update_post_meta( $post_id, self::ACCESS_CODE_LIMIT_META_KEY, isset( $_POST['pf_access_code_limit'] ) ? min( 1000000, absint( $_POST['pf_access_code_limit'] ) ) : 0 );
 		$certificate_fields = array(
 			self::CERTIFICATE_TITLE_META_KEY           => isset( $_POST['pf_certificate_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_title'] ) ) : '',
 			self::CERTIFICATE_ISSUER_META_KEY          => isset( $_POST['pf_certificate_issuer'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_issuer'] ) ) : '',

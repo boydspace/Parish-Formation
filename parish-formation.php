@@ -151,6 +151,16 @@ add_action(
 );
 
 add_action(
+	'admin_post_pf_access_code_enroll',
+	array( 'Parish_Formation_Enrollment_Actions', 'access_code_enroll' )
+);
+
+add_action(
+	'admin_post_nopriv_pf_access_code_enroll',
+	array( 'Parish_Formation_Enrollment_Actions', 'access_code_enroll' )
+);
+
+add_action(
 	'admin_post_pf_unenroll_participant',
 	array( 'Parish_Formation_Enrollments_Admin', 'handle_unenroll' )
 );
@@ -282,6 +292,11 @@ add_action(
 add_action(
 	'rest_api_init',
 	array( 'Parish_Formation_Assessment_Actions', 'register_rest_route' )
+);
+
+add_action(
+	'rest_api_init',
+	array( 'Parish_Formation_Enrollment_Actions', 'register_rest_route' )
 );
 
 add_action(
