@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -117,6 +117,22 @@ try {
 	$assert( false === strpos( $formation_html, 'minlength=' ) && false === strpos( $formation_html, 'maxlength=' ) && false !== strpos( $formation_html, 'data-min-characters="10"' ) && false !== strpos( $formation_html, '10 more required' ) && false !== strpos( $formation_html, 'Only formation staff' ) && false !== strpos( $formation_html, 'Consider one concrete moment.' ), 'Reflection learner guidance, counter, or constraints are incomplete.' );
 	$formation_snapshot = Parish_Formation_Question_Snapshot::create( $formation_reflection, Parish_Formation_Question_Config::get( $formation_reflection->ID ) );
 	$assert( 10 === $formation_snapshot['type_config']['minimum_characters'] && 'Only formation staff can view this response.' === $formation_snapshot['type_config']['private_notice'], 'Reflection snapshot lost historical settings.' );
+
+	$rating = $create_question( 'rating_scale', 'How confident are you explaining Baptism?', '', array(), 1 );
+	$rating_config = Parish_Formation_Question_Config::get( $rating->ID );
+	$assert( 'Lowest' === $rating_config['type_config']['first_label'] && 'Highest' === $rating_config['type_config']['last_label'], 'Rating Scale neutral endpoint defaults are missing.' );
+	$rating_config['type_config'] = array( 'minimum' => 1, 'maximum' => 5, 'first_label' => 'Not confident', 'last_label' => 'Very confident', 'value_labels' => array( 3 => 'Somewhat confident' ), 'orientation' => 'horizontal' );
+	update_post_meta( $rating->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $rating_config, 'rating_scale' ) );
+	$rating_grade = Parish_Formation_Question_Grading_Service::grade( $rating, array( 'value' => '3' ) );
+	$rating_invalid = Parish_Formation_Question_Grading_Service::grade( $rating, array( 'value' => '6' ) );
+	$rating_stored = json_decode( $rating_grade['stored_response'], true );
+	$assert( $rating_grade['valid'] && $rating_grade['completed'] && null === $rating_grade['is_correct'] && 0.0 === (float) $rating_grade['maximum_points'], 'Rating Scale completion semantics failed.' );
+	$assert( 3 === $rating_stored['value'] && 5 === $rating_stored['scale_config']['maximum'] && 'Somewhat confident' === $rating_stored['scale_config']['value_labels'][3], 'Rating Scale response did not retain the submitted value and scale configuration.' );
+	$assert( ! $rating_invalid['valid'] && 'invalid_rating' === $rating_invalid['error_code'], 'Rating Scale accepted an out-of-range value.' );
+	$rating_html = Parish_Formation_Question_Renderer::render( $rating, 'pf_answers[' . $rating->ID . ']', false );
+	$assert( 5 === substr_count( $rating_html, 'type="radio"' ) && false !== strpos( $rating_html, 'Not confident' ) && false !== strpos( $rating_html, 'Somewhat confident' ) && false !== strpos( $rating_html, 'Very confident' ), 'Rating Scale controls or labels did not render.' );
+	$rating_snapshot = Parish_Formation_Question_Snapshot::create( $rating, Parish_Formation_Question_Config::get( $rating->ID ) );
+	$assert( 1 === $rating_snapshot['type_config']['minimum'] && 5 === $rating_snapshot['type_config']['maximum'], 'Rating Scale snapshot lost its historical configuration.' );
 
 	$multiple_select = $create_question( 'multiple_select', 'Select the two sacraments.', '', array(), 6 );
 	$multi_base = Parish_Formation_Question_Config::get( $multiple_select->ID );

@@ -243,6 +243,29 @@
 	background: #f8fafc;
 }
 
+.pf-rating-scale__choices {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+
+.pf-rating-scale--vertical .pf-rating-scale__choices {
+	align-items: flex-start;
+	flex-direction: column;
+}
+
+.pf-rating-scale__choice {
+	align-items: center;
+	display: inline-flex;
+	gap: 0.35rem;
+	min-height: 44px;
+	padding: 0.35rem 0.5rem;
+}
+
+.pf-rating-scale__value {
+	font-weight: 700;
+}
+
 .pf-ordering-label {
 	display: block;
 	margin-bottom: 10px;

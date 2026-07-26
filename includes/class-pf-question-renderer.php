@@ -105,6 +105,20 @@ final class Parish_Formation_Question_Renderer {
 				<?php if ( $require_open && ! $disabled ) { ?><p class="description pf-acknowledgement-open-notice"><?php esc_html_e( 'Open the linked item before checking the acknowledgment.', 'parish-formation' ); ?></p><?php } ?>
 			</div>
 			<?php
+		} elseif ( 'rating_scale' === $type ) {
+			$minimum = (int) ( $config['type_config']['minimum'] ?? 1 );
+			$maximum = (int) ( $config['type_config']['maximum'] ?? 5 );
+			$labels = $config['type_config']['value_labels'] ?? array();
+			$orientation = $config['type_config']['orientation'] ?? 'horizontal';
+			?><fieldset class="pf-rating-scale pf-rating-scale--<?php echo esc_attr( $orientation ); ?>"<?php echo $config['required'] ? ' aria-required="true"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+				<legend class="screen-reader-text"><?php esc_html_e( 'Choose a rating', 'parish-formation' ); ?></legend>
+				<div class="pf-rating-scale__choices">
+				<?php for ( $value = $minimum; $value <= $maximum; ++$value ) {
+					$label = $labels[ $value ] ?? ( $value === $minimum ? ( $config['type_config']['first_label'] ?? '' ) : ( $value === $maximum ? ( $config['type_config']['last_label'] ?? '' ) : '' ) ); ?>
+					<label class="pf-rating-scale__choice"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name . '[value]' ); ?>" value="<?php echo esc_attr( $value ); ?>"<?php echo  $value === $minimum ? $control_attrs : $disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> /> <span class="pf-rating-scale__value"><?php echo esc_html( $value ); ?></span><?php if ( '' !== $label ) { ?><span class="pf-rating-scale__label"><?php echo esc_html( $label ); ?></span><?php } ?></label>
+				<?php } ?>
+				</div>
+			</fieldset><?php
 		} elseif ( 'reflection' === $type ) {
 			$minimum = absint( $config['type_config']['minimum_characters'] ?? 0 );
 			$maximum = absint( $config['type_config']['maximum_characters'] ?? 0 );

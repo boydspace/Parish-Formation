@@ -191,6 +191,21 @@ final class Parish_Formation_Question_Grading_Service {
 			return self::result( true, '', $original, $completion_credit ? $maximum_points : 0, $maximum_points, true, null, ! empty( $config['manual_review'] ), $config );
 		}
 
+		if ( 'rating_scale' === $type ) {
+			$value = is_array( $response ) ? ( $response['value'] ?? '' ) : $response;
+			if ( ! is_numeric( $value ) || (string) (int) $value !== trim( (string) $value ) ) {
+				return self::result( false, 'invalid_rating', $original, 0, 0, false, null, false, $config, __( 'Please select a valid rating.', 'parish-formation' ) );
+			}
+			$value = (int) $value;
+			$minimum = (int) ( $config['type_config']['minimum'] ?? 1 );
+			$maximum = (int) ( $config['type_config']['maximum'] ?? 5 );
+			if ( $value < $minimum || $value > $maximum ) {
+				return self::result( false, 'invalid_rating', $original, 0, 0, false, null, false, $config, __( 'The selected rating is outside the available scale.', 'parish-formation' ) );
+			}
+			$stored = array( 'value' => $value, 'scale_config' => $config['type_config'] );
+			return self::result( true, '', $stored, 0, 0, true, null, false, $config );
+		}
+
 		if ( 'paragraph' === $type ) {
 			$maximum = $config['graded'] ? $config['points'] : 0;
 			return self::result( true, '', $original, 0, $maximum, true, null, true, $config );

@@ -67,6 +67,12 @@ final class Parish_Formation_Question_Block {
 					'acknowledgementPolicyUrl' => array( 'type' => 'string', 'default' => '' ),
 					'acknowledgementRequireOpen' => array( 'type' => 'boolean', 'default' => false ),
 					'acknowledgementCompletionCredit' => array( 'type' => 'boolean', 'default' => false ),
+					'ratingMinimum' => array( 'type' => 'integer', 'default' => 1 ),
+					'ratingMaximum' => array( 'type' => 'integer', 'default' => 5 ),
+					'ratingFirstLabel' => array( 'type' => 'string', 'default' => 'Lowest' ),
+					'ratingLastLabel' => array( 'type' => 'string', 'default' => 'Highest' ),
+					'ratingValueLabels' => array( 'type' => 'array', 'default' => array(), 'items' => array( 'type' => 'string' ) ),
+					'ratingOrientation' => array( 'type' => 'string', 'default' => 'horizontal' ),
 					'points'     => array( 'type' => 'integer', 'default' => 1 ),
 					'required'   => array( 'type' => 'boolean', 'default' => true ),
 					'instructions' => array( 'type' => 'string', 'default' => '' ),
@@ -164,7 +170,7 @@ final class Parish_Formation_Question_Block {
 			$config = Parish_Formation_Question_Config::sanitize(
 				array(
 					'type' => $type, 'instructions' => $attributes['instructions'] ?? '', 'required' => ! isset( $attributes['required'] ) || $attributes['required'],
-					'graded' => 'reflection' === $type ? ! empty( $attributes['reflectionCompletionCredit'] ) : ( 'acknowledgement' === $type ? ! empty( $attributes['acknowledgementCompletionCredit'] ) : ( array_key_exists( 'graded', $attributes ) ? (bool) $attributes['graded'] : true ) ),
+					'graded' => 'rating_scale' === $type ? false : ( 'reflection' === $type ? ! empty( $attributes['reflectionCompletionCredit'] ) : ( 'acknowledgement' === $type ? ! empty( $attributes['acknowledgementCompletionCredit'] ) : ( array_key_exists( 'graded', $attributes ) ? (bool) $attributes['graded'] : true ) ) ),
 					'points' => $question_points, 'explanation' => $attributes['explanation'] ?? '',
 					'correct_feedback' => $attributes['correctFeedback'] ?? '', 'incorrect_feedback' => $attributes['incorrectFeedback'] ?? '', 'feedback_timing' => $attributes['feedbackTiming'] ?? 'assessment',
 					'manual_review' => array_key_exists( 'manualReview', $attributes ) ? (bool) $attributes['manualReview'] : false,
@@ -191,6 +197,12 @@ final class Parish_Formation_Question_Block {
 						'policy_url' => $attributes['acknowledgementPolicyUrl'] ?? '',
 						'require_policy_open' => ! empty( $attributes['acknowledgementRequireOpen'] ),
 						'completion_credit' => 'acknowledgement' === $type ? ! empty( $attributes['acknowledgementCompletionCredit'] ) : ! empty( $attributes['reflectionCompletionCredit'] ),
+						'minimum' => $attributes['ratingMinimum'] ?? 1,
+						'maximum' => $attributes['ratingMaximum'] ?? 5,
+						'first_label' => $attributes['ratingFirstLabel'] ?? 'Lowest',
+						'last_label' => $attributes['ratingLastLabel'] ?? 'Highest',
+						'value_labels' => self::rating_value_labels( $attributes ),
+						'orientation' => $attributes['ratingOrientation'] ?? 'horizontal',
 					),
 				),
 				$type
@@ -204,6 +216,13 @@ final class Parish_Formation_Question_Block {
 				wp_trash_post( $question_id );
 			}
 		}
+	}
+
+	private static function rating_value_labels( $attributes ) {
+		$minimum = (int) ( $attributes['ratingMinimum'] ?? 1 );
+		$labels = array();
+		foreach ( is_array( $attributes['ratingValueLabels'] ?? null ) ? $attributes['ratingValueLabels'] : array() as $index => $label ) { if ( '' !== trim( (string) $label ) ) { $labels[ $minimum + $index ] = $label; } }
+		return $labels;
 	}
 
 	/** Recursively find question blocks. */

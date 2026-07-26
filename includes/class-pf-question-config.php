@@ -188,6 +188,25 @@ final class Parish_Formation_Question_Config {
 				'completion_credit' => ! empty( $values['completion_credit'] ),
 			);
 		}
+		if ( 'rating_scale' === $type ) {
+			$minimum = (int) ( $values['minimum'] ?? 1 );
+			$maximum = (int) ( $values['maximum'] ?? 5 );
+			if ( $maximum <= $minimum ) { $maximum = $minimum + 1; }
+			if ( $maximum - $minimum > 20 ) { $maximum = $minimum + 20; }
+			$labels = array();
+			foreach ( is_array( $values['value_labels'] ?? null ) ? $values['value_labels'] : array() as $value => $label ) {
+				$value = (int) $value;
+				if ( $value >= $minimum && $value <= $maximum && '' !== trim( (string) $label ) ) { $labels[ $value ] = sanitize_text_field( $label ); }
+			}
+			return array(
+				'minimum' => $minimum,
+				'maximum' => $maximum,
+				'first_label' => sanitize_text_field( $values['first_label'] ?? '' ) ?: __( 'Lowest', 'parish-formation' ),
+				'last_label' => sanitize_text_field( $values['last_label'] ?? '' ) ?: __( 'Highest', 'parish-formation' ),
+				'value_labels' => $labels,
+				'orientation' => 'vertical' === sanitize_key( $values['orientation'] ?? 'horizontal' ) ? 'vertical' : 'horizontal',
+			);
+		}
 		return self::sanitize_nested( $values );
 	}
 }

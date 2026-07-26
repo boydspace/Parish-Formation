@@ -46,6 +46,7 @@ const inputs = [
 	{ type: 'hidden', checked: false, name: 'pf_answers[250][]', value: 'item-two' }
 	,{ type: 'hidden', checked: false, name: 'pf_answers[251][policy_opened]', value: '1' }
 	,{ type: 'checkbox', checked: true, name: 'pf_answers[251][acknowledged]', value: 'acknowledged' }
+	,{ type: 'radio', checked: true, name: 'pf_answers[252][value]', value: '4' }
 ];
 const form = {
 	previousElementSibling: resultBox,
@@ -75,6 +76,9 @@ if ( JSON.stringify( requestBody.answers['250'] ) !== JSON.stringify( [ 'item-th
 }
 if ( JSON.stringify( requestBody.answers['251'] ) !== JSON.stringify( { policy_opened: '1', acknowledged: 'acknowledged' } ) ) {
 	throw new Error( 'Acknowledgment audit values were not serialized together.' );
+}
+if ( JSON.stringify( requestBody.answers['252'] ) !== JSON.stringify( { value: '4' } ) ) {
+	throw new Error( 'Rating Scale value was not serialized as a structured response.' );
 }
 const acknowledgementOpened = { value: '0' };
 const acknowledgementCheckbox = { disabled: true };
@@ -113,4 +117,4 @@ inputHandler( { target: reflectionField } );
 if ( reflectionCounter.textContent.indexOf( '3 more required' ) === -1 || reflectionCounter.textContent.indexOf( '13 non-space characters remaining' ) === -1 ) {
 	throw new Error( 'Reflection character counter did not report minimum and maximum remaining values.' );
 }
-process.stdout.write( 'Assessment submission JavaScript test passed: 9 checks.\n' );
+process.stdout.write( 'Assessment submission JavaScript test passed: 10 checks.\n' );
