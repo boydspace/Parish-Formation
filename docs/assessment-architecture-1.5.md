@@ -43,6 +43,15 @@ Phase 4 may add response-review and uploaded-file relationship tables if the
 review history and protected attachment lifecycle cannot be represented safely
 in the current answer table. Any such migration will be additive and idempotent.
 
+## Phase 2 structured responses
+
+Multiple Select stores selected stable choice IDs as a JSON array in the
+existing answer column. Short Answer stores the learner's original text exactly
+as submitted and applies normalization only to an in-memory comparison value.
+Neither addition requires a database migration. Multiple Select supports
+all-or-nothing, partial-credit, and partial-credit-with-penalty grading; scores
+are clamped between zero and the configured maximum.
+
 ## Planned implementation files
 
 The five Phase 1 service classes are new. The question block, assessment

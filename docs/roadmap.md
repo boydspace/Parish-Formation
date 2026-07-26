@@ -152,8 +152,11 @@ medical information.
   immutable snapshot services. **Phase 1 implemented**
 - Categorized question selector with legacy Multiple Choice, True/False,
   Reflection Response, and Acknowledgment compatibility. **Phase 1 implemented**
-- Multiple Select, Short Answer, Fill in the Blank, Matching, Ordering,
-  Reflection Response improvements, and Acknowledgment improvements. **Phase 2**
+- Multiple Select and Short Answer, including stable choice IDs, partial-credit
+  modes, answer normalization, learner rendering, snapshots, and tests.
+  **Phase 2 implemented**
+- Fill in the Blank, Matching, Ordering, Reflection Response improvements, and
+  Acknowledgment improvements. **Phase 2 remaining**
 - Rating Scale, Yes/No, Image Selection, Numeric Response, Paragraph Response,
   and protected File Upload. **Phase 3**
 - Per-response review, resubmission, feedback, reporting, exports, and expanded

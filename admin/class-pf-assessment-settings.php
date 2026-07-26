@@ -59,6 +59,7 @@ final class Parish_Formation_Assessment_Settings {
 		$passing_rule = self::valid_passing_rule( $passing_rule ) ? $passing_rule : 'percentage';
 		$passing_value = is_numeric( $passing_value ) ? max( 0, (float) $passing_value ) : 100;
 		$max_attempts = max( 1, $max_attempts );
+		$limits       = self::get_available_limits( $post->ID );
 
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
 		?>
@@ -87,6 +88,12 @@ final class Parish_Formation_Assessment_Settings {
 		</select>
 		<p><label for="pf-assessment-passing-value"><strong><?php esc_html_e( 'Passing value', 'parish-formation' ); ?></strong></label></p>
 		<input id="pf-assessment-passing-value" name="pf_assessment_passing_value" type="number" min="0" step="0.01" value="<?php echo esc_attr( $passing_value ); ?>" class="widefat" />
+		<p class="description" id="pf-assessment-passing-limit" data-points="<?php echo esc_attr( $limits['points'] ); ?>" data-correct="<?php echo esc_attr( $limits['correct_count'] ); ?>">
+			<?php echo esc_html( sprintf( __( 'Currently available: %1$s total points and %2$d automatically graded questions.', 'parish-formation' ), $limits['points'], $limits['correct_count'] ) ); ?>
+		</p>
+		<?php if ( ( 'points' === $passing_rule && $passing_value > $limits['points'] ) || ( 'correct_count' === $passing_rule && $passing_value > $limits['correct_count'] ) || ( 'percentage' === $passing_rule && $passing_value > 100 ) ) : ?>
+			<p class="notice notice-error inline"><strong><?php esc_html_e( 'The passing value is higher than the amount currently available. Learners cannot pass until this is corrected.', 'parish-formation' ); ?></strong></p>
+		<?php endif; ?>
 
 		<p><label for="pf-assessment-max-attempts"><strong><?php esc_html_e( 'Maximum attempts', 'parish-formation' ); ?></strong></label></p>
 		<input id="pf-assessment-max-attempts" name="pf_assessment_max_attempts" type="number" min="1" step="1" value="<?php echo esc_attr( $max_attempts ); ?>" class="widefat" />
@@ -268,5 +275,19 @@ final class Parish_Formation_Assessment_Settings {
 
 	private static function valid_passing_rule( $value ) {
 		return in_array( $value, array( 'percentage', 'correct_count', 'points' ), true );
+	}
+
+	/** Calculate current automatic grading limits for administrator guidance. */
+	private static function get_available_limits( $assessment_id ) {
+		$points = 0;
+		$count  = 0;
+		foreach ( Parish_Formation_Assessment_Repository::get_questions( $assessment_id ) as $question ) {
+			$config = Parish_Formation_Question_Config::get( $question->ID );
+			if ( $config['graded'] && ! $config['manual_review'] ) {
+				$points += (float) $config['points'];
+				++$count;
+			}
+		}
+		return array( 'points' => $points, 'correct_count' => $count );
 	}
 }

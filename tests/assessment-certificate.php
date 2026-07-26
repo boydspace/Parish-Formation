@@ -89,7 +89,7 @@ try {
 	$assert( is_wp_error( $missing ) && 'required_answer' === $missing->get_error_code(), 'Required unanswered question was accepted.' );
 	$failed = Parish_Formation_Assessment_Repository::submit( $enrollment, $graded_id, array( $q1 => '2', $q2 => '2' ) );
 	$assert( ! is_wp_error( $failed ) && 'failed' === $failed->status && 0 === (int) $failed->correct_count && 1 === (int) $failed->attempt_number, 'Incorrect percentage attempt was not failed.' );
-	$passed = Parish_Formation_Assessment_Repository::submit( $enrollment, $graded_id, array( $q1 => '1', $q2 => '2' ) );
+	$passed = Parish_Formation_Assessment_Repository::submit( $enrollment, $graded_id, array( $q1 => 'choice-1', $q2 => '2' ) );
 	$assert( ! is_wp_error( $passed ) && 'passed' === $passed->status && 1 === (int) $passed->correct_count && 2 === (int) $passed->attempt_number, '50 percent attempt did not pass.' );
 	$closed = Parish_Formation_Assessment_Repository::submit( $enrollment, $graded_id, array( $q1 => '1', $q2 => '1' ) );
 	$assert( is_wp_error( $closed ) && 'attempt_closed' === $closed->get_error_code(), 'Passed assessment accepted another attempt.' );
@@ -102,6 +102,31 @@ try {
 	$assert( ! is_wp_error( $limited_fail ) && 'failed' === $limited_fail->status, 'Incorrect correct-count assessment did not fail.' );
 	$limit = Parish_Formation_Assessment_Repository::submit( $enrollment, $limited_id, array( $lq => 'true' ) );
 	$assert( is_wp_error( $limit ) && 'attempt_limit' === $limit->get_error_code(), 'Single-attempt limit was not enforced.' );
+
+	$phase_two_id = $create_assessment( 'Structured response assessment', 'points', 5, 1, 'no_gate' );
+	$multi_q = $create_question( $phase_two_id, 'Select both correct choices', 'multiple_select', null, 4, 1 );
+	$multi_config = Parish_Formation_Question_Config::get( $multi_q );
+	$multi_config['choices'] = array(
+		array( 'id' => 'choice-a', 'label' => 'Choice A', 'correct' => true, 'order' => 1 ),
+		array( 'id' => 'choice-b', 'label' => 'Choice B', 'correct' => true, 'order' => 2 ),
+		array( 'id' => 'choice-c', 'label' => 'Choice C', 'correct' => false, 'order' => 3 ),
+	);
+	$multi_config['type_config'] = array( 'grading_mode' => 'partial' );
+	update_post_meta( $multi_q, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $multi_config, 'multiple_select' ) );
+	$short_q = $create_question( $phase_two_id, 'Enter the accepted response', 'short_answer', null, 3, 2 );
+	$short_config = Parish_Formation_Question_Config::get( $short_q );
+	$short_config['type_config'] = array( 'accepted_answers' => array( 'Accepted' ), 'case_sensitive' => false, 'trim_spaces' => true, 'normalize_spaces' => false, 'ignore_punctuation' => false, 'match_mode' => 'exact' );
+	update_post_meta( $short_q, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $short_config, 'short_answer' ) );
+	$structured = Parish_Formation_Assessment_Repository::submit( $enrollment, $phase_two_id, array( $multi_q => array( 'choice-a' ), $short_q => '  ACCEPTED  ' ) );
+	$assert( ! is_wp_error( $structured ) && 'passed' === $structured->status && 5.0 === (float) $structured->score_points && 7.0 === (float) $structured->max_points, 'Structured Multiple Select and Short Answer submission was not graded correctly: ' . ( is_wp_error( $structured ) ? $structured->get_error_message() : sprintf( 'status=%s score=%s max=%s', $structured->status, $structured->score_points, $structured->max_points ) ) );
+	$structured_answers = Parish_Formation_Assessment_Repository::get_attempt_answers( $structured->id );
+	$assert( 2 === count( $structured_answers ) && array( 'choice-a' ) === json_decode( $structured_answers[0]->answer, true ) && '  ACCEPTED  ' === $structured_answers[1]->answer, 'Structured or original learner responses were not stored correctly.' );
+	$structured_snapshot = json_decode( $structured_answers[0]->question_snapshot, true );
+	$assert( 'multiple_select' === $structured_snapshot['type'] && 'choice-a' === $structured_snapshot['choices'][0]['id'], 'Structured question snapshot lost stable choice IDs.' );
+	$impossible_id = $create_assessment( 'Impossible threshold assessment', 'points', 2, 2, 'no_gate' );
+	$impossible_q = $create_question( $impossible_id, 'One point cannot satisfy two', 'true_false', 'true', 1, 1 );
+	$impossible = Parish_Formation_Assessment_Repository::submit( $enrollment, $impossible_id, array( $impossible_q => 'true' ) );
+	$assert( is_wp_error( $impossible ) && 'invalid_passing_configuration' === $impossible->get_error_code() && null === Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment->id, $impossible_id ), 'Impossible passing threshold consumed an attempt instead of returning a configuration error.' );
 
 	$review_id = $create_assessment( 'Manual assessment', 'points', 1, 1, 'submit_to_continue' );
 	$rq = $create_question( $review_id, 'Reflection question', 'reflection', null, 3 );

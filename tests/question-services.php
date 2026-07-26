@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && ! Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && ! Parish_Formation_Question_Type_Registry::implemented( 'matching' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -41,6 +41,15 @@ try {
 	$assert( $correct['valid'] && $correct['is_correct'] && 2.0 === $correct['earned_points'], 'Multiple-choice correct-answer grading failed.' );
 	$assert( $wrong['valid'] && false === $wrong['is_correct'] && 0.0 === (float) $wrong['earned_points'], 'Multiple-choice incorrect-answer grading failed.' );
 	$assert( ! $missing['valid'] && 'required_answer' === $missing['error_code'], 'Required response validation failed.' );
+	$phase_one_config = $config;
+	$phase_one_config['choices'] = array(
+		array( 'id' => 'choice-1', 'label' => 'Correct', 'order' => 1 ),
+		array( 'id' => 'choice-2', 'label' => 'Incorrect', 'order' => 2 ),
+	);
+	$phase_one_config['correct_answer'] = '1';
+	update_post_meta( $choice->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $phase_one_config, 'multiple_choice' ) );
+	$stable_legacy = Parish_Formation_Question_Grading_Service::grade( $choice, 'choice-1' );
+	$assert( $stable_legacy['is_correct'] && 2.0 === (float) $stable_legacy['earned_points'], 'Stable choice ID did not match a legacy numeric correct answer.' );
 
 	$reflection = $create_question( 'reflection', 'Describe one practical application.', '', array(), 3 );
 	$reflection_config = Parish_Formation_Question_Config::get( $reflection->ID );
@@ -65,6 +74,47 @@ try {
 	$assert( 1 === substr_count( $ack_html, 'type="checkbox"' ) && false === strpos( $ack_html, 'textarea' ), 'Acknowledgment did not render exactly one checkbox.' );
 	$reflection_html = Parish_Formation_Question_Renderer::render( $reflection, 'pf_answers[' . $reflection->ID . ']', false );
 	$assert( 1 === substr_count( $reflection_html, '<textarea' ) && false === strpos( $reflection_html, 'type="checkbox"' ), 'Reflection did not render exactly one text response.' );
+
+	$multiple_select = $create_question( 'multiple_select', 'Select the two sacraments.', '', array(), 6 );
+	$multi_base = Parish_Formation_Question_Config::get( $multiple_select->ID );
+	$multi_base['choices'] = array(
+		array( 'id' => 'baptism', 'label' => 'Baptism', 'correct' => true, 'order' => 1 ),
+		array( 'id' => 'confirmation', 'label' => 'Confirmation', 'correct' => true, 'order' => 2 ),
+		array( 'id' => 'picnic', 'label' => 'Parish picnic', 'correct' => false, 'order' => 3 ),
+	);
+	$multi_base['type_config'] = array( 'grading_mode' => 'all_or_nothing' );
+	update_post_meta( $multiple_select->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $multi_base, 'multiple_select' ) );
+	$multi_full = Parish_Formation_Question_Grading_Service::grade( $multiple_select, array( 'confirmation', 'baptism' ) );
+	$multi_wrong = Parish_Formation_Question_Grading_Service::grade( $multiple_select, array( 'baptism', 'picnic' ) );
+	$assert( $multi_full['is_correct'] && 6.0 === (float) $multi_full['earned_points'], 'Multiple Select all-or-nothing correct grading failed.' );
+	$assert( false === $multi_wrong['is_correct'] && 0.0 === (float) $multi_wrong['earned_points'], 'Multiple Select all-or-nothing incorrect grading failed.' );
+	$multi_base['type_config']['grading_mode'] = 'partial';
+	update_post_meta( $multiple_select->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $multi_base, 'multiple_select' ) );
+	$multi_partial = Parish_Formation_Question_Grading_Service::grade( $multiple_select, array( 'baptism' ) );
+	$assert( 3.0 === (float) $multi_partial['earned_points'], 'Multiple Select partial-credit grading failed.' );
+	$multi_base['type_config']['grading_mode'] = 'partial_penalty';
+	update_post_meta( $multiple_select->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $multi_base, 'multiple_select' ) );
+	$multi_penalty = Parish_Formation_Question_Grading_Service::grade( $multiple_select, array( 'baptism', 'picnic' ) );
+	$assert( 0.0 === (float) $multi_penalty['earned_points'], 'Multiple Select penalty grading did not clamp the score at zero.' );
+	$multi_invalid = Parish_Formation_Question_Grading_Service::grade( $multiple_select, array( 'forged-choice' ) );
+	$assert( ! $multi_invalid['valid'] && 'invalid_answer' === $multi_invalid['error_code'], 'Multiple Select accepted an unknown choice ID.' );
+	$multi_html = Parish_Formation_Question_Renderer::render( $multiple_select, 'pf_answers[' . $multiple_select->ID . ']', false );
+	$assert( 3 === substr_count( $multi_html, 'type="checkbox"' ) && false !== strpos( $multi_html, 'Select all that apply.' ) && false !== strpos( $multi_html, 'value="baptism"' ), 'Multiple Select learner controls are incomplete.' );
+
+	$short = $create_question( 'short_answer', 'Name the gateway sacrament.', '', array(), 4 );
+	$short_config = Parish_Formation_Question_Config::get( $short->ID );
+	$short_config['type_config'] = array( 'accepted_answers' => array( 'Baptism', 'Holy Baptism' ), 'case_sensitive' => false, 'trim_spaces' => true, 'normalize_spaces' => true, 'ignore_punctuation' => true, 'match_mode' => 'exact' );
+	update_post_meta( $short->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $short_config, 'short_answer' ) );
+	$short_correct = Parish_Formation_Question_Grading_Service::grade( $short, '  BAPTISM!!!  ' );
+	$short_wrong = Parish_Formation_Question_Grading_Service::grade( $short, 'Confirmation' );
+	$assert( $short_correct['is_correct'] && 4.0 === (float) $short_correct['earned_points'] && '  BAPTISM!!!  ' === $short_correct['stored_response'], 'Short Answer normalization or original-response preservation failed.' );
+	$assert( false === $short_wrong['is_correct'] && 0.0 === (float) $short_wrong['earned_points'], 'Short Answer incorrect grading failed.' );
+	$short_config['type_config']['match_mode'] = 'contains';
+	update_post_meta( $short->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $short_config, 'short_answer' ) );
+	$short_contains = Parish_Formation_Question_Grading_Service::grade( $short, 'The answer is Baptism.' );
+	$assert( $short_contains['is_correct'], 'Short Answer contains matching failed.' );
+	$short_html = Parish_Formation_Question_Renderer::render( $short, 'pf_answers[' . $short->ID . ']', false );
+	$assert( 1 === substr_count( $short_html, 'type="text"' ) && false === strpos( $short_html, 'Baptism' ), 'Short Answer renderer is missing or exposes accepted answers.' );
 } catch ( Throwable $error ) {
 	$failures[] = 'Test setup failed: ' . $error->getMessage();
 } finally {

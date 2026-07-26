@@ -8,9 +8,9 @@ final class Parish_Formation_Question_Type_Registry {
 	public static function all() {
 		return array(
 			'multiple_choice' => self::type( 'multiple_choice', __( 'Multiple Choice', 'parish-formation' ), 'automatic', true, true, false ),
-			'multiple_select' => self::type( 'multiple_select', __( 'Multiple Select', 'parish-formation' ), 'automatic', false, true, false ),
+			'multiple_select' => self::type( 'multiple_select', __( 'Multiple Select', 'parish-formation' ), 'automatic', true, true, false ),
 			'true_false'      => self::type( 'true_false', __( 'True/False', 'parish-formation' ), 'automatic', true, true, false ),
-			'short_answer'    => self::type( 'short_answer', __( 'Short Answer', 'parish-formation' ), 'automatic', false, true, true ),
+			'short_answer'    => self::type( 'short_answer', __( 'Short Answer', 'parish-formation' ), 'automatic', true, true, false ),
 			'fill_blank'      => self::type( 'fill_blank', __( 'Fill in the Blank', 'parish-formation' ), 'automatic', false, true, false ),
 			'matching'        => self::type( 'matching', __( 'Matching', 'parish-formation' ), 'automatic', false, true, false ),
 			'ordering'        => self::type( 'ordering', __( 'Ordering', 'parish-formation' ), 'automatic', false, true, false ),

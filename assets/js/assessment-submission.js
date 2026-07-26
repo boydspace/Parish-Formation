@@ -8,6 +8,29 @@
 		return node;
 	}
 
+	function collectAnswers( form ) {
+		const answers = {};
+		form.querySelectorAll( '[name^="pf_answers["]' ).forEach( function ( input ) {
+			if ( ( input.type === 'radio' || input.type === 'checkbox' ) && ! input.checked ) {
+				return;
+			}
+			const match = input.name.match( /pf_answers\[(\d+)\]/ );
+			if ( ! match ) {
+				return;
+			}
+			const questionId = match[ 1 ];
+			if ( input.name.endsWith( '[]' ) ) {
+				if ( ! Array.isArray( answers[ questionId ] ) ) {
+					answers[ questionId ] = [];
+				}
+				answers[ questionId ].push( input.value );
+			} else {
+				answers[ questionId ] = input.value;
+			}
+		} );
+		return answers;
+	}
+
 	document.addEventListener( 'submit', function ( event ) {
 		const form = event.target.closest( '.pf-assessment-questions' );
 		if ( ! form || ! window.fetch || ! window.pfAssessmentSubmission ) {
@@ -16,16 +39,7 @@
 		event.preventDefault();
 		const button = form.querySelector( 'button[type="submit"]' );
 		const resultBox = form.previousElementSibling;
-		const answers = {};
-		form.querySelectorAll( '[name^="pf_answers["]' ).forEach( function ( input ) {
-			if ( ( input.type === 'radio' || input.type === 'checkbox' ) && ! input.checked ) {
-				return;
-			}
-			const match = input.name.match( /pf_answers\[(\d+)\]/ );
-			if ( match ) {
-				answers[ match[ 1 ] ] = input.value;
-			}
-		} );
+		const answers = collectAnswers( form );
 
 		button.disabled = true;
 		const originalLabel = button.textContent;

@@ -113,6 +113,20 @@ final class Parish_Formation_Assessment_Repository {
 			$rule  = 'submission';
 			$value = 1;
 		}
+		if ( ! $acknowledgement_mode ) {
+			$available = 'correct_count' === $rule ? $total_graded : ( 'points' === $rule ? $maximum : 100 );
+			if ( $value > $available ) {
+				return new WP_Error(
+					'invalid_passing_configuration',
+					sprintf(
+						__( 'This assessment requires %1$s %2$s to pass, but only %3$s are available. Please ask a course administrator to correct the passing value.', 'parish-formation' ),
+						$value,
+						'correct_count' === $rule ? __( 'correct answers', 'parish-formation' ) : ( 'points' === $rule ? __( 'points', 'parish-formation' ) : __( 'percent', 'parish-formation' ) ),
+						$available
+					)
+				);
+			}
+		}
 		$metric = 'correct_count' === $rule ? $correct_count : ( 'points' === $rule ? $score : ( $maximum > 0 ? ( $score / $maximum ) * 100 : 100 ) );
 		$passed = ! $needs_review && ( $acknowledgement_mode || $metric >= $value );
 		$status = $needs_review ? 'pending_review' : ( $passed ? 'passed' : 'failed' );

@@ -53,7 +53,7 @@ final class Parish_Formation_Question_Config {
 			'presentation' => in_array( $presentation, array( 'standard', 'scenario' ), true ) ? $presentation : 'standard',
 			'scenario' => self::sanitize_nested( $config['scenario'] ?? array() ), 'choices' => self::sanitize_choices( $config['choices'] ?? array() ),
 			'correct_answer' => sanitize_text_field( $config['correct_answer'] ?? '' ),
-			'type_config' => self::sanitize_nested( $config['type_config'] ?? array() ),
+			'type_config' => self::sanitize_type_config( $config['type_config'] ?? array(), $type ),
 		);
 	}
 
@@ -75,5 +75,29 @@ final class Parish_Formation_Question_Config {
 			$safe[ $key ] = is_array( $value ) ? self::sanitize_nested( $value ) : sanitize_text_field( (string) $value );
 		}
 		return $safe;
+	}
+
+	/** Sanitize the fields owned by a specific question type. */
+	private static function sanitize_type_config( $values, $type ) {
+		$values = is_array( $values ) ? $values : array();
+		if ( 'multiple_select' === $type ) {
+			$mode = sanitize_key( $values['grading_mode'] ?? 'all_or_nothing' );
+			return array(
+				'grading_mode' => in_array( $mode, array( 'all_or_nothing', 'partial', 'partial_penalty' ), true ) ? $mode : 'all_or_nothing',
+			);
+		}
+		if ( 'short_answer' === $type ) {
+			$answers = array_values( array_filter( array_map( 'sanitize_text_field', is_array( $values['accepted_answers'] ?? null ) ? $values['accepted_answers'] : array() ), static fn( $answer ) => '' !== $answer ) );
+			$mode = sanitize_key( $values['match_mode'] ?? 'exact' );
+			return array(
+				'accepted_answers' => $answers,
+				'case_sensitive' => ! empty( $values['case_sensitive'] ),
+				'trim_spaces' => ! array_key_exists( 'trim_spaces', $values ) || ! empty( $values['trim_spaces'] ),
+				'normalize_spaces' => ! empty( $values['normalize_spaces'] ),
+				'ignore_punctuation' => ! empty( $values['ignore_punctuation'] ),
+				'match_mode' => in_array( $mode, array( 'exact', 'contains' ), true ) ? $mode : 'exact',
+			);
+		}
+		return self::sanitize_nested( $values );
 	}
 }

@@ -20,16 +20,62 @@ final class Parish_Formation_Question_Grading_Service {
 		if ( 'multiple_choice' === $type || 'true_false' === $type ) {
 			$answer  = sanitize_text_field( (string) $response );
 			$correct = strtolower( sanitize_text_field( $config['correct_answer'] ) );
-			if ( 'multiple_choice' === $type && ! ctype_digit( $correct ) && ! str_starts_with( $correct, 'legacy-choice-' ) ) {
-				foreach ( $config['choices'] as $index => $choice ) {
-					if ( strtolower( $choice['label'] ) === $correct ) { $correct = (string) ( $index + 1 ); break; }
-				}
+			if ( 'multiple_choice' === $type ) {
+				$answer  = self::resolve_choice_id( $answer, $config['choices'] );
+				$correct = self::resolve_choice_id( $correct, $config['choices'] );
 			}
-			$normalized_answer = str_starts_with( $answer, 'legacy-choice-' ) ? substr( $answer, 14 ) : $answer;
-			$normalized_correct = str_starts_with( $correct, 'legacy-choice-' ) ? substr( $correct, 14 ) : $correct;
-			$is_correct = strtolower( $normalized_answer ) === strtolower( $normalized_correct );
+			$is_correct = '' !== $answer && strtolower( $answer ) === strtolower( $correct );
 			$points = $config['graded'] && $is_correct ? $config['points'] : 0;
 			return self::result( true, '', $original, $points, $config['graded'] ? $config['points'] : 0, true, $is_correct, false, $config );
+		}
+
+		if ( 'multiple_select' === $type ) {
+			$available = array_column( $config['choices'], 'id' );
+			$correct   = array_values( array_column( array_filter( $config['choices'], static fn( $choice ) => ! empty( $choice['correct'] ) ), 'id' ) );
+			$selected  = array_values( array_unique( array_map( 'sanitize_key', is_array( $response ) ? $response : array( $response ) ) ) );
+			if ( count( $available ) < 2 || empty( $correct ) ) {
+				return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This Multiple Select question is not configured correctly.', 'parish-formation' ) );
+			}
+			if ( array_diff( $selected, $available ) ) {
+				return self::result( false, 'invalid_answer', $original, 0, $config['points'], false, null, false, $config, __( 'The selected answer is not available.', 'parish-formation' ) );
+			}
+			$correct_selected   = count( array_intersect( $selected, $correct ) );
+			$incorrect_selected = count( array_diff( $selected, $correct ) );
+			$is_correct         = 0 === $incorrect_selected && count( $correct ) === $correct_selected;
+			$fraction           = $is_correct ? 1 : 0;
+			$mode               = $config['type_config']['grading_mode'] ?? 'all_or_nothing';
+			if ( 'partial' === $mode || 'partial_penalty' === $mode ) {
+				$fraction = $correct_selected / count( $correct );
+				if ( 'partial_penalty' === $mode && $incorrect_selected ) {
+					$incorrect_total = max( 1, count( $available ) - count( $correct ) );
+					$fraction -= $incorrect_selected / $incorrect_total;
+				}
+			}
+			$points = $config['graded'] ? max( 0, $fraction ) * $config['points'] : 0;
+			return self::result( true, '', $selected, $points, $config['graded'] ? $config['points'] : 0, true, $is_correct, false, $config );
+		}
+
+		if ( 'short_answer' === $type ) {
+			$answer   = (string) $response;
+			$accepted = $config['type_config']['accepted_answers'] ?? array();
+			if ( $config['graded'] && empty( $accepted ) ) {
+				return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This Short Answer question has no accepted answers.', 'parish-formation' ) );
+			}
+			$is_correct = null;
+			if ( $config['graded'] ) {
+				$normalized = self::normalize_short_answer( $answer, $config['type_config'] );
+				$is_correct = false;
+				foreach ( $accepted as $accepted_answer ) {
+					$expected = self::normalize_short_answer( $accepted_answer, $config['type_config'] );
+					if ( 'contains' === ( $config['type_config']['match_mode'] ?? 'exact' ) ? str_contains( $normalized, $expected ) : $normalized === $expected ) {
+						$is_correct = true;
+						break;
+					}
+				}
+			}
+			$requires_review = ! empty( $config['manual_review'] );
+			$points = $config['graded'] && true === $is_correct ? $config['points'] : 0;
+			return self::result( true, '', $original, $points, $config['graded'] ? $config['points'] : 0, true, $is_correct, $requires_review, $config );
 		}
 
 		if ( 'acknowledgement' === $type ) {
@@ -65,5 +111,35 @@ final class Parish_Formation_Question_Grading_Service {
 	private static function is_empty( $response ) {
 		if ( is_array( $response ) ) { return empty( array_filter( $response, static fn( $value ) => '' !== trim( (string) $value ) ) ); }
 		return '' === trim( (string) $response );
+	}
+
+	private static function normalize_short_answer( $answer, $settings ) {
+		$answer = (string) $answer;
+		if ( ! empty( $settings['trim_spaces'] ) ) { $answer = trim( $answer ); }
+		if ( ! empty( $settings['normalize_spaces'] ) ) { $answer = preg_replace( '/\s+/u', ' ', $answer ); }
+		if ( ! empty( $settings['ignore_punctuation'] ) ) { $answer = preg_replace( '/[^\p{L}\p{N}\s]/u', '', $answer ); }
+		if ( empty( $settings['case_sensitive'] ) ) { $answer = function_exists( 'mb_strtolower' ) ? mb_strtolower( $answer, 'UTF-8' ) : strtolower( $answer ); }
+		return $answer;
+	}
+
+	/** Resolve legacy positions/text and current stable IDs to one choice ID. */
+	private static function resolve_choice_id( $reference, $choices ) {
+		$reference = sanitize_text_field( (string) $reference );
+		if ( '' === $reference ) { return ''; }
+		$position = null;
+		if ( ctype_digit( $reference ) ) {
+			$position = (int) $reference;
+		} elseif ( preg_match( '/^(?:legacy-)?choice-(\d+)$/', $reference, $matches ) ) {
+			$position = (int) $matches[1];
+		}
+		if ( null !== $position && isset( $choices[ $position - 1 ] ) ) {
+			return $choices[ $position - 1 ]['id'];
+		}
+		foreach ( $choices as $choice ) {
+			if ( strtolower( $choice['id'] ) === strtolower( $reference ) || strtolower( $choice['label'] ) === strtolower( $reference ) ) {
+				return $choice['id'];
+			}
+		}
+		return $reference;
 	}
 }

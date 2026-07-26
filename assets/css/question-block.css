@@ -27,3 +27,19 @@
 	font-size: 12px;
 	text-transform: capitalize;
 }
+
+.pf-question-choice-row {
+	border: 1px solid #dcdcde;
+	margin: 12px 0;
+	padding: 12px;
+}
+
+.pf-question-choice-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.pf-question-choices > .components-button {
+	margin-top: 8px;
+}
