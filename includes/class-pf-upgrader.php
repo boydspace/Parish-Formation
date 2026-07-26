@@ -74,8 +74,14 @@ final class Parish_Formation_Upgrader {
 		if ( version_compare( $installed_version, '0.9.4', '<' ) ) {
 			self::install_invitations_table();
 		}
+		if ( version_compare( $installed_version, '1.0.0', '<' ) ) {
+			self::install_participant_notes_tables();
+		}
+		if ( version_compare( $installed_version, '1.0.1', '<' ) ) {
+			self::install_notification_log_table();
+		}
 
-		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() || ! self::invitations_table_exists() ) {
+		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() || ! self::invitations_table_exists() || ! self::participant_notes_tables_exist() ) {
 			return;
 		}
 
@@ -84,6 +90,41 @@ final class Parish_Formation_Upgrader {
 			PARISH_FORMATION_DB_VERSION,
 			false
 		);
+	}
+
+	/** Create private participant notes and their immutable audit events. */
+	private static function install_participant_notes_tables() {
+		global $wpdb;
+		$charset_collate = $wpdb->get_charset_collate();
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		$notes  = $wpdb->prefix . 'pf_participant_notes';
+		$events = $wpdb->prefix . 'pf_participant_note_events';
+		dbDelta( "CREATE TABLE {$notes} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			participant_user_id bigint(20) unsigned NOT NULL,
+			note_body longtext NOT NULL,
+			created_by bigint(20) unsigned NOT NULL,
+			created_at datetime NOT NULL,
+			updated_by bigint(20) unsigned NOT NULL,
+			updated_at datetime NOT NULL,
+			deleted_by bigint(20) unsigned DEFAULT NULL,
+			deleted_at datetime DEFAULT NULL,
+			PRIMARY KEY  (id),
+			KEY participant_active (participant_user_id, deleted_at),
+			KEY updated_at (updated_at)
+		) {$charset_collate};" );
+		dbDelta( "CREATE TABLE {$events} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			note_id bigint(20) unsigned NOT NULL,
+			participant_user_id bigint(20) unsigned NOT NULL,
+			event_type varchar(20) NOT NULL,
+			note_body longtext NOT NULL,
+			actor_user_id bigint(20) unsigned NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY participant_created (participant_user_id, created_at),
+			KEY note_created (note_id, created_at)
+		) {$charset_collate};" );
 	}
 
 	/** Create or update secure course invitation records. */
@@ -132,9 +173,12 @@ final class Parish_Formation_Upgrader {
 			error_message longtext DEFAULT NULL,
 			sent_at datetime DEFAULT NULL,
 			created_at datetime NOT NULL,
+			initiated_by bigint(20) unsigned NOT NULL DEFAULT 0,
+			participant_user_id bigint(20) unsigned NOT NULL DEFAULT 0,
 			PRIMARY KEY  (id),
 			UNIQUE KEY notification_recipient_context (notification_type, recipient(120), context_key),
-			KEY status_created (status, created_at)
+			KEY status_created (status, created_at),
+			KEY participant_type_created (participant_user_id, notification_type, created_at)
 		) {$charset_collate};" );
 	}
 
@@ -411,5 +455,16 @@ final class Parish_Formation_Upgrader {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'pf_invitations';
 		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
+	}
+
+	/** Determine whether both participant-note tables exist. */
+	private static function participant_notes_tables_exist() {
+		global $wpdb;
+		foreach ( array( $wpdb->prefix . 'pf_participant_notes', $wpdb->prefix . 'pf_participant_note_events' ) as $table_name ) {
+			if ( $table_name !== $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

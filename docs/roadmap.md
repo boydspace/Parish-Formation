@@ -95,9 +95,9 @@ medical information.
 
 ### 1.1.0 — Staff communication and notes
 
-- Private, access-controlled staff notes.
-- Manual participant reminders using notification templates.
-- Note and reminder audit history.
+- Private, access-controlled staff notes with immutable edit/removal history. **Implemented**
+- Manual participant reminders using notification templates. **Implemented**
+- Note and reminder audit history. **Implemented**
 
 ### 1.2.0 — Acknowledgements and responses
 

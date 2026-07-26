@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'PARISH_FORMATION_VERSION', '1.0.1' );
-define( 'PARISH_FORMATION_DB_VERSION', '0.9.4' );
+define( 'PARISH_FORMATION_DB_VERSION', '1.0.1' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -29,6 +29,7 @@ if ( file_exists( PARISH_FORMATION_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-upgrader.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-capabilities.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-account-service.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-participant-note-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-block.php';
@@ -249,6 +250,11 @@ add_action(
 	'admin_post_pf_send_participant_password_reset',
 	array( 'Parish_Formation_Participants_Admin', 'handle_password_reset' )
 );
+
+add_action( 'admin_post_pf_add_participant_note', array( 'Parish_Formation_Participants_Admin', 'handle_add_note' ) );
+add_action( 'admin_post_pf_update_participant_note', array( 'Parish_Formation_Participants_Admin', 'handle_update_note' ) );
+add_action( 'admin_post_pf_delete_participant_note', array( 'Parish_Formation_Participants_Admin', 'handle_delete_note' ) );
+add_action( 'admin_post_pf_send_participant_reminder', array( 'Parish_Formation_Participants_Admin', 'handle_send_reminder' ) );
 
 add_action(
 	'admin_post_nopriv_pf_account_login',

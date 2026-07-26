@@ -29,6 +29,7 @@ final class Parish_Formation_Notifications {
 			'certificate_revoked' => array( 'participant', __( 'Certificate revoked', 'parish-formation' ) ),
 			'course_reset' => array( 'participant', __( 'Course reset or new run started', 'parish-formation' ) ),
 			'unenrolled' => array( 'participant', __( 'Unenrollment notice', 'parish-formation' ) ),
+			'manual_participant_reminder' => array( 'participant', __( 'Manual participant reminder', 'parish-formation' ) ),
 			'staff_assessment_pending' => array( 'staff', __( 'Staff: assessment awaiting review', 'parish-formation' ) ),
 			'staff_course_completed' => array( 'staff', __( 'Staff: participant completed a course', 'parish-formation' ) ),
 		);
@@ -54,6 +55,7 @@ final class Parish_Formation_Notifications {
 			'certificate_revoked' => array( __( 'Certificate revoked for {course_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nYour certificate for <strong>{course_name}</strong> has been revoked for the following reason:\n\n{revocation_reason}\n\nPlease contact the parish if you have questions.', 'parish-formation' ) ),
 			'course_reset' => array( __( 'A new course run has started for {course_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nYour progress in <strong>{course_name}</strong> has been reset and course run {course_run} is ready.\n\n<a href="{formation_url}">Begin the Course</a>', 'parish-formation' ) ),
 			'unenrolled' => array( __( 'You were unenrolled from {course_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nYou have been unenrolled from <strong>{course_name}</strong>. Please contact the parish if you believe this was unexpected.', 'parish-formation' ) ),
+			'manual_participant_reminder' => array( __( 'Reminder about {course_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nThis is a reminder about <strong>{course_name}</strong>.\n\n{reminder_message}\n\n<a href="{formation_url}">Continue My Formation</a>', 'parish-formation' ) ),
 			'staff_assessment_pending' => array( __( 'Assessment awaiting review: {participant_name}', 'parish-formation' ), __( '<strong>{participant_name}</strong> submitted {assessment_name} for {course_name}.\n\n<a href="{review_url}">Review Assessment</a>', 'parish-formation' ) ),
 			'staff_course_completed' => array( __( '{participant_name} completed {course_name}', 'parish-formation' ), __( '<strong>{participant_name}</strong> completed {course_name} on {completion_date}.\n\n<a href="{report_url}">View Course Report</a>', 'parish-formation' ) ),
 		);
@@ -72,6 +74,7 @@ final class Parish_Formation_Notifications {
 			'assessment_pending_review' => array( 'assessment_name' ), 'assessment_reviewed' => array( 'assessment_name', 'assessment_result', 'score', 'review_note' ),
 			'certificate_issued' => array( 'certificate_code', 'certificate_url', 'certificate_pdf_url' ), 'certificate_reissued' => array( 'certificate_code', 'certificate_url', 'certificate_pdf_url' ),
 			'certificate_revoked' => array( 'revocation_reason' ), 'course_reset' => array( 'course_run' ),
+			'manual_participant_reminder' => array( 'reminder_message' ),
 			'staff_assessment_pending' => array( 'assessment_name', 'review_url' ), 'staff_course_completed' => array( 'completion_date', 'report_url' ),
 		);
 		return array_unique( array_merge( $common, isset( $specific[ $type ] ) ? $specific[ $type ] : array() ) );
@@ -112,6 +115,7 @@ final class Parish_Formation_Notifications {
 			'review_url' => admin_url( 'admin.php?page=parish-formation-assessment-reviews' ), 'report_url' => admin_url( 'admin.php?page=parish-formation-course-reports' ),
 			'invitation_url' => home_url( '/available-courses/?pf_invitation=sample-token' ),
 			'magic_login_url' => home_url( '/?sample-magic-login=1' ), 'login_code' => '123456',
+			'reminder_message' => __( 'Please continue your course when you are able. Contact the parish office if you need assistance.', 'parish-formation' ),
 		);
 	}
 
@@ -180,7 +184,7 @@ final class Parish_Formation_Notifications {
 	}
 
 	/** Send one HTML notification and write its delivery outcome. */
-	public static function send( $type, $recipient, $subject, $heading, $message, $context_key, $force = false ) {
+	public static function send( $type, $recipient, $subject, $heading, $message, $context_key, $force = false, $initiated_by = 0, $participant_user_id = 0 ) {
 		global $wpdb;
 		$types     = self::types();
 		$settings  = self::settings();
@@ -207,10 +211,22 @@ final class Parish_Formation_Notifications {
 		$sent = wp_mail( $recipient, $subject, $body, $headers );
 		$wpdb->insert(
 			$table,
-			array( 'notification_type' => $type, 'recipient' => $recipient, 'subject' => $subject, 'message_body' => $sent ? null : $body, 'status' => $sent ? 'sent' : 'failed', 'context_key' => $context_key, 'error_message' => $sent ? null : __( 'WordPress could not hand the message to the configured mail service.', 'parish-formation' ), 'sent_at' => $sent ? current_time( 'mysql', true ) : null, 'created_at' => current_time( 'mysql', true ) ),
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+			array( 'notification_type' => $type, 'recipient' => $recipient, 'subject' => $subject, 'message_body' => $sent ? null : $body, 'status' => $sent ? 'sent' : 'failed', 'context_key' => $context_key, 'error_message' => $sent ? null : __( 'WordPress could not hand the message to the configured mail service.', 'parish-formation' ), 'sent_at' => $sent ? current_time( 'mysql', true ) : null, 'created_at' => current_time( 'mysql', true ), 'initiated_by' => absint( $initiated_by ), 'participant_user_id' => absint( $participant_user_id ) ),
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
 		);
 		return $sent;
+	}
+
+	/** Send a one-off, course-aware reminder initiated by a staff member. */
+	public static function send_manual_participant_reminder( $enrollment_id, $message, $actor_id ) {
+		$enrollment = Parish_Formation_Enrollment_Repository::get_details( absint( $enrollment_id ) );
+		$user       = $enrollment ? get_userdata( $enrollment->user_id ) : null;
+		if ( ! $enrollment || ! $user || ! in_array( $enrollment->status, array( 'enrolled', 'in_progress' ), true ) || ! self::is_enabled_for_course( 'manual_participant_reminder', $enrollment->course_id ) ) {
+			return false;
+		}
+		$content = self::resolve_template( 'manual_participant_reminder', array( 'participant_name' => $user->display_name, 'course_name' => get_the_title( $enrollment->course_id ), 'formation_url' => home_url( '/my-formation/' ), 'reminder_message' => $message ) );
+		$context = 'manual_' . absint( $enrollment->id ) . '_' . absint( $actor_id ) . '_' . gmdate( 'YmdHis' ) . '_' . wp_generate_password( 6, false, false );
+		return self::send( 'manual_participant_reminder', $user->user_email, $content[0], self::types()['manual_participant_reminder'][1], $content[1], $context, false, $actor_id, $user->ID );
 	}
 
 	/** Send one participant event using enrollment context and the saved template. */
