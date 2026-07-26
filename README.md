@@ -111,10 +111,12 @@ automatically, and network deactivation clears each site's scheduled events.
 
 ## Local verification
 
-Run `composer test` from the plugin directory to perform a read-only integration
-smoke test against the local WordPress installation. It checks plugin versions,
-custom tables, roles, post types, shortcodes, privacy hooks, multisite setup, and
-scheduled events.
+Run `composer test` from the plugin directory to perform the read-only integration
+smoke test and the isolated behavioral suite against the local WordPress
+installation. Together they check plugin versions, custom tables, roles, post
+types, shortcodes, privacy hooks, multisite setup, scheduled events, authorization,
+self-enrollment, sequential lesson progression, completion, and unenrollment.
+Behavioral fixtures are uniquely named and removed when the suite finishes.
 
 Run `composer build` to create a versioned, installable archive in `dist/`. The
 builder verifies version consistency and required production files, bundles the

@@ -8,7 +8,11 @@
         "dompdf/dompdf": "^3.1"
     },
     "scripts": {
-        "test": "@php tests/smoke.php",
+		"test": [
+			"@php tests/smoke.php",
+			"@php tests/behavior.php"
+		],
+		"test:behavior": "@php tests/behavior.php",
         "build": "@php tools/build-release.php"
     }
 }

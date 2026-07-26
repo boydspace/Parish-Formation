@@ -134,7 +134,7 @@ medical information.
 - Performance, upgrade, and release-package testing.
 - System status and scheduled-task diagnostics. **Implemented**
 - Automated repository, authorization, grading, progression, certificate, and
-  upgrade tests.
+  upgrade tests. **Authorization and lesson progression implemented**
 - Immutable enrollment-access and security event history.
 
 ## Versioning
