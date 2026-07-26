@@ -203,7 +203,7 @@ final class Parish_Formation_Course_Settings {
 			return;
 		}
 		?>
-		<p><?php esc_html_e( 'Drag lessons and assessments into the desired participant sequence. Changes save immediately.', 'parish-formation' ); ?></p>
+		<p><?php esc_html_e( 'Drag lessons and assessments into the desired participant sequence, or use the Move up and Move down buttons. Changes save immediately.', 'parish-formation' ); ?></p>
 		<ul id="pf-course-curriculum" class="pf-course-curriculum" data-course-id="<?php echo esc_attr( $post->ID ); ?>">
 			<?php foreach ( $items as $item ) : ?>
 				<li class="pf-curriculum-item" data-item-id="<?php echo esc_attr( $item['post']->ID ); ?>" data-item-type="<?php echo esc_attr( $item['type'] ); ?>">
@@ -211,10 +211,11 @@ final class Parish_Formation_Course_Settings {
 					<span class="pf-curriculum-type"><?php echo 'lesson' === $item['type'] ? esc_html__( 'Lesson', 'parish-formation' ) : esc_html__( 'Assessment', 'parish-formation' ); ?></span>
 					<a href="<?php echo esc_url( get_edit_post_link( $item['post']->ID ) ); ?>"><?php echo esc_html( $item['post']->post_title ); ?></a>
 					<span class="pf-curriculum-status"><?php echo esc_html( get_post_status_object( $item['post']->post_status )->label ); ?></span>
+					<span class="pf-curriculum-actions"><button type="button" class="button-link pf-curriculum-move-up" aria-label="<?php echo esc_attr( sprintf( __( 'Move %s up', 'parish-formation' ), $item['post']->post_title ) ); ?>"><span class="dashicons dashicons-arrow-up-alt2" aria-hidden="true"></span></button><button type="button" class="button-link pf-curriculum-move-down" aria-label="<?php echo esc_attr( sprintf( __( 'Move %s down', 'parish-formation' ), $item['post']->post_title ) ); ?>"><span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button></span>
 				</li>
 			<?php endforeach; ?>
 		</ul>
-		<p id="pf-curriculum-save-status" class="description" aria-live="polite"></p>
+		<p id="pf-curriculum-save-status" class="description" role="status" aria-live="polite" aria-atomic="true"></p>
 		<?php
 	}
 

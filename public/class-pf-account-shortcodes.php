@@ -39,7 +39,7 @@ final class Parish_Formation_Account_Shortcodes {
 		<?php if ( $settings['passwordless_login'] && 'passwordless-sent' === $notice && $passwordless_request ) : ?>
 		<form class="pf-account-form pf-account-code-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="pf_verify_passwordless_code"><input type="hidden" name="return_url" value="<?php echo esc_attr( self::current_url() ); ?>"><input type="hidden" name="passwordless_request" value="<?php echo esc_attr( $passwordless_request ); ?>"><?php wp_nonce_field( 'pf_verify_passwordless_code', 'pf_passwordless_code_nonce' ); ?><label><?php esc_html_e( 'One-time code', 'parish-formation' ); ?><input class="uk-input" name="login_code" type="text" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" autofocus></label><button class="uk-button uk-button-primary" type="submit"><?php esc_html_e( 'Log In With Code', 'parish-formation' ); ?></button></form>
 		<?php endif; ?>
-		<div class="pf-passwordless-response" aria-live="polite"></div>
+		<div class="pf-passwordless-response" role="status" aria-live="polite" aria-atomic="true"></div>
 		<?php if ( $settings['public_registration'] ) : ?><p><?php esc_html_e( 'Need an account?', 'parish-formation' ); ?> <a href="<?php echo esc_url( self::get_registration_url() ); ?>"><?php esc_html_e( 'Register here', 'parish-formation' ); ?></a></p><?php endif; ?></div>
 		<?php return ob_get_clean();
 	}

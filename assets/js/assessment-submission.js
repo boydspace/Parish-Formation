@@ -31,6 +31,7 @@
 		const originalLabel = button.textContent;
 		button.textContent = pfAssessmentSubmission.submitting;
 		resultBox.replaceChildren();
+		form.setAttribute( 'aria-busy', 'true' );
 
 		window.fetch( pfAssessmentSubmission.endpoint, {
 			method: 'POST',
@@ -62,6 +63,7 @@
 				addText( alert, 'p', 'Attempt ' + data.attempt + ' of ' + data.maxAttempts + '.' );
 			}
 			resultBox.appendChild( alert );
+			resultBox.focus();
 
 			document.querySelectorAll( '.uk-progress' ).forEach( function ( progress ) { progress.value = data.progress; } );
 			const progressText = document.querySelector( '.pf-progress-text' );
@@ -95,8 +97,11 @@
 			alert.className = 'uk-alert uk-alert-danger';
 			addText( alert, 'p', error.message || pfAssessmentSubmission.error );
 			resultBox.appendChild( alert );
+			resultBox.focus();
 			button.disabled = false;
 			button.textContent = originalLabel;
+		} ).finally( function () {
+			form.removeAttribute( 'aria-busy' );
 		} );
 	} );
 }() );

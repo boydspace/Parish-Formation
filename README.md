@@ -25,8 +25,10 @@ LMS features such as sales, subscriptions, commissions, or marketplaces.
 - Searchable participant administration with profile, enrollment, and account-security details
 - Responsive front-end My Formation experience with AJAX navigation
 - Automatic and staff-reviewed assessments with configurable passing rules
+- Non-graded acknowledgement and reflection assessments
 - Staff progress, assessment, course, and CSV reporting
-- Verifiable web and PDF completion certificates
+- Reusable certificate designs with private PDF-only signature assets
+- Verifiable, revocable, letter-size PDF completion certificates
 - Certificate revocation and replacement issuance
 - Editable branded participant and staff email notifications
 - WordPress new-user account email replacement
@@ -89,11 +91,27 @@ full sacramental records, or other sensitive pastoral case files.
 Successful email bodies are not retained. Failed bodies are retained only while
 needed for an administrator-initiated retry.
 
+Parish Formation integrates with WordPress **Export Personal Data** and **Erase
+Personal Data** tools. Approved erasure requests remove participant responses,
+private-note content, contact metadata, notification details, and certificate
+identity. Enrollment, progress, scoring, and audit records are retained only in
+an anonymized form for operational reporting; affected certificates are revoked.
+
+Administrators can configure retention periods for successful email metadata,
+failed email records, and inactive course invitations under **Parish Formation
+→ Settings → Privacy & Retention**. A daily WordPress scheduled event performs
+cleanup, and administrators can also run it manually.
+
 ## Development
 
-The plugin version and database schema version are maintained separately.
+The public plugin release version and internal database schema version are
+maintained separately. A feature release does not change the database version
+unless its schema changes.
 Source changes should follow WordPress security practices, support PHP 8.3, and
 be linted and browser-tested before commit.
+
+The current feature release is **1.3.0**. The current database schema version is
+**1.0.2**.
 
 See [docs/roadmap.md](docs/roadmap.md) for completed and planned milestones.
 

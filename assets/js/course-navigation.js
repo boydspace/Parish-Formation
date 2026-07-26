@@ -3,6 +3,19 @@
 
 	let activeRequest = null;
 
+	function announceError( layout, message ) {
+		let alert = layout.querySelector( '.pf-course-navigation-error' );
+		if ( ! alert ) {
+			alert = document.createElement( 'div' );
+			alert.className = 'pf-course-navigation-error uk-alert uk-alert-danger';
+			alert.setAttribute( 'role', 'alert' );
+			layout.prepend( alert );
+		}
+		alert.textContent = message;
+		alert.setAttribute( 'tabindex', '-1' );
+		alert.focus();
+	}
+
 	function parseCourseUrl( url ) {
 		const parts = new URL( url, window.location.href ).pathname.split( '/' ).filter( Boolean );
 		const courseIndex = parts.lastIndexOf( 'course' );
@@ -29,6 +42,7 @@
 		}
 		activeRequest = new AbortController();
 		currentLayout.classList.add( 'pf-is-loading' );
+		currentLayout.setAttribute( 'aria-busy', 'true' );
 		const endpoint = new URL( pfCourseNavigation.endpoint );
 		endpoint.searchParams.set( 'course_slug', route.courseSlug );
 		endpoint.searchParams.set( 'item_type', route.itemType );
@@ -60,13 +74,16 @@
 			const titleParts = document.title.split( ' – ' );
 			titleParts[ 0 ] = data.title;
 			document.title = titleParts.join( ' – ' );
-			window.scrollTo( { top: newLayout.getBoundingClientRect().top + window.scrollY - 32, behavior: 'smooth' } );
+			newLayout.focus( { preventScroll: true } );
+			const reducedMotion = window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
+			window.scrollTo( { top: newLayout.getBoundingClientRect().top + window.scrollY - 32, behavior: reducedMotion ? 'auto' : 'smooth' } );
 		} ).catch( function ( error ) {
 			if ( error.name === 'AbortError' ) {
 				return;
 			}
 			currentLayout.classList.remove( 'pf-is-loading' );
-			window.alert( error.message || pfCourseNavigation.error );
+			currentLayout.removeAttribute( 'aria-busy' );
+			announceError( currentLayout, error.message || pfCourseNavigation.error );
 		} ).finally( function () {
 			activeRequest = null;
 		} );
@@ -113,7 +130,10 @@
 			loadCourseView( data.nextUrl, true );
 		} ).catch( function ( error ) {
 			buttons.forEach( function ( button ) { button.disabled = false; } );
-			window.alert( error.message || pfCourseNavigation.error );
+			const layout = form.closest( '.pf-learning-layout' );
+			if ( layout ) {
+				announceError( layout, error.message || pfCourseNavigation.error );
+			}
 		} );
 	} );
 

@@ -75,16 +75,16 @@ medical information.
   protection, activity logs, and failed-message retry.
 - Compatible with SMTP transport plugins through WordPress `wp_mail()`.
 
-## Planned milestones
-
-### 1.0.0 — Enrollment access (in progress)
+### 1.0.0 — Enrollment access
 
 - Public course catalog. **Implemented**
 - Course-level open self-enrollment. **Implemented**
 - Safe login and registration handoff. **Implemented**
 - Course access codes with expiration and usage limits. **Implemented**
 - Secure invitation links with optional email restrictions. **Implemented**
-- Enrollment source and access audit history.
+- Enrollment source recording. **Implemented**
+- Comprehensive immutable access-event history remains part of production
+  hardening.
 
 ### 1.0.1 — Participant accounts (completed)
 
@@ -112,15 +112,37 @@ medical information.
   exports. **Implemented**
 - Acknowledgements excluded from graded certificate requirements. **Implemented**
 
-### 1.3.0 — Certificate branding
+### 1.3.0 — Certificate branding (completed)
 
-- Optional signature image and additional certificate design controls.
+- Reusable certificate designs assignable to multiple courses. **Implemented**
+- Configurable logo, logo scale, colors, wording, signer, and paper orientation.
+  **Implemented**
+- Immutable design snapshots for newly issued certificates. **Implemented**
+- Private, reduced-resolution, PDF-only signature storage with
+  certificate-specific verification stamping. **Implemented**
+- PDF-only certificate distribution, public verification, revocation, and
+  replacement issuance. **Implemented**
 
-### 1.4.0 — Production hardening
+## Planned milestones
 
-- Privacy export/erasure integration and retention controls.
+### 1.4.0 — Production hardening (next)
+
+- WordPress personal-data export and privacy erasure integration. **Implemented**
+- Administrative retention-period controls and scheduled cleanup for email
+  activity and inactive invitations. **Implemented**
 - Accessibility and multisite review.
 - Performance, upgrade, and release-package testing.
+- System status and scheduled-task diagnostics. **Implemented**
+- Automated repository, authorization, grading, progression, certificate, and
+  upgrade tests.
+- Immutable enrollment-access and security event history.
+
+## Versioning
+
+- The plugin release version tracks user-facing feature milestones.
+- The database schema version changes only when tables or stored schema must be
+  upgraded.
+- Release 1.3.0 currently uses database schema 1.0.2.
 
 ## Development rules
 

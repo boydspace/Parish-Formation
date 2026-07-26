@@ -180,7 +180,7 @@ final class Parish_Formation_Shortcodes {
 		?>
 		<div class="parish-formation-course-catalog uk-container uk-container-large uk-section">
 			<?php if ( 'success' === $notice ) : ?>
-				<div class="uk-alert uk-alert-success"><p><?php esc_html_e( 'You are now enrolled.', 'parish-formation' ); ?> <a class="uk-alert-link" href="<?php echo esc_url( $formation_url ); ?>"><?php esc_html_e( 'Open My Formation', 'parish-formation' ); ?></a></p></div>
+				<div class="uk-alert uk-alert-success" role="status"><p><?php esc_html_e( 'You are now enrolled.', 'parish-formation' ); ?> <a class="uk-alert-link" href="<?php echo esc_url( $formation_url ); ?>"><?php esc_html_e( 'Open My Formation', 'parish-formation' ); ?></a></p></div>
 			<?php elseif ( 'already-enrolled' === $notice ) : ?>
 				<div class="uk-alert uk-alert-primary"><p><?php esc_html_e( 'You are already enrolled in that course.', 'parish-formation' ); ?></p></div>
 			<?php elseif ( 'error' === $notice ) : ?>
@@ -197,7 +197,7 @@ final class Parish_Formation_Shortcodes {
 				<div class="uk-alert uk-alert-warning"><p><?php esc_html_e( 'That code matches more than one course. Please contact the parish for assistance.', 'parish-formation' ); ?></p></div>
 			<?php endif; ?>
 			<div class="pf-catalog-code-entry uk-card uk-card-default uk-card-body">
-				<h3 class="uk-card-title"><?php esc_html_e( 'Have a course access code?', 'parish-formation' ); ?></h3>
+				<h2 class="uk-card-title"><?php esc_html_e( 'Have a course access code?', 'parish-formation' ); ?></h2>
 				<?php if ( is_user_logged_in() ) : ?>
 					<p><?php esc_html_e( 'Enter it here to enroll, including in courses that are not shown publicly.', 'parish-formation' ); ?></p>
 					<form class="pf-course-access-code-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -205,7 +205,7 @@ final class Parish_Formation_Shortcodes {
 						<?php wp_nonce_field( 'pf_access_code_enroll_0', 'pf_access_code_nonce' ); ?>
 						<label for="pf-catalog-access-code"><?php esc_html_e( 'Course access code', 'parish-formation' ); ?></label>
 						<div><input id="pf-catalog-access-code" class="uk-input" name="access_code" type="text" required autocomplete="off"><button type="submit" class="uk-button uk-button-primary" data-label="<?php esc_attr_e( 'Use Code', 'parish-formation' ); ?>"><?php esc_html_e( 'Use Code', 'parish-formation' ); ?></button></div>
-						<p class="pf-course-access-code-message" aria-live="polite"></p>
+						<p class="pf-course-access-code-message" role="status" aria-live="polite" aria-atomic="true"></p>
 					</form>
 				<?php else : ?>
 					<p><?php esc_html_e( 'Log in or create an account before using your course access code.', 'parish-formation' ); ?></p>
@@ -224,7 +224,7 @@ final class Parish_Formation_Shortcodes {
 						?>
 						<article class="pf-course-catalog-card uk-card uk-card-default uk-card-body">
 							<?php if ( has_post_thumbnail( $course ) ) : ?><div class="pf-course-catalog-image"><?php echo get_the_post_thumbnail( $course, 'large', array( 'class' => 'uk-width-1-1' ) ); ?></div><?php endif; ?>
-							<h3 class="uk-card-title"><?php echo esc_html( $course->post_title ); ?></h3>
+							<h2 class="uk-card-title"><?php echo esc_html( $course->post_title ); ?></h2>
 							<?php if ( $excerpt ) : ?><p><?php echo esc_html( $excerpt ); ?></p><?php endif; ?>
 							<?php if ( $enrollment ) : ?>
 								<div class="pf-course-catalog-enrollment"><span class="uk-label uk-label-success"><?php echo esc_html( 'completed' === $enrollment->status ? __( 'Completed', 'parish-formation' ) : __( 'Enrolled', 'parish-formation' ) ); ?></span><a class="uk-button uk-button-primary" href="<?php echo esc_url( trailingslashit( $formation_url ) . 'course/' . rawurlencode( $course->post_name ) . '/' ); ?>"><?php esc_html_e( 'Open My Formation', 'parish-formation' ); ?></a></div>
@@ -240,7 +240,7 @@ final class Parish_Formation_Shortcodes {
 									<?php wp_nonce_field( 'pf_access_code_enroll_' . $course->ID, 'pf_access_code_nonce' ); ?>
 									<label for="pf-access-code-<?php echo esc_attr( $course->ID ); ?>"><?php esc_html_e( 'Course access code', 'parish-formation' ); ?></label>
 									<div><input id="pf-access-code-<?php echo esc_attr( $course->ID ); ?>" class="uk-input" name="access_code" type="text" required autocomplete="off"><button type="submit" class="uk-button uk-button-primary" data-label="<?php esc_attr_e( 'Use Code', 'parish-formation' ); ?>"><?php esc_html_e( 'Use Code', 'parish-formation' ); ?></button></div>
-									<p class="pf-course-access-code-message" aria-live="polite"></p>
+									<p class="pf-course-access-code-message" role="status" aria-live="polite" aria-atomic="true"></p>
 								</form>
 							<?php else : ?>
 								<div class="pf-course-catalog-actions"><a class="uk-button uk-button-primary" href="<?php echo esc_url( wp_login_url( $current_url ) ); ?>"><?php esc_html_e( 'Log In to Enroll', 'parish-formation' ); ?></a><?php if ( get_option( 'users_can_register' ) ) : ?><a class="uk-button uk-button-default" href="<?php echo esc_url( add_query_arg( 'redirect_to', $current_url, wp_registration_url() ) ); ?>"><?php esc_html_e( 'Create Account', 'parish-formation' ); ?></a><?php endif; ?></div>
@@ -591,7 +591,7 @@ final class Parish_Formation_Shortcodes {
 				<?php if ( ! $acknowledgement_mode ) : ?><p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, $max_attempts ) ); ?></p><?php endif; ?>
 			</div>
 		<?php endif; ?>
-		<div class="pf-assessment-ajax-result" aria-live="polite"></div>
+		<div class="pf-assessment-ajax-result" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
 		<form class="pf-assessment-questions" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
 			<input type="hidden" name="action" value="pf_submit_assessment" />
 			<input type="hidden" name="enrollment_id" value="<?php echo esc_attr( $enrollment->id ); ?>" />
@@ -838,7 +838,7 @@ final class Parish_Formation_Shortcodes {
 
 		ob_start();
 		?>
-		<div class="pf-learning-layout">
+		<div class="pf-learning-layout" tabindex="-1">
 			<aside class="pf-course-sidebar">
 				<a class="pf-back-link" href="<?php echo esc_url( $my_url ); ?>">&larr; <?php echo esc_html__( 'My Formation', 'parish-formation' ); ?></a>
 				<h2><?php echo esc_html( $enrollment->course_title ); ?></h2>

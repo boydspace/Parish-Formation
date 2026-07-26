@@ -19,6 +19,23 @@
 	transition: opacity .15s ease;
 }
 
+.pf-learning-layout:focus {
+	outline: 3px solid #2271b1;
+	outline-offset: 3px;
+}
+
+.parish-formation-course-catalog :is(a, button, input, select, textarea):focus-visible,
+.pf-learning-layout :is(a, button, input, select, textarea):focus-visible,
+.parish-formation-account :is(a, button, input, select, textarea):focus-visible {
+	outline: 3px solid #2271b1;
+	outline-offset: 3px;
+}
+
+.pf-course-navigation-error {
+	grid-column: 1 / -1;
+	margin: 16px;
+}
+
 .pf-course-sidebar {
 	padding: 28px 22px;
 	background: #f5f6f8;
@@ -165,6 +182,16 @@
 
 	.pf-content-body {
 		padding: 40px 24px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pf-learning-layout,
+	.pf-learning-layout * {
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
 	}
 }
 

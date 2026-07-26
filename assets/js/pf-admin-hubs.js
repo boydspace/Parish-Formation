@@ -26,9 +26,15 @@
 			if ( window.wp && window.wp.editor && document.getElementById( 'pf_notification_template_body' ) ) { window.wp.editor.remove( 'pf_notification_template_body' ); }
 			content.innerHTML = result.data.html;
 			executeScripts( content );
-			document.querySelectorAll( '.pf-admin-hub-tab' ).forEach( function ( item ) { item.classList.toggle( 'nav-tab-active', item.dataset.tab === tab ); } );
+			document.querySelectorAll( '.pf-admin-hub-tab' ).forEach( function ( item ) {
+				const active = item.dataset.tab === tab;
+				item.classList.toggle( 'nav-tab-active', active );
+				if ( active ) { item.setAttribute( 'aria-current', 'page' ); } else { item.removeAttribute( 'aria-current' ); }
+			} );
 			if ( updateHistory ) { window.history.pushState( { pfHubTab: tab }, '', url ); }
 			if ( typeof window.pfInitializeNotificationAdmin === 'function' ) { window.pfInitializeNotificationAdmin(); }
+			content.focus( { preventScroll: true } );
+			status.textContent = config.loadedMessage || '';
 		} catch ( error ) {
 			status.textContent = error.message || config.errorMessage;
 		} finally {

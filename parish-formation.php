@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Parish Formation
  * Description:       Provides focused online formation tools for parishes.
- * Version:           1.0.2
+ * Version:           1.3.0
  * Requires PHP:      8.3
  * Author:            Father Andrew M. Boyd
  * Author URI:        https://fatherboyd.com
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PARISH_FORMATION_VERSION', '1.0.2' );
+define( 'PARISH_FORMATION_VERSION', '1.3.0' );
 define( 'PARISH_FORMATION_DB_VERSION', '1.0.2' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
@@ -30,6 +30,8 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-upgrader.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-capabilities.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-account-service.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-participant-note-repository.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-privacy.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-retention.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-block.php';
@@ -55,6 +57,8 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-admin-hubs.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-account-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-participants-admin.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-retention-settings.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-system-status.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-invitations-admin.php';
@@ -72,6 +76,7 @@ register_deactivation_hook(
 	PARISH_FORMATION_PLUGIN_FILE,
 	array( 'Parish_Formation_Notifications', 'clear_scheduled_events' )
 );
+register_deactivation_hook( PARISH_FORMATION_PLUGIN_FILE, array( 'Parish_Formation_Retention', 'unschedule' ) );
 
 register_activation_hook(
 	PARISH_FORMATION_PLUGIN_FILE,
@@ -82,10 +87,14 @@ add_action(
 	'plugins_loaded',
 	array( 'Parish_Formation_Upgrader', 'maybe_upgrade' )
 );
+add_filter( 'wp_privacy_personal_data_exporters', array( 'Parish_Formation_Privacy', 'register_exporter' ) );
+add_filter( 'wp_privacy_personal_data_erasers', array( 'Parish_Formation_Privacy', 'register_eraser' ) );
 add_action(
 	'init',
 	array( 'Parish_Formation_Notifications', 'schedule_events' )
 );
+add_action( 'init', array( 'Parish_Formation_Retention', 'schedule' ) );
+add_action( Parish_Formation_Retention::CRON_HOOK, array( 'Parish_Formation_Retention', 'cleanup' ) );
 add_action(
 	'pf_daily_notification_events',
 	array( 'Parish_Formation_Notifications', 'process_expiration_notifications' )
@@ -171,6 +180,8 @@ add_action(
 	'admin_menu',
 	array( 'Parish_Formation_Participants_Admin', 'register_menu' )
 );
+add_action( 'admin_menu', array( 'Parish_Formation_Retention_Settings', 'register_menu' ) );
+add_action( 'admin_menu', array( 'Parish_Formation_System_Status', 'register_menu' ) );
 
 add_action(
 	'wp_login',
@@ -250,6 +261,8 @@ add_action(
 	'admin_post_pf_save_account_settings',
 	array( 'Parish_Formation_Account_Settings', 'handle_save' )
 );
+add_action( 'admin_post_pf_save_retention_settings', array( 'Parish_Formation_Retention_Settings', 'handle_save' ) );
+add_action( 'admin_post_pf_run_retention_cleanup', array( 'Parish_Formation_Retention_Settings', 'handle_cleanup' ) );
 
 add_action(
 	'admin_post_pf_update_participant',

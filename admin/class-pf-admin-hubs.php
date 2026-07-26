@@ -55,7 +55,7 @@ final class Parish_Formation_Admin_Hubs {
 		$tab = isset( $config[ $hub ]['tabs'][ $requested ] ) && current_user_can( $config[ $hub ]['tabs'][ $requested ]['capability'] ) ? $requested : self::first_allowed_tab( $config[ $hub ]['tabs'] );
 		$definition = $config[ $hub ]['tabs'][ $tab];
 		?>
-		<div class="wrap pf-admin-hub" data-hub="<?php echo esc_attr( $hub ); ?>"><h1><?php echo esc_html( $config[ $hub ]['label'] ); ?></h1><nav class="nav-tab-wrapper" aria-label="<?php echo esc_attr( $config[ $hub ]['label'] ); ?>"><?php foreach ( $config[ $hub ]['tabs'] as $key => $item ) : if ( ! current_user_can( $item['capability'] ) ) { continue; } $url = add_query_arg( array( 'page' => $config[ $hub ]['slug'], 'hub_tab' => $key ), admin_url( 'admin.php' ) ); ?><a class="nav-tab pf-admin-hub-tab <?php echo $key === $tab ? 'nav-tab-active' : ''; ?>" data-tab="<?php echo esc_attr( $key ); ?>" href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $item['label'] ); ?></a><?php endforeach; ?></nav><div class="pf-admin-hub-status" aria-live="polite"></div><div class="pf-admin-hub-content"><?php $_GET['page'] = $definition['legacy_slug']; call_user_func( $definition['callback'] ); ?></div></div>
+		<div class="wrap pf-admin-hub" data-hub="<?php echo esc_attr( $hub ); ?>"><h1><?php echo esc_html( $config[ $hub ]['label'] ); ?></h1><nav class="nav-tab-wrapper" aria-label="<?php echo esc_attr( $config[ $hub ]['label'] ); ?>"><?php foreach ( $config[ $hub ]['tabs'] as $key => $item ) : if ( ! current_user_can( $item['capability'] ) ) { continue; } $url = add_query_arg( array( 'page' => $config[ $hub ]['slug'], 'hub_tab' => $key ), admin_url( 'admin.php' ) ); ?><a class="nav-tab pf-admin-hub-tab <?php echo $key === $tab ? 'nav-tab-active' : ''; ?>" data-tab="<?php echo esc_attr( $key ); ?>" href="<?php echo esc_url( $url ); ?>" <?php echo $key === $tab ? 'aria-current="page"' : ''; ?>><?php echo esc_html( $item['label'] ); ?></a><?php endforeach; ?></nav><div class="pf-admin-hub-status" role="status" aria-live="polite" aria-atomic="true"></div><div class="pf-admin-hub-content" tabindex="-1"><?php $_GET['page'] = $definition['legacy_slug']; call_user_func( $definition['callback'] ); ?></div></div>
 		<?php
 	}
 
@@ -76,6 +76,8 @@ final class Parish_Formation_Admin_Hubs {
 			'settings' => array( 'label' => __( 'Settings', 'parish-formation' ), 'slug' => 'parish-formation-settings', 'capability' => 'pf_manage_settings', 'tabs' => array(
 				'accounts' => array( 'label' => __( 'Account Settings', 'parish-formation' ), 'capability' => 'pf_manage_settings', 'legacy_slug' => 'parish-formation-account-settings', 'callback' => array( 'Parish_Formation_Account_Settings', 'render_page' ) ),
 				'emails' => array( 'label' => __( 'Email Notifications', 'parish-formation' ), 'capability' => 'pf_manage_settings', 'legacy_slug' => 'parish-formation-notifications', 'callback' => array( 'Parish_Formation_Notifications_Admin', 'render_page' ) ),
+				'privacy' => array( 'label' => __( 'Privacy & Retention', 'parish-formation' ), 'capability' => 'pf_manage_settings', 'legacy_slug' => 'parish-formation-retention', 'callback' => array( 'Parish_Formation_Retention_Settings', 'render_page' ) ),
+				'status' => array( 'label' => __( 'System Status', 'parish-formation' ), 'capability' => 'pf_manage_settings', 'legacy_slug' => 'parish-formation-system-status', 'callback' => array( 'Parish_Formation_System_Status', 'render_page' ) ),
 			) ),
 		);
 	}
