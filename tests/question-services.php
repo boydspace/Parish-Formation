@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -174,8 +174,46 @@ try {
 	$assert( ! $matching_forged['valid'] && 'invalid_answer' === $matching_forged['error_code'], 'Matching accepted an unknown answer ID.' );
 	$matching_html = Parish_Formation_Question_Renderer::render( $matching, 'pf_answers[' . $matching->ID . ']', false );
 	$assert( 2 === substr_count( $matching_html, '<select' ) && false !== strpos( $matching_html, '[baptism-pair]' ) && false === strpos( $matching_html, 'correct_answer' ), 'Matching learner controls are incomplete or expose grading configuration.' );
+	$assert( strpos( $matching_html, 'value="grace-answer"' ) < strpos( $matching_html, 'value="gateway-answer"' ), 'Matching randomization returned the authored answer order.' );
 	$matching_snapshot = Parish_Formation_Question_Snapshot::create( $matching, Parish_Formation_Question_Config::get( $matching->ID ) );
 	$assert( 'baptism-pair' === $matching_snapshot['type_config']['pairs'][0]['id'] && 'gateway-answer' === $matching_snapshot['type_config']['pairs'][0]['answer_id'] && 'Gateway to Christian life' === $matching_snapshot['type_config']['pairs'][0]['answer'], 'Matching snapshot lost the original pair configuration.' );
+
+	$ordering = $create_question( 'ordering', 'Put these steps in order.', '', array(), 6 );
+	$ordering_config = Parish_Formation_Question_Config::get( $ordering->ID );
+	$ordering_config['type_config'] = array(
+		'point_mode' => 'equal', 'grading_mode' => 'all_or_nothing',
+		'items' => array(
+			array( 'id' => 'prepare', 'label' => 'Prepare', 'points' => 1 ),
+			array( 'id' => 'celebrate', 'label' => 'Celebrate', 'points' => 2 ),
+			array( 'id' => 'reflect', 'label' => 'Reflect', 'points' => 3 ),
+		),
+	);
+	update_post_meta( $ordering->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $ordering_config, 'ordering' ) );
+	$ordering_wrong = Parish_Formation_Question_Grading_Service::grade( $ordering, array( 'prepare', 'reflect', 'celebrate' ) );
+	$assert( $ordering_wrong['valid'] && false === $ordering_wrong['is_correct'] && 0.0 === (float) $ordering_wrong['earned_points'], 'Ordering all-or-nothing grading failed.' );
+	$ordering_config['type_config']['grading_mode'] = 'partial';
+	update_post_meta( $ordering->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $ordering_config, 'ordering' ) );
+	$ordering_partial = Parish_Formation_Question_Grading_Service::grade( $ordering, array( 'prepare', 'reflect', 'celebrate' ) );
+	$assert( 2.0 === (float) $ordering_partial['earned_points'], 'Ordering equal position-based partial credit failed.' );
+	$ordering_config['type_config']['point_mode'] = 'custom';
+	update_post_meta( $ordering->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $ordering_config, 'ordering' ) );
+	$ordering_custom = Parish_Formation_Question_Grading_Service::grade( $ordering, array( 'prepare', 'reflect', 'celebrate' ) );
+	$assert( 1.0 === (float) $ordering_custom['earned_points'] && 6.0 === (float) $ordering_custom['maximum_points'], 'Ordering custom position points failed.' );
+	$ordering_correct = Parish_Formation_Question_Grading_Service::grade( $ordering, array( 'prepare', 'celebrate', 'reflect' ) );
+	$assert( $ordering_correct['is_correct'] && 6.0 === (float) $ordering_correct['earned_points'], 'Ordering correct sequence grading failed.' );
+	$ordering_forged = Parish_Formation_Question_Grading_Service::grade( $ordering, array( 'prepare', 'celebrate', 'forged' ) );
+	$assert( ! $ordering_forged['valid'] && 'invalid_answer' === $ordering_forged['error_code'], 'Ordering accepted a forged item ID.' );
+	$ordering_duplicate = Parish_Formation_Question_Grading_Service::grade( $ordering, array( 'prepare', 'prepare', 'reflect' ) );
+	$assert( ! $ordering_duplicate['valid'], 'Ordering accepted a duplicated item ID.' );
+	$ordering_html = Parish_Formation_Question_Renderer::render( $ordering, 'pf_answers[' . $ordering->ID . ']', false );
+	$assert( 3 === substr_count( $ordering_html, 'type="hidden"' ) && 3 === substr_count( $ordering_html, 'draggable="true"' ) && 3 === substr_count( $ordering_html, 'tabindex="0"' ) && false === strpos( $ordering_html, 'pf-ordering-up' ) && false === strpos( $ordering_html, 'correct_answer' ), 'Ordering learner controls are incomplete or expose grading configuration.' );
+	$ordering_closed_html = Parish_Formation_Question_Renderer::render( $ordering, 'pf_answers[' . $ordering->ID . ']', true );
+	$assert( false === strpos( $ordering_closed_html, 'tabindex="0"' ) && false === strpos( $ordering_closed_html, 'draggable="true"' ) && false !== strpos( $ordering_closed_html, 'can no longer be changed' ), 'Closed Ordering controls appear interactive.' );
+	$ordering_rendered_ids = array();
+	preg_match_all( '/type="hidden"[^>]+value="([^"]+)"/', $ordering_html, $ordering_rendered_ids );
+	$assert( array( 'prepare', 'celebrate', 'reflect' ) !== ( $ordering_rendered_ids[1] ?? array() ), 'Ordering randomization returned the authored sequence.' );
+	$ordering_snapshot = Parish_Formation_Question_Snapshot::create( $ordering, Parish_Formation_Question_Config::get( $ordering->ID ) );
+	$assert( 'prepare' === $ordering_snapshot['type_config']['items'][0]['id'] && 'Prepare' === $ordering_snapshot['type_config']['items'][0]['label'], 'Ordering snapshot lost its historical configuration.' );
 } catch ( Throwable $error ) {
 	$failures[] = 'Test setup failed: ' . $error->getMessage();
 } finally {

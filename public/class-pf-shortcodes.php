@@ -75,6 +75,7 @@ final class Parish_Formation_Shortcodes {
 				'nonce'    => wp_create_nonce( 'wp_rest' ),
 				'submitting' => __( 'Submitting…', 'parish-formation' ),
 				'error'      => __( 'The assessment could not be submitted.', 'parish-formation' ),
+				'orderingMoved' => __( '%1$s moved to position %2$d.', 'parish-formation' ),
 			)
 		);
 		}

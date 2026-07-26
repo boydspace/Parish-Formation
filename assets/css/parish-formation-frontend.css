@@ -186,6 +186,46 @@
 	font-weight: 600;
 }
 
+.pf-ordering-list {
+	display: grid;
+	gap: 10px;
+	margin: 0;
+	padding-left: 2rem;
+}
+
+.pf-ordering-item {
+	position: relative;
+	padding: 12px;
+	border: 1px solid #d9dde5;
+	background: #fff;
+}
+
+.pf-ordering-item[draggable="true"] {
+	cursor: grab;
+}
+
+.pf-ordering-item.is-dragging {
+	opacity: 0.55;
+}
+
+.pf-ordering-item.is-drag-target {
+	border-color: #1e87f0;
+	box-shadow: 0 0 0 2px rgba(30, 135, 240, 0.18);
+}
+
+.pf-ordering-drag-handle {
+	float: right;
+	margin-left: 12px;
+	font-size: 1.35rem;
+	line-height: 1;
+}
+
+.pf-ordering-label {
+	display: block;
+	margin-bottom: 10px;
+	font-weight: 600;
+}
+
 .pf-content-footer {
 	margin-top: auto;
 	padding: 20px 28px;

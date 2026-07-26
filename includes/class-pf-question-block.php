@@ -55,6 +55,9 @@ final class Parish_Formation_Question_Block {
 					'blankPointMode' => array( 'type' => 'string', 'default' => 'equal' ),
 					'matchingPairs' => array( 'type' => 'array', 'default' => array(), 'items' => array( 'type' => 'object' ) ),
 					'matchingPointMode' => array( 'type' => 'string', 'default' => 'equal' ),
+					'orderingItems' => array( 'type' => 'array', 'default' => array(), 'items' => array( 'type' => 'object' ) ),
+					'orderingPointMode' => array( 'type' => 'string', 'default' => 'equal' ),
+					'orderingGradingMode' => array( 'type' => 'string', 'default' => 'all_or_nothing' ),
 					'points'     => array( 'type' => 'integer', 'default' => 1 ),
 					'required'   => array( 'type' => 'boolean', 'default' => true ),
 					'instructions' => array( 'type' => 'string', 'default' => '' ),
@@ -137,6 +140,11 @@ final class Parish_Formation_Question_Block {
 				foreach ( is_array( $attributes['matchingPairs'] ?? null ) ? $attributes['matchingPairs'] : array() as $pair ) { $question_points += max( 0, (float) ( $pair['points'] ?? 0 ) ); }
 				$question_points = max( 1, $question_points );
 			}
+			if ( 'ordering' === $type && 'custom' === sanitize_key( $attributes['orderingPointMode'] ?? '' ) ) {
+				$question_points = 0;
+				foreach ( is_array( $attributes['orderingItems'] ?? null ) ? $attributes['orderingItems'] : array() as $item ) { $question_points += max( 0, (float) ( $item['points'] ?? 0 ) ); }
+				$question_points = max( 1, $question_points );
+			}
 			update_post_meta( $question_id, '_pf_assessment_id', $post_id );
 			update_post_meta( $question_id, '_pf_question_type', $type );
 			update_post_meta( $question_id, '_pf_question_order', $index + 1 );
@@ -155,16 +163,17 @@ final class Parish_Formation_Question_Block {
 					'admin_notes' => $attributes['adminNotes'] ?? '', 'choices' => $choices,
 					'correct_answer' => $correct_answer,
 					'type_config' => array(
-						'grading_mode' => $attributes['gradingMode'] ?? 'all_or_nothing',
 						'accepted_answers' => $attributes['acceptedAnswers'] ?? array(),
 						'case_sensitive' => ! empty( $attributes['caseSensitive'] ),
 						'trim_spaces' => ! array_key_exists( 'trimSpaces', $attributes ) || ! empty( $attributes['trimSpaces'] ),
 						'normalize_spaces' => ! empty( $attributes['normalizeSpaces'] ),
 						'ignore_punctuation' => ! empty( $attributes['ignorePunctuation'] ),
 						'match_mode' => $attributes['matchMode'] ?? 'exact',
-						'point_mode' => 'matching' === $type ? ( $attributes['matchingPointMode'] ?? 'equal' ) : ( $attributes['blankPointMode'] ?? 'equal' ),
+						'point_mode' => 'matching' === $type ? ( $attributes['matchingPointMode'] ?? 'equal' ) : ( 'ordering' === $type ? ( $attributes['orderingPointMode'] ?? 'equal' ) : ( $attributes['blankPointMode'] ?? 'equal' ) ),
 						'blanks' => self::normalize_block_blanks( $attributes['blanks'] ?? array() ),
 						'pairs' => self::normalize_block_pairs( $attributes['matchingPairs'] ?? array() ),
+						'items' => self::normalize_block_items( $attributes['orderingItems'] ?? array() ),
+						'grading_mode' => 'ordering' === $type ? ( $attributes['orderingGradingMode'] ?? 'all_or_nothing' ) : ( $attributes['gradingMode'] ?? 'all_or_nothing' ),
 					),
 				),
 				$type
@@ -261,6 +270,15 @@ final class Parish_Formation_Question_Block {
 			$pairs[] = array( 'id' => $row['id'] ?? 'pair-' . ( $index + 1 ), 'answer_id' => $row['answerId'] ?? ( $row['answer_id'] ?? 'answer-' . ( $index + 1 ) ), 'prompt' => $row['prompt'] ?? '', 'answer' => $row['answer'] ?? '', 'points' => $row['points'] ?? 1 );
 		}
 		return $pairs;
+	}
+
+	private static function normalize_block_items( $rows ) {
+		$items = array();
+		foreach ( is_array( $rows ) ? $rows : array() as $index => $row ) {
+			if ( ! is_array( $row ) ) { continue; }
+			$items[] = array( 'id' => $row['id'] ?? 'item-' . ( $index + 1 ), 'label' => $row['label'] ?? '', 'points' => $row['points'] ?? 1 );
+		}
+		return $items;
 	}
 
 }

@@ -35,6 +35,66 @@
 		return answers;
 	}
 
+	function announceOrderingPosition( item ) {
+		const list = item && item.parentElement;
+		if ( ! list ) { return; }
+		const items = Array.from( list.children );
+		const status = list.parentElement.querySelector( '.pf-ordering-status' );
+		if ( status ) {
+			const label = ( item.querySelector( '.pf-ordering-label' ) || item ).textContent.trim();
+			status.textContent = ( pfAssessmentSubmission.orderingMoved || '%1$s moved to position %2$d.' ).replace( '%1$s', label ).replace( '%2$d', items.indexOf( item ) + 1 );
+		}
+	}
+
+	document.addEventListener( 'keydown', function ( event ) {
+		const item = event.target.closest ? event.target.closest( '.pf-ordering-item[draggable="true"]' ) : null;
+		if ( ! item || ! [ 'ArrowUp', 'ArrowDown' ].includes( event.key ) ) { return; }
+		const sibling = 'ArrowUp' === event.key ? item.previousElementSibling : item.nextElementSibling;
+		if ( ! sibling ) { return; }
+		event.preventDefault();
+		if ( 'ArrowUp' === event.key ) { item.parentElement.insertBefore( item, sibling ); } else { item.parentElement.insertBefore( sibling, item ); }
+		announceOrderingPosition( item );
+		item.focus();
+	} );
+
+	let draggedOrderingItem = null;
+	document.addEventListener( 'dragstart', function ( event ) {
+		const item = event.target.closest ? event.target.closest( '.pf-ordering-item[draggable="true"]' ) : null;
+		if ( ! item ) { return; }
+		draggedOrderingItem = item;
+		item.classList.add( 'is-dragging' );
+		if ( event.dataTransfer ) {
+			event.dataTransfer.effectAllowed = 'move';
+			event.dataTransfer.setData( 'text/plain', ( item.querySelector( 'input[type="hidden"]' ) || {} ).value || '' );
+		}
+	} );
+	document.addEventListener( 'dragover', function ( event ) {
+		if ( ! draggedOrderingItem ) { return; }
+		const target = event.target.closest ? event.target.closest( '.pf-ordering-item[draggable="true"]' ) : null;
+		if ( ! target || target === draggedOrderingItem || target.parentElement !== draggedOrderingItem.parentElement ) { return; }
+		event.preventDefault();
+		target.parentElement.querySelectorAll( '.is-drag-target' ).forEach( function ( item ) { item.classList.remove( 'is-drag-target' ); } );
+		target.classList.add( 'is-drag-target' );
+		const rect = target.getBoundingClientRect();
+		if ( event.clientY < rect.top + rect.height / 2 ) {
+			target.parentElement.insertBefore( draggedOrderingItem, target );
+		} else {
+			target.parentElement.insertBefore( draggedOrderingItem, target.nextElementSibling );
+		}
+	} );
+	document.addEventListener( 'drop', function ( event ) {
+		if ( ! draggedOrderingItem ) { return; }
+		const target = event.target.closest ? event.target.closest( '.pf-ordering-item[draggable="true"]' ) : null;
+		if ( ! target || target === draggedOrderingItem || target.parentElement !== draggedOrderingItem.parentElement ) { return; }
+		event.preventDefault();
+		announceOrderingPosition( draggedOrderingItem );
+	} );
+	document.addEventListener( 'dragend', function () {
+		if ( draggedOrderingItem ) { announceOrderingPosition( draggedOrderingItem ); }
+		document.querySelectorAll( '.pf-ordering-item.is-dragging, .pf-ordering-item.is-drag-target' ).forEach( function ( item ) { item.classList.remove( 'is-dragging', 'is-drag-target' ); } );
+		draggedOrderingItem = null;
+	} );
+
 	function renderQuestionFeedback( feedbackItems ) {
 		document.querySelectorAll( '.pf-question-feedback' ).forEach( function ( item ) { item.remove(); } );
 		Object.keys( feedbackItems || {} ).forEach( function ( questionId ) {

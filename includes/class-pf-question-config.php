@@ -14,7 +14,7 @@ final class Parish_Formation_Question_Config {
 		$type = Parish_Formation_Question_Type_Registry::normalize( $config['type'] ?? '' );
 		$type_config = is_array( $config['type_config'] ?? null ) ? $config['type_config'] : array();
 		if ( 'custom' === ( $type_config['point_mode'] ?? 'equal' ) ) {
-			$items = 'fill_blank' === $type ? ( $type_config['blanks'] ?? array() ) : ( 'matching' === $type ? ( $type_config['pairs'] ?? array() ) : array() );
+			$items = 'fill_blank' === $type ? ( $type_config['blanks'] ?? array() ) : ( 'matching' === $type ? ( $type_config['pairs'] ?? array() ) : ( 'ordering' === $type ? ( $type_config['items'] ?? array() ) : array() ) );
 			if ( $items ) { return max( 0.0, (float) array_sum( array_map( static fn( $item ) => (float) ( $item['points'] ?? 0 ), $items ) ) ); }
 		}
 		return max( 0.0, (float) ( $config['points'] ?? 0 ) );
@@ -147,6 +147,26 @@ final class Parish_Formation_Question_Config {
 				$pairs[] = array( 'id' => $id, 'answer_id' => $answer_id, 'prompt' => $prompt, 'answer' => $answer, 'points' => max( 0, (float) ( $pair['points'] ?? 1 ) ), 'order' => count( $pairs ) + 1 );
 			}
 			return array( 'point_mode' => 'custom' === $mode ? 'custom' : 'equal', 'pairs' => $pairs );
+		}
+		if ( 'ordering' === $type ) {
+			$point_mode = sanitize_key( $values['point_mode'] ?? 'equal' );
+			$grading_mode = sanitize_key( $values['grading_mode'] ?? 'all_or_nothing' );
+			$items = array();
+			$used_ids = array();
+			foreach ( is_array( $values['items'] ?? null ) ? $values['items'] : array() as $index => $item ) {
+				if ( ! is_array( $item ) ) { $item = array( 'label' => $item ); }
+				$label = sanitize_text_field( $item['label'] ?? '' );
+				if ( '' === $label ) { continue; }
+				$id = sanitize_key( $item['id'] ?? '' ) ?: 'item-' . ( $index + 1 );
+				if ( isset( $used_ids[ $id ] ) ) { $id .= '-' . ( $index + 1 ); }
+				$used_ids[ $id ] = true;
+				$items[] = array( 'id' => $id, 'label' => $label, 'points' => max( 0, (float) ( $item['points'] ?? 1 ) ), 'order' => count( $items ) + 1 );
+			}
+			return array(
+				'point_mode' => 'custom' === $point_mode ? 'custom' : 'equal',
+				'grading_mode' => 'partial' === $grading_mode ? 'partial' : 'all_or_nothing',
+				'items' => $items,
+			);
 		}
 		return self::sanitize_nested( $values );
 	}

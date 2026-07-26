@@ -137,6 +137,30 @@ final class Parish_Formation_Question_Grading_Service {
 			return self::result( true, '', $responses, $config['graded'] ? $earned : 0, $config['graded'] ? $maximum : 0, true, $all_correct, false, $config );
 		}
 
+		if ( 'ordering' === $type ) {
+			$items = $config['type_config']['items'] ?? array();
+			if ( count( $items ) < 2 ) {
+				return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This Ordering question needs at least two complete items.', 'parish-formation' ) );
+			}
+			$submitted = array_values( array_map( 'sanitize_key', is_array( $response ) ? $response : array() ) );
+			$correct = array_column( $items, 'id' );
+			if ( count( $submitted ) !== count( $correct ) || count( array_unique( $submitted ) ) !== count( $correct ) || array_diff( $submitted, $correct ) ) {
+				return self::result( false, 'invalid_answer', $original, 0, Parish_Formation_Question_Config::maximum_points( $config ), false, null, false, $config, __( 'The submitted order is not valid.', 'parish-formation' ) );
+			}
+			$maximum = Parish_Formation_Question_Config::maximum_points( $config );
+			$is_correct = $submitted === $correct;
+			$earned = 0;
+			if ( $is_correct ) {
+				$earned = $maximum;
+			} elseif ( 'partial' === ( $config['type_config']['grading_mode'] ?? 'all_or_nothing' ) ) {
+				$equal_points = $maximum / count( $items );
+				foreach ( $items as $index => $item ) {
+					if ( $submitted[ $index ] === $item['id'] ) { $earned += 'custom' === ( $config['type_config']['point_mode'] ?? 'equal' ) ? (float) $item['points'] : $equal_points; }
+				}
+			}
+			return self::result( true, '', $submitted, $config['graded'] ? $earned : 0, $config['graded'] ? $maximum : 0, true, $is_correct, false, $config );
+		}
+
 		if ( 'acknowledgement' === $type ) {
 			$completed = in_array( strtolower( sanitize_text_field( (string) $response ) ), array( 'acknowledged', '1', 'yes', 'true' ), true );
 			if ( $config['required'] && ! $completed ) {

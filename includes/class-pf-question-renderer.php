@@ -65,8 +65,7 @@ final class Parish_Formation_Question_Renderer {
 			<?php
 		} elseif ( 'matching' === $type ) {
 			$pairs = $config['type_config']['pairs'] ?? array();
-			$answers = $pairs;
-			if ( $config['randomize_choices'] && count( $answers ) > 1 ) { shuffle( $answers ); }
+			$answers = self::randomized_order( $pairs, 'answer_id' );
 			?><div class="pf-matching-response">
 				<p class="pf-question-response-instruction"><?php esc_html_e( 'Choose the matching answer for each item.', 'parish-formation' ); ?></p>
 				<?php foreach ( $pairs as $index => $pair ) { ?>
@@ -78,6 +77,20 @@ final class Parish_Formation_Question_Renderer {
 						</select>
 					</div>
 				<?php } ?>
+			</div><?php
+		} elseif ( 'ordering' === $type ) {
+			$items = $config['type_config']['items'] ?? array();
+			$items = self::randomized_order( $items, 'id' );
+			?><div class="pf-ordering-response">
+				<p class="pf-question-response-instruction"><?php esc_html_e( 'Drag the items into the correct order. Keyboard users can focus an item and press the Up or Down arrow key.', 'parish-formation' ); ?></p>
+				<ol class="pf-ordering-list" aria-label="<?php esc_attr_e( 'Items to arrange', 'parish-formation' ); ?>">
+					<?php foreach ( $items as $item ) { ?><li class="pf-ordering-item"<?php echo $disabled ? '' : ' draggable="true" tabindex="0"'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+						<input type="hidden" name="<?php echo esc_attr( $field_name ); ?>[]" value="<?php echo esc_attr( $item['id'] ); ?>" />
+						<?php if ( ! $disabled ) { ?><span class="pf-ordering-drag-handle" aria-hidden="true">&#x2630;</span><?php } ?>
+						<span class="pf-ordering-label"><?php echo esc_html( $item['label'] ); ?></span>
+					</li><?php } ?>
+				</ol>
+				<?php if ( $disabled ) { ?><p class="pf-ordering-closed-notice"><?php esc_html_e( 'This submitted order can no longer be changed.', 'parish-formation' ); ?></p><?php } else { ?><p class="screen-reader-text pf-ordering-status" aria-live="polite"></p><?php } ?>
 			</div><?php
 		} elseif ( 'acknowledgement' === $type ) {
 			?>
@@ -96,7 +109,19 @@ final class Parish_Formation_Question_Renderer {
 
 	private static function display_choices( $config ) {
 		$choices = $config['choices'];
-		if ( $config['randomize_choices'] && count( $choices ) > 1 ) { shuffle( $choices ); }
+		if ( $config['randomize_choices'] ) { $choices = self::randomized_order( $choices, 'id' ); }
 		return $choices;
+	}
+
+	/** Randomize while guaranteeing a visibly different order when possible. */
+	private static function randomized_order( $items, $id_key ) {
+		if ( count( $items ) < 2 ) { return $items; }
+		$original_ids = array_column( $items, $id_key );
+		shuffle( $items );
+		if ( $original_ids === array_column( $items, $id_key ) ) {
+			$first = array_shift( $items );
+			$items[] = $first;
+		}
+		return $items;
 	}
 }

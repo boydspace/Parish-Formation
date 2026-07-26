@@ -1,10 +1,12 @@
 'use strict';
 
 let submitHandler;
+let keydownHandler;
 let requestBody;
 global.document = {
 	addEventListener: function ( event, handler ) {
 		if ( event === 'submit' ) { submitHandler = handler; }
+		if ( event === 'keydown' ) { keydownHandler = handler; }
 	},
 	createElement: function () { return { appendChild: function () {} }; },
 	querySelectorAll: function () { return []; },
@@ -32,7 +34,10 @@ const inputs = [
 	{ type: 'text', checked: false, name: 'pf_answers[248][blank-one]', value: 'Baptism' },
 	{ type: 'text', checked: false, name: 'pf_answers[248][blank-two]', value: 'Confirmation' },
 	{ type: 'select-one', checked: false, name: 'pf_answers[249][prompt-one]', value: 'answer-two' },
-	{ type: 'select-one', checked: false, name: 'pf_answers[249][prompt-two]', value: 'answer-one' }
+	{ type: 'select-one', checked: false, name: 'pf_answers[249][prompt-two]', value: 'answer-one' },
+	{ type: 'hidden', checked: false, name: 'pf_answers[250][]', value: 'item-three' },
+	{ type: 'hidden', checked: false, name: 'pf_answers[250][]', value: 'item-one' },
+	{ type: 'hidden', checked: false, name: 'pf_answers[250][]', value: 'item-two' }
 ];
 const form = {
 	previousElementSibling: resultBox,
@@ -57,4 +62,25 @@ if ( JSON.stringify( requestBody.answers['248'] ) !== JSON.stringify( { 'blank-o
 if ( JSON.stringify( requestBody.answers['249'] ) !== JSON.stringify( { 'prompt-one': 'answer-two', 'prompt-two': 'answer-one' } ) ) {
 	throw new Error( 'Matching values were not serialized by stable pair IDs.' );
 }
-process.stdout.write( 'Assessment submission JavaScript test passed: 4 checks.\n' );
+if ( JSON.stringify( requestBody.answers['250'] ) !== JSON.stringify( [ 'item-three', 'item-one', 'item-two' ] ) ) {
+	throw new Error( 'Ordering values were not serialized in their current DOM order.' );
+}
+const orderingStatus = { textContent: '' };
+const orderingList = {
+	children: [], parentElement: { querySelector: function () { return orderingStatus; } },
+	insertBefore: function ( node, reference ) {
+		this.children = this.children.filter( function ( child ) { return child !== node; } );
+		this.children.splice( this.children.indexOf( reference ), 0, node );
+		this.children.forEach( function ( child, index ) { child.previousElementSibling = orderingList.children[ index - 1 ] || null; child.nextElementSibling = orderingList.children[ index + 1 ] || null; } );
+	}
+};
+function orderingItem( label ) { return { parentElement: orderingList, previousElementSibling: null, nextElementSibling: null, querySelector: function () { return { textContent: label }; } }; }
+const orderingFirst = orderingItem( 'First' );
+const orderingSecond = orderingItem( 'Second' );
+orderingList.children = [ orderingFirst, orderingSecond ]; orderingFirst.nextElementSibling = orderingSecond; orderingSecond.previousElementSibling = orderingFirst;
+orderingSecond.closest = function () { return orderingSecond; }; orderingSecond.focus = function () {};
+keydownHandler( { target: orderingSecond, key: 'ArrowUp', preventDefault: function () {} } );
+if ( orderingList.children[0] !== orderingSecond || orderingStatus.textContent.indexOf( 'position 1' ) === -1 ) {
+	throw new Error( 'Ordering Arrow Up control did not update the DOM order and live status.' );
+}
+process.stdout.write( 'Assessment submission JavaScript test passed: 6 checks.\n' );
