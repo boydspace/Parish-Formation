@@ -76,6 +76,10 @@ final class Parish_Formation_Shortcodes {
 				'submitting' => __( 'Submitting…', 'parish-formation' ),
 				'error'      => __( 'The assessment could not be submitted.', 'parish-formation' ),
 				'orderingMoved' => __( '%1$s moved to position %2$d.', 'parish-formation' ),
+				'charactersRequired' => __( '%1$d non-space characters entered; %2$d more required.', 'parish-formation' ),
+				'charactersMinimumMet' => __( '%d non-space characters entered; minimum met.', 'parish-formation' ),
+				'charactersEntered' => __( '%d non-space characters entered.', 'parish-formation' ),
+				'charactersRemaining' => __( ' %d non-space characters remaining.', 'parish-formation' ),
 			)
 		);
 		}
@@ -589,7 +593,7 @@ final class Parish_Formation_Shortcodes {
 		<?php if ( $latest ) : ?>
 			<div class="pf-assessment-latest-result uk-alert <?php echo 'passed' === $latest->status ? 'uk-alert-success' : ( 'failed' === $latest->status ? 'uk-alert-danger' : 'uk-alert-primary' ); ?>">
 				<p><strong><?php echo esc_html( $acknowledgement_mode ? ( 'pending_review' === $latest->status ? __( 'Submitted — awaiting review', 'parish-formation' ) : __( 'Submitted', 'parish-formation' ) ) : ucwords( str_replace( '_', ' ', $latest->status ) ) ); ?></strong></p>
-				<?php if ( ! $acknowledgement_mode && 'pending_review' !== $latest->status ) : ?><p><?php echo esc_html( sprintf( __( 'Score: %1$s of %2$s points; %3$d of %4$d correct.', 'parish-formation' ), $latest->score_points, $latest->max_points, $latest->correct_count, $latest->total_graded ) ); ?></p><?php endif; ?>
+				<?php if ( ! $acknowledgement_mode && 'pending_review' !== $latest->status ) : ?><p><?php echo esc_html( Parish_Formation_Assessment_Repository::format_score_summary( $latest ) ); ?></p><?php endif; ?>
 				<?php if ( ! $acknowledgement_mode ) : ?><p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, $max_attempts ) ); ?></p><?php endif; ?>
 			</div>
 		<?php endif; ?>

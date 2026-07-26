@@ -2,13 +2,17 @@
 
 let submitHandler;
 let keydownHandler;
+let inputHandler;
 let requestBody;
+const reflectionCounter = { textContent: '' };
 global.document = {
 	addEventListener: function ( event, handler ) {
 		if ( event === 'submit' ) { submitHandler = handler; }
 		if ( event === 'keydown' ) { keydownHandler = handler; }
+		if ( event === 'input' ) { inputHandler = handler; }
 	},
 	createElement: function () { return { appendChild: function () {} }; },
+	getElementById: function ( id ) { return id === 'reflection-counter' ? reflectionCounter : null; },
 	querySelectorAll: function () { return []; },
 	querySelector: function () { return null; }
 };
@@ -83,4 +87,9 @@ keydownHandler( { target: orderingSecond, key: 'ArrowUp', preventDefault: functi
 if ( orderingList.children[0] !== orderingSecond || orderingStatus.textContent.indexOf( 'position 1' ) === -1 ) {
 	throw new Error( 'Ordering Arrow Up control did not update the DOM order and live status.' );
 }
-process.stdout.write( 'Assessment submission JavaScript test passed: 6 checks.\n' );
+const reflectionField = { value: '1 2 3 4 5 6 7', dataset: { minCharacters: '10', maxCharacters: '20' }, matches: function () { return true; }, getAttribute: function () { return 'reflection-counter'; } };
+inputHandler( { target: reflectionField } );
+if ( reflectionCounter.textContent.indexOf( '3 more required' ) === -1 || reflectionCounter.textContent.indexOf( '13 non-space characters remaining' ) === -1 ) {
+	throw new Error( 'Reflection character counter did not report minimum and maximum remaining values.' );
+}
+process.stdout.write( 'Assessment submission JavaScript test passed: 7 checks.\n' );

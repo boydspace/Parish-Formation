@@ -35,6 +35,29 @@
 		return answers;
 	}
 
+	function updateReflectionCharacterCount( field ) {
+		const count = Array.from( ( field.value || '' ).replace( /\s/gu, '' ) ).length;
+		const minimum = parseInt( field.dataset.minCharacters || '0', 10 );
+		const maximum = parseInt( field.dataset.maxCharacters || '0', 10 );
+		const counter = field.getAttribute( 'aria-describedby' ) ? document.getElementById( field.getAttribute( 'aria-describedby' ) ) : null;
+		if ( ! counter ) { return; }
+		let message;
+		if ( minimum && count < minimum ) {
+			message = ( pfAssessmentSubmission.charactersRequired || '%1$d non-space characters entered; %2$d more required.' ).replace( '%1$d', count ).replace( '%2$d', minimum - count );
+		} else if ( minimum ) {
+			message = ( pfAssessmentSubmission.charactersMinimumMet || '%d non-space characters entered; minimum met.' ).replace( '%d', count );
+		} else {
+			message = ( pfAssessmentSubmission.charactersEntered || '%d non-space characters entered.' ).replace( '%d', count );
+		}
+		if ( maximum ) { message += ( pfAssessmentSubmission.charactersRemaining || ' %d non-space characters remaining.' ).replace( '%d', Math.max( 0, maximum - count ) ); }
+		counter.textContent = message;
+	}
+
+	document.addEventListener( 'input', function ( event ) {
+		if ( event.target.matches && event.target.matches( '.pf-reflection-response' ) ) { updateReflectionCharacterCount( event.target ); }
+	} );
+	document.querySelectorAll( '.pf-reflection-response' ).forEach( updateReflectionCharacterCount );
+
 	function announceOrderingPosition( item ) {
 		const list = item && item.parentElement;
 		if ( ! list ) { return; }
@@ -152,7 +175,7 @@
 			alert.className = 'uk-alert ' + ( data.status === 'passed' ? 'uk-alert-success' : data.status === 'failed' ? 'uk-alert-danger' : 'uk-alert-primary' );
 			addText( alert, 'p', data.statusLabel );
 			if ( data.assessmentMode !== 'acknowledgement' && data.status !== 'pending_review' ) {
-				addText( alert, 'p', 'Score: ' + data.score + ' of ' + data.maximum + ' points; ' + data.correct + ' of ' + data.totalGraded + ' correct.' );
+				addText( alert, 'p', data.scoreLabel || ( 'Score: ' + data.score + ' of ' + data.maximum + ' points; ' + data.correct + ' of ' + data.totalGraded + ' automatically graded questions correct.' ) );
 			}
 			if ( data.assessmentMode !== 'acknowledgement' ) {
 				addText( alert, 'p', 'Attempt ' + data.attempt + ' of ' + data.maxAttempts + '.' );

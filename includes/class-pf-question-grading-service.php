@@ -169,10 +169,24 @@ final class Parish_Formation_Question_Grading_Service {
 			return self::result( true, '', $original, 0, 0, $completed, null, false, $config );
 		}
 
-		if ( in_array( $type, array( 'reflection', 'paragraph' ), true ) ) {
-			$requires_review = $config['manual_review'] || 'paragraph' === $type;
+		if ( 'reflection' === $type ) {
+			$length = self::text_length( (string) $response );
+			$minimum = absint( $config['type_config']['minimum_characters'] ?? 0 );
+			$maximum_characters = absint( $config['type_config']['maximum_characters'] ?? 0 );
+			if ( $minimum && $length < $minimum ) {
+				return self::result( false, 'response_too_short', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, sprintf( __( 'Please enter at least %d non-space characters.', 'parish-formation' ), $minimum ) );
+			}
+			if ( $maximum_characters && $length > $maximum_characters ) {
+				return self::result( false, 'response_too_long', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, sprintf( __( 'Please use no more than %d non-space characters.', 'parish-formation' ), $maximum_characters ) );
+			}
+			$completion_credit = ! empty( $config['type_config']['completion_credit'] );
+			$maximum_points = $completion_credit || $config['graded'] ? $config['points'] : 0;
+			return self::result( true, '', $original, $completion_credit ? $maximum_points : 0, $maximum_points, true, null, ! empty( $config['manual_review'] ), $config );
+		}
+
+		if ( 'paragraph' === $type ) {
 			$maximum = $config['graded'] ? $config['points'] : 0;
-			return self::result( true, '', $original, 0, $maximum, true, null, $requires_review, $config );
+			return self::result( true, '', $original, 0, $maximum, true, null, true, $config );
 		}
 
 		return self::result( false, 'unsupported_question_type', $original, 0, 0, false, null, false, $config, __( 'This question type is not available yet.', 'parish-formation' ) );
@@ -212,6 +226,11 @@ final class Parish_Formation_Question_Grading_Service {
 		}
 		if ( empty( $settings['case_sensitive'] ) ) { $answer = function_exists( 'mb_strtolower' ) ? mb_strtolower( $answer, 'UTF-8' ) : strtolower( $answer ); }
 		return $answer;
+	}
+
+	private static function text_length( $text ) {
+		$text = preg_replace( '/\s+/u', '', (string) $text );
+		return function_exists( 'mb_strlen' ) ? mb_strlen( $text, 'UTF-8' ) : strlen( $text );
 	}
 
 	/** Resolve legacy positions/text and current stable IDs to one choice ID. */

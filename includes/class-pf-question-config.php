@@ -39,7 +39,7 @@ final class Parish_Formation_Question_Config {
 			// Legacy reflection questions were point-bearing and manually reviewed.
 			'graded' => $is_legacy && 'reflection' === $type ? true : $definition['graded_default'], 'points' => max( 1, absint( get_post_meta( $question_id, '_pf_question_points', true ) ) ),
 			'explanation' => '', 'correct_feedback' => '', 'incorrect_feedback' => '', 'feedback_timing' => 'assessment',
-			'allow_retry' => false, 'max_attempts' => 1, 'randomize_choices' => false, 'manual_review' => $definition['manual_review_default'],
+			'allow_retry' => false, 'max_attempts' => 1, 'randomize_choices' => false, 'manual_review' => $is_legacy && 'reflection' === $type ? true : $definition['manual_review_default'],
 			'featured_media_id' => 0, 'admin_notes' => '', 'presentation' => 'standard', 'scenario' => array(),
 			'choices' => $choices, 'correct_answer' => sanitize_text_field( get_post_meta( $question_id, '_pf_question_correct_answer', true ) ),
 		);
@@ -166,6 +166,18 @@ final class Parish_Formation_Question_Config {
 				'point_mode' => 'custom' === $point_mode ? 'custom' : 'equal',
 				'grading_mode' => 'partial' === $grading_mode ? 'partial' : 'all_or_nothing',
 				'items' => $items,
+			);
+		}
+		if ( 'reflection' === $type ) {
+			$minimum = absint( $values['minimum_characters'] ?? 0 );
+			$maximum = absint( $values['maximum_characters'] ?? 0 );
+			if ( $maximum && $maximum < $minimum ) { $maximum = $minimum; }
+			return array(
+				'minimum_characters' => $minimum,
+				'maximum_characters' => $maximum,
+				'completion_credit' => ! empty( $values['completion_credit'] ),
+				'private_notice' => wp_kses_post( $values['private_notice'] ?? '' ),
+				'sample_prompt' => wp_kses_post( $values['sample_prompt'] ?? '' ),
 			);
 		}
 		return self::sanitize_nested( $values );

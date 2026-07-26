@@ -220,6 +220,23 @@
 	line-height: 1;
 }
 
+.pf-reflection-private-notice,
+.pf-reflection-sample {
+	margin-bottom: 14px;
+}
+
+.pf-reflection-sample {
+	padding: 12px 14px;
+	border-left: 3px solid #1e87f0;
+	background: #f7f9fc;
+}
+
+.pf-reflection-character-count {
+	margin-top: 8px;
+	color: #5f6878;
+	font-size: 0.9rem;
+}
+
 .pf-ordering-label {
 	display: block;
 	margin-bottom: 10px;

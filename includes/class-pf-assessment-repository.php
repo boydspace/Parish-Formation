@@ -6,6 +6,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Parish_Formation_Assessment_Repository {
+	/** Build a learner-facing score summary that distinguishes completion responses. */
+	public static function format_score_summary( $attempt ) {
+		$completion_count = max( 0, count( self::get_attempt_answers( $attempt->id ) ) - absint( $attempt->total_graded ) );
+		$summary = sprintf(
+			__( 'Score: %1$s of %2$s points; %3$d of %4$d automatically graded questions correct.', 'parish-formation' ),
+			$attempt->score_points,
+			$attempt->max_points,
+			absint( $attempt->correct_count ),
+			absint( $attempt->total_graded )
+		);
+		if ( $completion_count ) {
+			$summary .= ' ' . sprintf(
+				_n( '%d completion-based response submitted.', '%d completion-based responses submitted.', $completion_count, 'parish-formation' ),
+				$completion_count
+			);
+		}
+		return $summary;
+	}
+
 	/** Get one immutable assessment attempt. */
 	public static function get_attempt( $attempt_id ) {
 		global $wpdb;

@@ -17,7 +17,7 @@ final class Parish_Formation_Question_Type_Registry {
 			'numeric'         => self::type( 'numeric', __( 'Numeric Response', 'parish-formation' ), 'automatic', false, true, true ),
 			'paragraph'       => self::type( 'paragraph', __( 'Paragraph Response', 'parish-formation' ), 'review', false, true, true ),
 			'file_upload'     => self::type( 'file_upload', __( 'File Upload', 'parish-formation' ), 'review', false, true, true ),
-			'reflection'      => self::type( 'reflection', __( 'Reflection Response', 'parish-formation' ), 'formation', true, false, true ),
+			'reflection'      => self::type( 'reflection', __( 'Reflection Response', 'parish-formation' ), 'formation', true, false, false ),
 			'rating_scale'    => self::type( 'rating_scale', __( 'Rating Scale', 'parish-formation' ), 'formation', false, false, false ),
 			'yes_no'          => self::type( 'yes_no', __( 'Yes/No', 'parish-formation' ), 'formation', false, false, false ),
 			'acknowledgement' => self::type( 'acknowledgement', __( 'Acknowledgment', 'parish-formation' ), 'formation', true, false, false ),

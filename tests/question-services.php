@@ -55,6 +55,7 @@ try {
 	$reflection_config = Parish_Formation_Question_Config::get( $reflection->ID );
 	$reflection_grade  = Parish_Formation_Question_Grading_Service::grade( $reflection, 'My original response.' );
 	$assert( $reflection_config['graded'], 'Legacy reflection did not retain its point-bearing behavior.' );
+	$assert( $reflection_config['manual_review'], 'Legacy reflection did not retain required staff review.' );
 	$assert( $reflection_grade['requires_review'] && 'pending_review' === $reflection_grade['status'] && 3.0 === $reflection_grade['maximum_points'], 'Legacy reflection review grading failed.' );
 	$assert( 'My original response.' === $reflection_grade['stored_response'], 'Original text response was not preserved.' );
 
@@ -74,6 +75,27 @@ try {
 	$assert( 1 === substr_count( $ack_html, 'type="checkbox"' ) && false === strpos( $ack_html, 'textarea' ), 'Acknowledgment did not render exactly one checkbox.' );
 	$reflection_html = Parish_Formation_Question_Renderer::render( $reflection, 'pf_answers[' . $reflection->ID . ']', false );
 	$assert( 1 === substr_count( $reflection_html, '<textarea' ) && false === strpos( $reflection_html, 'type="checkbox"' ), 'Reflection did not render exactly one text response.' );
+
+	$formation_reflection = $create_question( 'reflection', 'Where did you encounter grace this week?', '', array(), 5 );
+	$formation_config = Parish_Formation_Question_Config::get( $formation_reflection->ID );
+	$formation_config['graded'] = true;
+	$formation_config['manual_review'] = false;
+	$formation_config['type_config'] = array( 'minimum_characters' => 10, 'maximum_characters' => 30, 'completion_credit' => true, 'private_notice' => 'Only formation staff can view this response.', 'sample_prompt' => 'Consider one concrete moment.' );
+	update_post_meta( $formation_reflection->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $formation_config, 'reflection' ) );
+	$reflection_short = Parish_Formation_Question_Grading_Service::grade( $formation_reflection, 'Too short' );
+	$reflection_long = Parish_Formation_Question_Grading_Service::grade( $formation_reflection, str_repeat( 'a', 31 ) );
+	$reflection_credit = Parish_Formation_Question_Grading_Service::grade( $formation_reflection, 'Grace was present today.' );
+	$assert( ! $reflection_short['valid'] && 'response_too_short' === $reflection_short['error_code'], 'Reflection minimum-character validation failed.' );
+	$assert( ! $reflection_long['valid'] && 'response_too_long' === $reflection_long['error_code'], 'Reflection maximum-character validation failed.' );
+	$assert( $reflection_credit['valid'] && $reflection_credit['completed'] && null === $reflection_credit['is_correct'] && 5.0 === (float) $reflection_credit['earned_points'] && 'completed' === $reflection_credit['status'], 'Reflection completion credit or non-correctness semantics failed.' );
+	$formation_config['manual_review'] = true;
+	update_post_meta( $formation_reflection->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $formation_config, 'reflection' ) );
+	$reflection_review = Parish_Formation_Question_Grading_Service::grade( $formation_reflection, 'Grace was present today.' );
+	$assert( $reflection_review['requires_review'] && 'pending_review' === $reflection_review['status'], 'Optional Reflection staff review failed.' );
+	$formation_html = Parish_Formation_Question_Renderer::render( $formation_reflection, 'pf_answers[' . $formation_reflection->ID . ']', false );
+	$assert( false === strpos( $formation_html, 'minlength=' ) && false === strpos( $formation_html, 'maxlength=' ) && false !== strpos( $formation_html, 'data-min-characters="10"' ) && false !== strpos( $formation_html, '10 more required' ) && false !== strpos( $formation_html, 'Only formation staff' ) && false !== strpos( $formation_html, 'Consider one concrete moment.' ), 'Reflection learner guidance, counter, or constraints are incomplete.' );
+	$formation_snapshot = Parish_Formation_Question_Snapshot::create( $formation_reflection, Parish_Formation_Question_Config::get( $formation_reflection->ID ) );
+	$assert( 10 === $formation_snapshot['type_config']['minimum_characters'] && 'Only formation staff can view this response.' === $formation_snapshot['type_config']['private_notice'], 'Reflection snapshot lost historical settings.' );
 
 	$multiple_select = $create_question( 'multiple_select', 'Select the two sacraments.', '', array(), 6 );
 	$multi_base = Parish_Formation_Question_Config::get( $multiple_select->ID );

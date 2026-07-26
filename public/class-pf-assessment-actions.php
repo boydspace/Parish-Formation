@@ -96,6 +96,7 @@ final class Parish_Formation_Assessment_Actions {
 				'maximum'      => (float) $result->max_points,
 				'correct'      => absint( $result->correct_count ),
 				'totalGraded'  => absint( $result->total_graded ),
+				'scoreLabel'   => Parish_Formation_Assessment_Repository::format_score_summary( $result ),
 				'attempt'      => absint( $result->attempt_number ),
 				'maxAttempts'  => $max_attempts,
 				'progress'     => $progress['percentage'],

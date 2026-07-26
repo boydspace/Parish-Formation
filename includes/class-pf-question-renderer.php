@@ -97,6 +97,15 @@ final class Parish_Formation_Question_Renderer {
 			<label class="pf-assessment-option"><input class="uk-checkbox" type="checkbox" name="<?php echo esc_attr( $field_name ); ?>" value="acknowledged"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			?>> <?php esc_html_e( 'I acknowledge this statement.', 'parish-formation' ); ?></label>
 			<?php
+		} elseif ( 'reflection' === $type ) {
+			$minimum = absint( $config['type_config']['minimum_characters'] ?? 0 );
+			$maximum = absint( $config['type_config']['maximum_characters'] ?? 0 );
+			$counter_id = 'pf-reflection-count-' . absint( $question->ID );
+			if ( ! empty( $config['type_config']['private_notice'] ) ) { ?><div class="pf-reflection-private-notice uk-alert uk-alert-primary"><?php echo wp_kses_post( $config['type_config']['private_notice'] ); ?></div><?php }
+			if ( ! empty( $config['type_config']['sample_prompt'] ) ) { ?><div class="pf-reflection-sample"><strong><?php esc_html_e( 'Reflection example:', 'parish-formation' ); ?></strong> <?php echo wp_kses_post( $config['type_config']['sample_prompt'] ); ?></div><?php }
+			?><label><span class="screen-reader-text"><?php esc_html_e( 'Your reflection', 'parish-formation' ); ?></span><textarea class="uk-textarea pf-reflection-response" name="<?php echo esc_attr( $field_name ); ?>" rows="7" data-min-characters="<?php echo esc_attr( $minimum ); ?>" data-max-characters="<?php echo esc_attr( $maximum ); ?>" aria-describedby="<?php echo esc_attr( $counter_id ); ?>" placeholder="<?php esc_attr_e( 'Enter your reflection...', 'parish-formation' ); ?>"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>></textarea></label>
+			<p id="<?php echo esc_attr( $counter_id ); ?>" class="pf-reflection-character-count" aria-live="polite"><?php echo esc_html( $minimum ? sprintf( __( '0 non-space characters entered; %d more required.', 'parish-formation' ), $minimum ) : __( '0 non-space characters entered.', 'parish-formation' ) ); ?></p><?php
+			if ( $minimum || $maximum ) { ?><p class="description pf-reflection-length-guidance"><?php echo esc_html( $minimum && $maximum ? sprintf( __( 'Use between %1$d and %2$d non-space characters.', 'parish-formation' ), $minimum, $maximum ) : ( $minimum ? sprintf( __( 'Use at least %d non-space characters.', 'parish-formation' ), $minimum ) : sprintf( __( 'Use no more than %d non-space characters.', 'parish-formation' ), $maximum ) ) ); ?></p><?php }
 		} else {
 			?>
 			<label><span class="screen-reader-text"><?php esc_html_e( 'Your response', 'parish-formation' ); ?></span><textarea class="uk-textarea" name="<?php echo esc_attr( $field_name ); ?>" rows="6" placeholder="<?php esc_attr_e( 'Enter your response…', 'parish-formation' ); ?>"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
