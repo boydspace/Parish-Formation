@@ -80,6 +80,7 @@ final class Parish_Formation_Shortcodes {
 				'charactersMinimumMet' => __( '%d non-space characters entered; minimum met.', 'parish-formation' ),
 				'charactersEntered' => __( '%d non-space characters entered.', 'parish-formation' ),
 				'charactersRemaining' => __( ' %d non-space characters remaining.', 'parish-formation' ),
+				'acknowledgementReady' => __( 'The linked item was opened. You may now acknowledge the statement.', 'parish-formation' ),
 			)
 		);
 		}

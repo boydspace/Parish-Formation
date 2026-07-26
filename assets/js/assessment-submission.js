@@ -58,6 +58,19 @@
 	} );
 	document.querySelectorAll( '.pf-reflection-response' ).forEach( updateReflectionCharacterCount );
 
+	document.addEventListener( 'click', function ( event ) {
+		const link = event.target.closest ? event.target.closest( '.pf-acknowledgement-policy-link' ) : null;
+		if ( ! link ) { return; }
+		const response = link.closest( '.pf-acknowledgement-response' );
+		if ( ! response ) { return; }
+		const opened = response.querySelector( '.pf-acknowledgement-policy-opened' );
+		const checkbox = response.querySelector( '.pf-acknowledgement-checkbox[data-policy-required="true"]' );
+		if ( opened ) { opened.value = '1'; }
+		if ( checkbox ) { checkbox.disabled = false; }
+		const notice = response.querySelector( '.pf-acknowledgement-open-notice' );
+		if ( notice ) { notice.textContent = pfAssessmentSubmission.acknowledgementReady || 'The linked item was opened. You may now acknowledge the statement.'; }
+	} );
+
 	function announceOrderingPosition( item ) {
 		const list = item && item.parentElement;
 		if ( ! list ) { return; }

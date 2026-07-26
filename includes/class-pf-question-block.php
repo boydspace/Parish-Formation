@@ -63,6 +63,10 @@ final class Parish_Formation_Question_Block {
 					'reflectionCompletionCredit' => array( 'type' => 'boolean', 'default' => false ),
 					'reflectionPrivateNotice' => array( 'type' => 'string', 'default' => '' ),
 					'reflectionSamplePrompt' => array( 'type' => 'string', 'default' => '' ),
+					'acknowledgementCheckboxLabel' => array( 'type' => 'string', 'default' => 'I acknowledge this statement.' ),
+					'acknowledgementPolicyUrl' => array( 'type' => 'string', 'default' => '' ),
+					'acknowledgementRequireOpen' => array( 'type' => 'boolean', 'default' => false ),
+					'acknowledgementCompletionCredit' => array( 'type' => 'boolean', 'default' => false ),
 					'points'     => array( 'type' => 'integer', 'default' => 1 ),
 					'required'   => array( 'type' => 'boolean', 'default' => true ),
 					'instructions' => array( 'type' => 'string', 'default' => '' ),
@@ -160,7 +164,7 @@ final class Parish_Formation_Question_Block {
 			$config = Parish_Formation_Question_Config::sanitize(
 				array(
 					'type' => $type, 'instructions' => $attributes['instructions'] ?? '', 'required' => ! isset( $attributes['required'] ) || $attributes['required'],
-					'graded' => 'reflection' === $type ? ! empty( $attributes['reflectionCompletionCredit'] ) : ( array_key_exists( 'graded', $attributes ) ? (bool) $attributes['graded'] : 'acknowledgement' !== $type ),
+					'graded' => 'reflection' === $type ? ! empty( $attributes['reflectionCompletionCredit'] ) : ( 'acknowledgement' === $type ? ! empty( $attributes['acknowledgementCompletionCredit'] ) : ( array_key_exists( 'graded', $attributes ) ? (bool) $attributes['graded'] : true ) ),
 					'points' => $question_points, 'explanation' => $attributes['explanation'] ?? '',
 					'correct_feedback' => $attributes['correctFeedback'] ?? '', 'incorrect_feedback' => $attributes['incorrectFeedback'] ?? '', 'feedback_timing' => $attributes['feedbackTiming'] ?? 'assessment',
 					'manual_review' => array_key_exists( 'manualReview', $attributes ) ? (bool) $attributes['manualReview'] : false,
@@ -181,9 +185,12 @@ final class Parish_Formation_Question_Block {
 						'grading_mode' => 'ordering' === $type ? ( $attributes['orderingGradingMode'] ?? 'all_or_nothing' ) : ( $attributes['gradingMode'] ?? 'all_or_nothing' ),
 						'minimum_characters' => $attributes['reflectionMinCharacters'] ?? 0,
 						'maximum_characters' => $attributes['reflectionMaxCharacters'] ?? 0,
-						'completion_credit' => ! empty( $attributes['reflectionCompletionCredit'] ),
 						'private_notice' => $attributes['reflectionPrivateNotice'] ?? '',
 						'sample_prompt' => $attributes['reflectionSamplePrompt'] ?? '',
+						'checkbox_label' => $attributes['acknowledgementCheckboxLabel'] ?? '',
+						'policy_url' => $attributes['acknowledgementPolicyUrl'] ?? '',
+						'require_policy_open' => ! empty( $attributes['acknowledgementRequireOpen'] ),
+						'completion_credit' => 'acknowledgement' === $type ? ! empty( $attributes['acknowledgementCompletionCredit'] ) : ! empty( $attributes['reflectionCompletionCredit'] ),
 					),
 				),
 				$type

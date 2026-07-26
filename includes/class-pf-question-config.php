@@ -180,6 +180,14 @@ final class Parish_Formation_Question_Config {
 				'sample_prompt' => wp_kses_post( $values['sample_prompt'] ?? '' ),
 			);
 		}
+		if ( 'acknowledgement' === $type ) {
+			return array(
+				'checkbox_label' => sanitize_text_field( $values['checkbox_label'] ?? '' ) ?: __( 'I acknowledge this statement.', 'parish-formation' ),
+				'policy_url' => esc_url_raw( $values['policy_url'] ?? '' ),
+				'require_policy_open' => ! empty( $values['require_policy_open'] ),
+				'completion_credit' => ! empty( $values['completion_credit'] ),
+			);
+		}
 		return self::sanitize_nested( $values );
 	}
 }

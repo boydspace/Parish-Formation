@@ -36,7 +36,8 @@
 			blanks: { type: 'array', default: [] }, blankPointMode: { type: 'string', default: 'equal' },
 			matchingPairs: { type: 'array', default: [] }, matchingPointMode: { type: 'string', default: 'equal' },
 			orderingItems: { type: 'array', default: [] }, orderingPointMode: { type: 'string', default: 'equal' }, orderingGradingMode: { type: 'string', default: 'all_or_nothing' },
-			reflectionMinCharacters: { type: 'integer', default: 0 }, reflectionMaxCharacters: { type: 'integer', default: 0 }, reflectionCompletionCredit: { type: 'boolean', default: false }, reflectionPrivateNotice: { type: 'string', default: '' }, reflectionSamplePrompt: { type: 'string', default: '' }
+			reflectionMinCharacters: { type: 'integer', default: 0 }, reflectionMaxCharacters: { type: 'integer', default: 0 }, reflectionCompletionCredit: { type: 'boolean', default: false }, reflectionPrivateNotice: { type: 'string', default: '' }, reflectionSamplePrompt: { type: 'string', default: '' },
+			acknowledgementCheckboxLabel: { type: 'string', default: 'I acknowledge this statement.' }, acknowledgementPolicyUrl: { type: 'string', default: '' }, acknowledgementRequireOpen: { type: 'boolean', default: false }, acknowledgementCompletionCredit: { type: 'boolean', default: false }
 		},
 		supports: { html: false, reusable: false },
 		edit: function ( props ) {
@@ -120,8 +121,8 @@
 							{ label: __( '— Formation and Feedback —', 'parish-formation' ), value: '__formation', disabled: true }, { label: __( 'Reflection Response', 'parish-formation' ), value: 'reflection' }, { label: __( 'Rating Scale (Phase 3)', 'parish-formation' ), value: '__rating', disabled: true }, { label: __( 'Yes / No (Phase 3)', 'parish-formation' ), value: '__yes_no', disabled: true }, { label: __( 'Acknowledgment', 'parish-formation' ), value: 'acknowledgement' }, { label: __( 'Image Selection (Phase 3)', 'parish-formation' ), value: '__image', disabled: true }
 						], onChange: function ( value ) { if ( value.indexOf( '__' ) === 0 ) { return; } props.setAttributes( { type: value, graded: ! [ 'reflection', 'acknowledgement' ].includes( value ), manualReview: value === 'reflection' } ); } } ),
 						el( TextareaControl, { label: __( 'Optional instructions', 'parish-formation' ), value: attrs.instructions, onChange: function ( value ) { props.setAttributes( { instructions: value } ); } } ),
-						attrs.type !== 'reflection' && el( ToggleControl, { label: __( 'Graded question', 'parish-formation' ), checked: attrs.graded, onChange: function ( value ) { props.setAttributes( { graded: value } ); } } ),
-						( attrs.graded || ( attrs.type === 'reflection' && attrs.reflectionCompletionCredit ) ) && ! ( ( attrs.type === 'fill_blank' && attrs.blankPointMode === 'custom' ) || ( attrs.type === 'matching' && attrs.matchingPointMode === 'custom' ) || ( attrs.type === 'ordering' && attrs.orderingPointMode === 'custom' ) ) && el( TextControl, { label: __( 'Points', 'parish-formation' ), type: 'number', min: 1, value: attrs.points, onChange: function ( value ) { props.setAttributes( { points: Math.max( 1, parseInt( value, 10 ) || 1 ) } ); } } ),
+						! [ 'reflection', 'acknowledgement' ].includes( attrs.type ) && el( ToggleControl, { label: __( 'Graded question', 'parish-formation' ), checked: attrs.graded, onChange: function ( value ) { props.setAttributes( { graded: value } ); } } ),
+						( attrs.graded || ( attrs.type === 'reflection' && attrs.reflectionCompletionCredit ) || ( attrs.type === 'acknowledgement' && attrs.acknowledgementCompletionCredit ) ) && ! ( ( attrs.type === 'fill_blank' && attrs.blankPointMode === 'custom' ) || ( attrs.type === 'matching' && attrs.matchingPointMode === 'custom' ) || ( attrs.type === 'ordering' && attrs.orderingPointMode === 'custom' ) ) && el( TextControl, { label: __( 'Points', 'parish-formation' ), type: 'number', min: 1, value: attrs.points, onChange: function ( value ) { props.setAttributes( { points: Math.max( 1, parseInt( value, 10 ) || 1 ) } ); } } ),
 						el( ToggleControl, { label: __( 'Required question', 'parish-formation' ), checked: attrs.required, onChange: function ( value ) { props.setAttributes( { required: value } ); } } ),
 						choiceType && el( ToggleControl, { label: __( 'Randomize answer choices', 'parish-formation' ), checked: attrs.randomizeChoices, onChange: function ( value ) { props.setAttributes( { randomizeChoices: value } ); } } ),
 						attrs.type === 'reflection' && el( ToggleControl, { label: __( 'Require staff review', 'parish-formation' ), checked: attrs.manualReview, onChange: function ( value ) { props.setAttributes( { manualReview: value } ); } } )
@@ -214,7 +215,14 @@
 					el( TextareaControl, { label: __( 'Private-response notice (optional)', 'parish-formation' ), help: __( 'Explain who can view this response.', 'parish-formation' ), value: attrs.reflectionPrivateNotice, onChange: function ( value ) { props.setAttributes( { reflectionPrivateNotice: value } ); } } ),
 					el( TextareaControl, { label: __( 'Sample reflection (optional)', 'parish-formation' ), value: attrs.reflectionSamplePrompt, onChange: function ( value ) { props.setAttributes( { reflectionSamplePrompt: value } ); } } )
 				),
-				el( 'div', { className: 'pf-question-block__summary' }, __( 'Type:', 'parish-formation' ) + ' ' + attrs.type.replaceAll( '_', ' ' ) + ' · ' + ( attrs.graded || attrs.reflectionCompletionCredit ? attrs.points : 0 ) + ' ' + __( 'point(s)', 'parish-formation' ) )
+				attrs.type === 'acknowledgement' && el( 'div', { className: 'pf-question-acknowledgement-settings' },
+					el( 'p', { className: 'description' }, __( 'The question prompt is the statement preserved in the learner\'s submission record.', 'parish-formation' ) ),
+					el( TextControl, { label: __( 'Checkbox label', 'parish-formation' ), value: attrs.acknowledgementCheckboxLabel, onChange: function ( value ) { props.setAttributes( { acknowledgementCheckboxLabel: value } ); } } ),
+					el( TextControl, { label: __( 'Policy or document URL (optional)', 'parish-formation' ), type: 'url', value: attrs.acknowledgementPolicyUrl, onChange: function ( value ) { props.setAttributes( { acknowledgementPolicyUrl: value } ); } } ),
+					attrs.acknowledgementPolicyUrl && el( ToggleControl, { label: __( 'Require the linked item to be opened first', 'parish-formation' ), checked: attrs.acknowledgementRequireOpen, onChange: function ( value ) { props.setAttributes( { acknowledgementRequireOpen: value } ); } } ),
+					el( ToggleControl, { label: __( 'Award completion credit', 'parish-formation' ), checked: attrs.acknowledgementCompletionCredit, onChange: function ( value ) { props.setAttributes( { acknowledgementCompletionCredit: value, graded: value } ); } } )
+				),
+				el( 'div', { className: 'pf-question-block__summary' }, __( 'Type:', 'parish-formation' ) + ' ' + attrs.type.replaceAll( '_', ' ' ) + ' · ' + ( attrs.graded || attrs.reflectionCompletionCredit || attrs.acknowledgementCompletionCredit ? attrs.points : 0 ) + ' ' + __( 'point(s)', 'parish-formation' ) )
 			);
 		},
 		save: function () { return null; }

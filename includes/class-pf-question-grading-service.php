@@ -162,11 +162,18 @@ final class Parish_Formation_Question_Grading_Service {
 		}
 
 		if ( 'acknowledgement' === $type ) {
-			$completed = in_array( strtolower( sanitize_text_field( (string) $response ) ), array( 'acknowledged', '1', 'yes', 'true' ), true );
+			$acknowledged_value = is_array( $response ) ? ( $response['acknowledged'] ?? '' ) : $response;
+			$policy_opened = is_array( $response ) && ! empty( $response['policy_opened'] );
+			$completed = in_array( strtolower( sanitize_text_field( (string) $acknowledged_value ) ), array( 'acknowledged', '1', 'yes', 'true' ), true );
+			if ( ! empty( $config['type_config']['require_policy_open'] ) && ! $policy_opened ) {
+				return self::result( false, 'policy_not_opened', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, __( 'Please open the linked policy before acknowledging this statement.', 'parish-formation' ) );
+			}
 			if ( $config['required'] && ! $completed ) {
 				return self::result( false, 'required_acknowledgement', $original, 0, 0, false, null, false, $config, __( 'This acknowledgment is required.', 'parish-formation' ) );
 			}
-			return self::result( true, '', $original, 0, 0, $completed, null, false, $config );
+			$completion_credit = ! empty( $config['type_config']['completion_credit'] );
+			$maximum = $completion_credit || $config['graded'] ? $config['points'] : 0;
+			return self::result( true, '', $original, $completed && $completion_credit ? $maximum : 0, $maximum, $completed, null, false, $config );
 		}
 
 		if ( 'reflection' === $type ) {

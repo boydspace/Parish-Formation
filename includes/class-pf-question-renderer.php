@@ -93,9 +93,17 @@ final class Parish_Formation_Question_Renderer {
 				<?php if ( $disabled ) { ?><p class="pf-ordering-closed-notice"><?php esc_html_e( 'This submitted order can no longer be changed.', 'parish-formation' ); ?></p><?php } else { ?><p class="screen-reader-text pf-ordering-status" aria-live="polite"></p><?php } ?>
 			</div><?php
 		} elseif ( 'acknowledgement' === $type ) {
+			$checkbox_label = $config['type_config']['checkbox_label'] ?? __( 'I acknowledge this statement.', 'parish-formation' );
+			$policy_url = $config['type_config']['policy_url'] ?? '';
+			$require_open = ! empty( $config['type_config']['require_policy_open'] ) && $policy_url;
 			?>
-			<label class="pf-assessment-option"><input class="uk-checkbox" type="checkbox" name="<?php echo esc_attr( $field_name ); ?>" value="acknowledged"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-			?>> <?php esc_html_e( 'I acknowledge this statement.', 'parish-formation' ); ?></label>
+			<div class="pf-acknowledgement-response">
+				<?php if ( $policy_url ) { ?><p><a class="pf-acknowledgement-policy-link" href="<?php echo esc_url( $policy_url ); ?>" target="_blank" rel="noopener noreferrer" data-acknowledgement-target="<?php echo esc_attr( $question->ID ); ?>"><?php esc_html_e( 'Open the referenced policy or document', 'parish-formation' ); ?></a></p><?php } ?>
+				<input type="hidden" class="pf-acknowledgement-policy-opened" name="<?php echo esc_attr( $field_name . '[policy_opened]' ); ?>" value="0" data-question-id="<?php echo esc_attr( $question->ID ); ?>" />
+				<label class="pf-assessment-option"><input class="uk-checkbox pf-acknowledgement-checkbox" type="checkbox" name="<?php echo esc_attr( $field_name . '[acknowledged]' ); ?>" value="acknowledged"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $require_open && ! $disabled ? ' disabled data-policy-required="true"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				?>> <?php echo esc_html( $checkbox_label ); ?></label>
+				<?php if ( $require_open && ! $disabled ) { ?><p class="description pf-acknowledgement-open-notice"><?php esc_html_e( 'Open the linked item before checking the acknowledgment.', 'parish-formation' ); ?></p><?php } ?>
+			</div>
 			<?php
 		} elseif ( 'reflection' === $type ) {
 			$minimum = absint( $config['type_config']['minimum_characters'] ?? 0 );

@@ -237,6 +237,12 @@
 	font-size: 0.9rem;
 }
 
+.pf-acknowledgement-response {
+	padding: 14px;
+	border: 1px solid #d9dde5;
+	background: #f8fafc;
+}
+
 .pf-ordering-label {
 	display: block;
 	margin-bottom: 10px;

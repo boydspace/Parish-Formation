@@ -62,6 +62,27 @@ try {
 	$ack = $create_question( 'acknowledgement', 'I have reviewed the policy.' );
 	$ack_grade = Parish_Formation_Question_Grading_Service::grade( $ack, 'acknowledged' );
 	$assert( $ack_grade['completed'] && null === $ack_grade['is_correct'] && 0.0 === (float) $ack_grade['maximum_points'], 'Acknowledgment completion semantics failed.' );
+	$audited_ack = $create_question( 'acknowledgement', 'I understand the current godparent requirements.', '', array(), 2 );
+	$audited_ack_config = Parish_Formation_Question_Config::get( $audited_ack->ID );
+	$audited_ack_config['graded'] = true;
+	$audited_ack_config['type_config'] = array(
+		'checkbox_label' => 'I have read and accept these requirements.',
+		'policy_url' => 'https://example.test/godparent-policy/',
+		'require_policy_open' => true,
+		'completion_credit' => true,
+	);
+	update_post_meta( $audited_ack->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $audited_ack_config, 'acknowledgement' ) );
+	$ack_unopened = Parish_Formation_Question_Grading_Service::grade( $audited_ack, array( 'acknowledged' => 'acknowledged', 'policy_opened' => '0' ) );
+	$ack_missing = Parish_Formation_Question_Grading_Service::grade( $audited_ack, array( 'policy_opened' => '1' ) );
+	$ack_completed = Parish_Formation_Question_Grading_Service::grade( $audited_ack, array( 'acknowledged' => 'acknowledged', 'policy_opened' => '1' ) );
+	$assert( ! $ack_unopened['valid'] && 'policy_not_opened' === $ack_unopened['error_code'], 'Acknowledgment policy-open validation failed.' );
+	$assert( ! $ack_missing['valid'] && 'required_acknowledgement' === $ack_missing['error_code'], 'Required acknowledgment validation failed.' );
+	$assert( $ack_completed['valid'] && $ack_completed['completed'] && null === $ack_completed['is_correct'] && 2.0 === (float) $ack_completed['earned_points'], 'Acknowledgment completion credit failed.' );
+	$assert( false !== strpos( $ack_completed['stored_response'], 'policy_opened' ), 'Acknowledgment audit response was not preserved.' );
+	$audited_ack_html = Parish_Formation_Question_Renderer::render( $audited_ack, 'pf_answers[' . $audited_ack->ID . ']', false );
+	$assert( false !== strpos( $audited_ack_html, 'I have read and accept these requirements.' ) && false !== strpos( $audited_ack_html, 'godparent-policy' ) && false !== strpos( $audited_ack_html, 'data-policy-required="true"' ), 'Acknowledgment label, policy link, or open requirement did not render.' );
+	$audited_ack_snapshot = Parish_Formation_Question_Snapshot::create( $audited_ack, Parish_Formation_Question_Config::get( $audited_ack->ID ) );
+	$assert( 'I understand the current godparent requirements.' === $audited_ack_snapshot['prompt'] && 'I have read and accept these requirements.' === $audited_ack_snapshot['type_config']['checkbox_label'], 'Acknowledgment snapshot lost its historical statement or label.' );
 
 	$snapshot = Parish_Formation_Question_Snapshot::create( $choice, $config );
 	$assert( 2 === $snapshot['snapshot_version'] && 'Choose the first answer.' === $snapshot['prompt'] && isset( $snapshot['choices'][0]['id'] ), 'Historical question snapshot is incomplete.' );

@@ -3,6 +3,7 @@
 let submitHandler;
 let keydownHandler;
 let inputHandler;
+let clickHandler;
 let requestBody;
 const reflectionCounter = { textContent: '' };
 global.document = {
@@ -10,6 +11,7 @@ global.document = {
 		if ( event === 'submit' ) { submitHandler = handler; }
 		if ( event === 'keydown' ) { keydownHandler = handler; }
 		if ( event === 'input' ) { inputHandler = handler; }
+		if ( event === 'click' ) { clickHandler = handler; }
 	},
 	createElement: function () { return { appendChild: function () {} }; },
 	getElementById: function ( id ) { return id === 'reflection-counter' ? reflectionCounter : null; },
@@ -42,6 +44,8 @@ const inputs = [
 	{ type: 'hidden', checked: false, name: 'pf_answers[250][]', value: 'item-three' },
 	{ type: 'hidden', checked: false, name: 'pf_answers[250][]', value: 'item-one' },
 	{ type: 'hidden', checked: false, name: 'pf_answers[250][]', value: 'item-two' }
+	,{ type: 'hidden', checked: false, name: 'pf_answers[251][policy_opened]', value: '1' }
+	,{ type: 'checkbox', checked: true, name: 'pf_answers[251][acknowledged]', value: 'acknowledged' }
 ];
 const form = {
 	previousElementSibling: resultBox,
@@ -69,6 +73,23 @@ if ( JSON.stringify( requestBody.answers['249'] ) !== JSON.stringify( { 'prompt-
 if ( JSON.stringify( requestBody.answers['250'] ) !== JSON.stringify( [ 'item-three', 'item-one', 'item-two' ] ) ) {
 	throw new Error( 'Ordering values were not serialized in their current DOM order.' );
 }
+if ( JSON.stringify( requestBody.answers['251'] ) !== JSON.stringify( { policy_opened: '1', acknowledged: 'acknowledged' } ) ) {
+	throw new Error( 'Acknowledgment audit values were not serialized together.' );
+}
+const acknowledgementOpened = { value: '0' };
+const acknowledgementCheckbox = { disabled: true };
+const acknowledgementNotice = { textContent: '' };
+const acknowledgementResponse = { querySelector: function ( selector ) {
+	if ( selector === '.pf-acknowledgement-policy-opened' ) { return acknowledgementOpened; }
+	if ( selector.indexOf( '.pf-acknowledgement-checkbox' ) === 0 ) { return acknowledgementCheckbox; }
+	if ( selector === '.pf-acknowledgement-open-notice' ) { return acknowledgementNotice; }
+	return null;
+} };
+const acknowledgementLink = { closest: function ( selector ) { return selector === '.pf-acknowledgement-response' ? acknowledgementResponse : acknowledgementLink; } };
+clickHandler( { target: { closest: function () { return acknowledgementLink; } } } );
+if ( acknowledgementOpened.value !== '1' || acknowledgementCheckbox.disabled || acknowledgementNotice.textContent.indexOf( 'opened' ) === -1 ) {
+	throw new Error( 'Opening an acknowledgment policy did not unlock and audit the checkbox.' );
+}
 const orderingStatus = { textContent: '' };
 const orderingList = {
 	children: [], parentElement: { querySelector: function () { return orderingStatus; } },
@@ -92,4 +113,4 @@ inputHandler( { target: reflectionField } );
 if ( reflectionCounter.textContent.indexOf( '3 more required' ) === -1 || reflectionCounter.textContent.indexOf( '13 non-space characters remaining' ) === -1 ) {
 	throw new Error( 'Reflection character counter did not report minimum and maximum remaining values.' );
 }
-process.stdout.write( 'Assessment submission JavaScript test passed: 7 checks.\n' );
+process.stdout.write( 'Assessment submission JavaScript test passed: 9 checks.\n' );
