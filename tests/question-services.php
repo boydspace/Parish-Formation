@@ -57,6 +57,14 @@ try {
 	$assert( 2 === $snapshot['snapshot_version'] && 'Choose the first answer.' === $snapshot['prompt'] && isset( $snapshot['choices'][0]['id'] ), 'Historical question snapshot is incomplete.' );
 	$rendered = Parish_Formation_Question_Renderer::render( $choice, 'pf_answers[' . $choice->ID . ']', false );
 	$assert( false !== strpos( $rendered, 'type="radio"' ) && false === strpos( $rendered, 'correct_answer' ), 'Learner renderer is inaccessible or exposes grading configuration.' );
+	$true_false = $create_question( 'true_false', 'This statement is true.', 'true' );
+	$true_false_html = Parish_Formation_Question_Renderer::render( $true_false, 'pf_answers[' . $true_false->ID . ']', false );
+	$assert( 2 === substr_count( $true_false_html, 'type="radio"' ), 'True/False did not render exactly two radio controls.' );
+	$assert( false === strpos( $true_false_html, 'elseif' ) && false === strpos( $true_false_html, 'textarea' ) && false === strpos( $true_false_html, 'acknowledge' ), 'Renderer control-flow source or unrelated controls leaked into True/False output.' );
+	$ack_html = Parish_Formation_Question_Renderer::render( $ack, 'pf_answers[' . $ack->ID . ']', false );
+	$assert( 1 === substr_count( $ack_html, 'type="checkbox"' ) && false === strpos( $ack_html, 'textarea' ), 'Acknowledgment did not render exactly one checkbox.' );
+	$reflection_html = Parish_Formation_Question_Renderer::render( $reflection, 'pf_answers[' . $reflection->ID . ']', false );
+	$assert( 1 === substr_count( $reflection_html, '<textarea' ) && false === strpos( $reflection_html, 'type="checkbox"' ), 'Reflection did not render exactly one text response.' );
 } catch ( Throwable $error ) {
 	$failures[] = 'Test setup failed: ' . $error->getMessage();
 } finally {
