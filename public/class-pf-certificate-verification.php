@@ -131,7 +131,6 @@ final class Parish_Formation_Certificate_Verification {
 							<div class="pf-verification-code"><span><?php esc_html_e( 'Verification code', 'parish-formation' ); ?></span><strong><code><?php echo esc_html( $certificate->verification_code ); ?></code></strong></div>
 						</div>
 						<p class="pf-verification-actions">
-							<a class="uk-button uk-button-primary" href="<?php echo esc_url( $pdf_base_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Print Certificate', 'parish-formation' ); ?></a>
 							<a class="uk-button uk-button-secondary" href="<?php echo esc_url( add_query_arg( 'download', '1', $pdf_base_url ) ); ?>"><?php esc_html_e( 'Download PDF', 'parish-formation' ); ?></a>
 						</p>
 					</section>

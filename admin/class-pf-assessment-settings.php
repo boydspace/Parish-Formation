@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Parish_Formation_Assessment_Settings {
 
 	public const COURSE_META_KEY      = '_pf_course_id';
+	public const MODE_META_KEY        = '_pf_assessment_mode';
 	public const GRADING_META_KEY     = '_pf_assessment_grading_timing';
 	public const PROGRESSION_META_KEY = '_pf_assessment_progression';
 	public const PASSING_RULE_META_KEY = '_pf_assessment_passing_rule';
@@ -47,6 +48,7 @@ final class Parish_Formation_Assessment_Settings {
 			)
 		);
 		$course_id   = absint( get_post_meta( $post->ID, self::COURSE_META_KEY, true ) );
+		$mode         = self::get_mode( $post->ID );
 		$grading     = get_post_meta( $post->ID, self::GRADING_META_KEY, true );
 		$progression = get_post_meta( $post->ID, self::PROGRESSION_META_KEY, true );
 		$passing_rule = get_post_meta( $post->ID, self::PASSING_RULE_META_KEY, true );
@@ -67,6 +69,15 @@ final class Parish_Formation_Assessment_Settings {
 				<option value="<?php echo esc_attr( $course->ID ); ?>" <?php selected( $course_id, $course->ID ); ?>><?php echo esc_html( $course->post_title ); ?></option>
 			<?php endforeach; ?>
 		</select>
+
+		<p><label for="pf-assessment-mode"><strong><?php esc_html_e( 'Assessment type', 'parish-formation' ); ?></strong></label></p>
+		<select id="pf-assessment-mode" name="pf_assessment_mode" class="widefat">
+			<option value="standard" <?php selected( $mode, 'standard' ); ?>><?php esc_html_e( 'Standard graded assessment', 'parish-formation' ); ?></option>
+			<option value="acknowledgement" <?php selected( $mode, 'acknowledgement' ); ?>><?php esc_html_e( 'Acknowledgement or response', 'parish-formation' ); ?></option>
+		</select>
+		<p id="pf-assessment-mode-description" class="description"><?php esc_html_e( 'Acknowledgement mode creates one non-graded, immutable submission per participant course run. Add Acknowledgement and/or Reflection question blocks.', 'parish-formation' ); ?></p>
+
+		<div id="pf-assessment-grading-settings">
 
 		<p><label for="pf-assessment-passing-rule"><strong><?php esc_html_e( 'Passing score based on', 'parish-formation' ); ?></strong></label></p>
 		<select id="pf-assessment-passing-rule" name="pf_assessment_passing_rule" class="widefat">
@@ -93,7 +104,22 @@ final class Parish_Formation_Assessment_Settings {
 			<option value="submit_to_continue" <?php selected( $progression, 'submit_to_continue' ); ?>><?php esc_html_e( 'Require submission to continue', 'parish-formation' ); ?></option>
 			<option value="no_gate" <?php selected( $progression, 'no_gate' ); ?>><?php esc_html_e( 'Do not block progression', 'parish-formation' ); ?></option>
 		</select>
+		</div>
 		<p class="description"><?php esc_html_e( 'Add questions with the block inserter, then arrange this assessment with the lessons from the course editor.', 'parish-formation' ); ?></p>
+		<script>
+		( function () {
+			var mode = document.getElementById( 'pf-assessment-mode' );
+			var settings = document.getElementById( 'pf-assessment-grading-settings' );
+			var description = document.getElementById( 'pf-assessment-mode-description' );
+			function updateMode() {
+				var acknowledgement = 'acknowledgement' === mode.value;
+				settings.hidden = acknowledgement;
+				description.hidden = ! acknowledgement;
+			}
+			mode.addEventListener( 'change', updateMode );
+			updateMode();
+		}() );
+		</script>
 		<?php
 	}
 
@@ -121,6 +147,17 @@ final class Parish_Formation_Assessment_Settings {
 		}
 
 		if ( $full_edit ) {
+			$mode = isset( $_POST['pf_assessment_mode'] ) ? sanitize_key( wp_unslash( $_POST['pf_assessment_mode'] ) ) : 'standard';
+			$mode = self::valid_mode( $mode ) ? $mode : 'standard';
+			update_post_meta( $post_id, self::MODE_META_KEY, $mode );
+			if ( 'acknowledgement' === $mode ) {
+				update_post_meta( $post_id, self::GRADING_META_KEY, 'immediate' );
+				update_post_meta( $post_id, self::PROGRESSION_META_KEY, 'submit_to_continue' );
+				update_post_meta( $post_id, self::PASSING_RULE_META_KEY, 'percentage' );
+				update_post_meta( $post_id, self::PASSING_VALUE_META_KEY, 0 );
+				update_post_meta( $post_id, self::MAX_ATTEMPTS_META_KEY, 1 );
+				return;
+			}
 			$grading = isset( $_POST['pf_assessment_grading'] ) ? sanitize_key( wp_unslash( $_POST['pf_assessment_grading'] ) ) : '';
 			update_post_meta( $post_id, self::GRADING_META_KEY, self::valid_grading( $grading ) ? $grading : 'immediate' );
 			$progression = isset( $_POST['pf_assessment_progression'] ) ? sanitize_key( wp_unslash( $_POST['pf_assessment_progression'] ) ) : '';
@@ -208,6 +245,21 @@ final class Parish_Formation_Assessment_Settings {
 
 	private static function valid_grading( $value ) {
 		return in_array( $value, array( 'immediate', 'course_end' ), true );
+	}
+
+	/** Return the normalized assessment mode. */
+	public static function get_mode( $assessment_id ) {
+		$mode = sanitize_key( get_post_meta( $assessment_id, self::MODE_META_KEY, true ) );
+		return self::valid_mode( $mode ) ? $mode : 'standard';
+	}
+
+	/** Determine whether an assessment records an acknowledgement or response. */
+	public static function is_acknowledgement_mode( $assessment_id ) {
+		return 'acknowledgement' === self::get_mode( $assessment_id );
+	}
+
+	private static function valid_mode( $value ) {
+		return in_array( $value, array( 'standard', 'acknowledgement' ), true );
 	}
 
 	private static function valid_progression( $value ) {

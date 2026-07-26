@@ -314,14 +314,14 @@ final class Parish_Formation_Enrollments_Admin {
 					<thead><tr><th><?php esc_html_e( 'Participant', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Course', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Assessment', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Attempt', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Status', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Score', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Submitted', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Waiting', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Action', 'parish-formation' ); ?></th></tr></thead>
 					<tbody>
 					<?php foreach ( $attempts as $attempt ) : ?>
-						<?php $detail_url = add_query_arg( array( 'page' => 'parish-formation-enrollments', 'enrollment_id' => $attempt->enrollment_id ), admin_url( 'admin.php' ) ) . '#pf-assessment-attempt-' . $attempt->id; ?>
+						<?php $detail_url = add_query_arg( array( 'page' => 'parish-formation-enrollments', 'enrollment_id' => $attempt->enrollment_id ), admin_url( 'admin.php' ) ) . '#pf-assessment-attempt-' . $attempt->id; $is_acknowledgement = self::is_acknowledgement_attempt( $attempt ); ?>
 						<tr>
 							<td><a href="<?php echo esc_url( $detail_url ); ?>"><?php echo esc_html( $attempt->display_name ); ?></a><br><small><?php echo esc_html( $attempt->user_email ); ?></small></td>
 							<td><?php echo esc_html( $attempt->course_title ); ?></td>
 							<td><?php echo esc_html( $attempt->assessment_title ); ?></td>
-							<td><?php echo esc_html( $attempt->attempt_number ); ?></td>
-							<td><?php echo esc_html( ucwords( str_replace( '_', ' ', $attempt->status ) ) ); ?></td>
-							<td><?php echo 'pending_review' === $attempt->status ? '&mdash;' : esc_html( $attempt->score_points . ' / ' . $attempt->max_points ); ?></td>
+							<td><?php echo $is_acknowledgement ? '&mdash;' : esc_html( $attempt->attempt_number ); ?></td>
+							<td><?php echo esc_html( self::assessment_status_label( $attempt ) ); ?></td>
+							<td><?php echo $is_acknowledgement || 'pending_review' === $attempt->status ? '&mdash;' : esc_html( $attempt->score_points . ' / ' . $attempt->max_points ); ?></td>
 							<td><?php echo esc_html( self::format_utc_date( $attempt->submitted_at ) ); ?></td>
 							<td><?php echo 'pending_review' === $attempt->status ? esc_html( human_time_diff( strtotime( $attempt->submitted_at . ' UTC' ), current_time( 'timestamp', true ) ) ) : '&mdash;'; ?></td>
 							<td><a class="button button-small" href="<?php echo esc_url( $detail_url ); ?>"><?php echo 'pending_review' === $attempt->status ? esc_html__( 'Review', 'parish-formation' ) : esc_html__( 'View', 'parish-formation' ); ?></a></td>
@@ -375,9 +375,10 @@ final class Parish_Formation_Enrollments_Admin {
 							) . '#pf-assessment-attempt-' . $attempt->id;
 							?>
 							<div<?php echo $index ? ' style="border-top: 1px solid #dcdcde; margin-top: 8px; padding-top: 8px;"' : ''; ?>>
+								<?php $is_acknowledgement = self::is_acknowledgement_attempt( $attempt ); ?>
 								<strong><?php echo esc_html( $attempt->assessment_title ); ?></strong>
-								<?php echo esc_html( sprintf( __( '— Run %1$d, Attempt %2$d — %3$s', 'parish-formation' ), $attempt->course_run, $attempt->attempt_number, ucwords( str_replace( '_', ' ', $attempt->status ) ) ) ); ?>
-								<?php if ( 'pending_review' !== $attempt->status ) : ?>
+								<?php echo esc_html( $is_acknowledgement ? sprintf( __( '— Run %1$d — %2$s', 'parish-formation' ), $attempt->course_run, self::assessment_status_label( $attempt ) ) : sprintf( __( '— Run %1$d, Attempt %2$d — %3$s', 'parish-formation' ), $attempt->course_run, $attempt->attempt_number, self::assessment_status_label( $attempt ) ) ); ?>
+								<?php if ( ! $is_acknowledgement && 'pending_review' !== $attempt->status ) : ?>
 									<?php echo esc_html( sprintf( __( '— %1$s / %2$s', 'parish-formation' ), $attempt->score_points, $attempt->max_points ) ); ?>
 								<?php endif; ?>
 								<br><small><?php echo esc_html( self::format_utc_date( $attempt->submitted_at ) ); ?></small>
@@ -417,19 +418,21 @@ final class Parish_Formation_Enrollments_Admin {
 			wp_die( esc_html__( 'The assessment report could not be created.', 'parish-formation' ) );
 		}
 		fwrite( $output, "\xEF\xBB\xBF" );
-		fputcsv( $output, array( 'Participant', 'Email', 'Course', 'Course Run', 'Assessment', 'Attempt', 'Status', 'Score', 'Maximum Score', 'Percentage', 'Submitted (UTC)', 'Reviewed (UTC)' ) );
+		fputcsv( $output, array( 'Participant', 'Email', 'Course', 'Course Run', 'Assessment', 'Type', 'Attempt', 'Status', 'Score', 'Maximum Score', 'Percentage', 'Submitted (UTC)', 'Reviewed (UTC)' ) );
 		foreach ( $attempts as $attempt ) {
-			$percentage = $attempt->max_points > 0 ? round( ( $attempt->score_points / $attempt->max_points ) * 100, 2 ) : 0;
+			$is_acknowledgement = self::is_acknowledgement_attempt( $attempt );
+			$percentage = ! $is_acknowledgement && $attempt->max_points > 0 ? round( ( $attempt->score_points / $attempt->max_points ) * 100, 2 ) : '';
 			$row = array(
 				$attempt->display_name,
 				$attempt->user_email,
 				$attempt->course_title,
 				$attempt->course_run,
 				$attempt->assessment_title,
-				$attempt->attempt_number,
-				ucwords( str_replace( '_', ' ', $attempt->status ) ),
-				$attempt->score_points,
-				$attempt->max_points,
+				$is_acknowledgement ? 'Acknowledgement or response' : 'Graded assessment',
+				$is_acknowledgement ? '' : $attempt->attempt_number,
+				self::assessment_status_label( $attempt ),
+				$is_acknowledgement ? '' : $attempt->score_points,
+				$is_acknowledgement ? '' : $attempt->max_points,
 				$percentage,
 				$attempt->submitted_at,
 				$attempt->reviewed_at,
@@ -754,32 +757,32 @@ final class Parish_Formation_Enrollments_Admin {
 		<h2><?php esc_html_e( 'Assessment Attempts', 'parish-formation' ); ?></h2>
 		<?php if ( ! $attempts ) : ?><p><?php esc_html_e( 'No assessments have been submitted.', 'parish-formation' ); ?></p><?php return; endif; ?>
 		<?php foreach ( $attempts as $attempt ) : ?>
-			<?php $answers = Parish_Formation_Assessment_Repository::get_attempt_answers( $attempt->id ); ?>
+			<?php $answers = Parish_Formation_Assessment_Repository::get_attempt_answers( $attempt->id ); $is_acknowledgement = self::is_acknowledgement_attempt( $attempt ); ?>
 			<div id="pf-assessment-attempt-<?php echo esc_attr( $attempt->id ); ?>" class="postbox" style="padding: 16px; max-width: 1000px; scroll-margin-top: 40px;">
-				<h3><?php echo esc_html( get_the_title( $attempt->assessment_id ) ); ?> &mdash; <?php echo esc_html( sprintf( __( 'Run %1$d, Attempt %2$d', 'parish-formation' ), $attempt->course_run, $attempt->attempt_number ) ); ?></h3>
+				<h3><?php echo esc_html( get_the_title( $attempt->assessment_id ) ); ?> &mdash; <?php echo esc_html( $is_acknowledgement ? sprintf( __( 'Run %d', 'parish-formation' ), $attempt->course_run ) : sprintf( __( 'Run %1$d, Attempt %2$d', 'parish-formation' ), $attempt->course_run, $attempt->attempt_number ) ); ?></h3>
 				<?php $is_archived_run = absint( $attempt->course_run ) !== max( 1, absint( $enrollment->current_run ) ); ?>
 				<?php if ( $is_archived_run ) : ?><p><span class="dashicons dashicons-archive" aria-hidden="true"></span> <strong><?php esc_html_e( 'Archived course run', 'parish-formation' ); ?></strong></p><?php endif; ?>
-				<p><strong><?php esc_html_e( 'Status:', 'parish-formation' ); ?></strong> <?php echo esc_html( ucwords( str_replace( '_', ' ', $attempt->status ) ) ); ?> &nbsp; <strong><?php esc_html_e( 'Submitted:', 'parish-formation' ); ?></strong> <?php echo esc_html( self::format_utc_date( $attempt->submitted_at ) ); ?></p>
+				<p><strong><?php esc_html_e( 'Status:', 'parish-formation' ); ?></strong> <?php echo esc_html( self::assessment_status_label( $attempt ) ); ?> &nbsp; <strong><?php esc_html_e( 'Submitted:', 'parish-formation' ); ?></strong> <?php echo esc_html( self::format_utc_date( $attempt->submitted_at ) ); ?></p>
 				<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
 					<input type="hidden" name="action" value="pf_review_assessment" />
 					<input type="hidden" name="enrollment_id" value="<?php echo esc_attr( $enrollment->id ); ?>" />
 					<input type="hidden" name="attempt_id" value="<?php echo esc_attr( $attempt->id ); ?>" />
 					<?php wp_nonce_field( 'pf_review_assessment_' . $attempt->id ); ?>
 					<table class="widefat striped">
-						<thead><tr><th><?php esc_html_e( 'Question', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Response', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Result / Points', 'parish-formation' ); ?></th></tr></thead>
+						<thead><tr><th><?php esc_html_e( 'Question', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Response', 'parish-formation' ); ?></th><?php if ( ! $is_acknowledgement ) : ?><th><?php esc_html_e( 'Result / Points', 'parish-formation' ); ?></th><?php endif; ?></tr></thead>
 						<tbody>
 						<?php foreach ( $answers as $answer ) : ?>
 							<?php $snapshot = json_decode( $answer->question_snapshot, true ); $question_points = max( 1, absint( $snapshot['points'] ?? 1 ) ); ?>
 							<tr>
 								<td><?php echo wp_kses_post( $snapshot['prompt'] ?? '' ); ?></td>
 								<td><?php echo nl2br( esc_html( $answer->answer ) ); ?></td>
-								<td>
+								<?php if ( ! $is_acknowledgement ) : ?><td>
 									<?php if ( $answer->requires_review && 'pending_review' === $attempt->status && ! $is_archived_run ) : ?>
 										<label><?php esc_html_e( 'Points', 'parish-formation' ); ?> <input type="number" name="manual_points[<?php echo esc_attr( $answer->id ); ?>]" min="0" max="<?php echo esc_attr( $question_points ); ?>" step="0.01" value="<?php echo esc_attr( $answer->points_awarded ); ?>" class="small-text" /> / <?php echo esc_html( $question_points ); ?></label>
 									<?php elseif ( null !== $answer->is_correct ) : ?>
 										<?php echo $answer->is_correct ? esc_html__( 'Correct', 'parish-formation' ) : esc_html__( 'Incorrect', 'parish-formation' ); ?> (<?php echo esc_html( $answer->points_awarded ); ?>)
 									<?php else : ?><?php echo esc_html( $answer->points_awarded ); ?><?php endif; ?>
-								</td>
+								</td><?php endif; ?>
 							</tr>
 						<?php endforeach; ?>
 						</tbody>
@@ -787,7 +790,7 @@ final class Parish_Formation_Enrollments_Admin {
 					<?php if ( 'pending_review' === $attempt->status && ! $is_archived_run && current_user_can( 'pf_grade_assessments' ) ) : ?>
 						<p><label for="pf-review-note-<?php echo esc_attr( $attempt->id ); ?>"><strong><?php esc_html_e( 'Private review note', 'parish-formation' ); ?></strong></label></p>
 						<textarea id="pf-review-note-<?php echo esc_attr( $attempt->id ); ?>" name="review_note" rows="3" class="large-text"></textarea>
-						<p><button class="button button-primary" type="submit" name="review_decision" value="passed"><?php esc_html_e( 'Approve / Pass', 'parish-formation' ); ?></button> <button class="button" type="submit" name="review_decision" value="failed"><?php esc_html_e( 'Fail', 'parish-formation' ); ?></button></p>
+						<p><button class="button button-primary" type="submit" name="review_decision" value="passed"><?php echo esc_html( $is_acknowledgement ? __( 'Complete Review', 'parish-formation' ) : __( 'Approve / Pass', 'parish-formation' ) ); ?></button><?php if ( ! $is_acknowledgement ) : ?> <button class="button" type="submit" name="review_decision" value="failed"><?php esc_html_e( 'Fail', 'parish-formation' ); ?></button><?php endif; ?></p>
 					<?php elseif ( $attempt->reviewed_by ) : ?>
 						<?php $reviewer = get_userdata( $attempt->reviewed_by ); ?><p><strong><?php esc_html_e( 'Reviewed by:', 'parish-formation' ); ?></strong> <?php echo esc_html( $reviewer ? $reviewer->display_name : __( 'Unknown staff user', 'parish-formation' ) ); ?><?php if ( $attempt->reviewed_at ) : ?> &mdash; <?php echo esc_html( self::format_utc_date( $attempt->reviewed_at ) ); ?><?php endif; ?></p>
 						<?php if ( $attempt->review_note ) : ?><p><strong><?php esc_html_e( 'Private note:', 'parish-formation' ); ?></strong> <?php echo nl2br( esc_html( $attempt->review_note ) ); ?></p><?php endif; ?>
@@ -1089,6 +1092,8 @@ final class Parish_Formation_Enrollments_Admin {
 			$assessment_total     = 0;
 			$assessment_passed    = 0;
 			$assessment_pending   = 0;
+			$acknowledgement_total = 0;
+			$acknowledgement_submitted = 0;
 			$required_pass_total  = 0;
 			$required_passed      = 0;
 			foreach ( Parish_Formation_Course_Repository::get_published_assessments( $row->course_id ) as $assessment ) {
@@ -1096,8 +1101,13 @@ final class Parish_Formation_Enrollments_Admin {
 				if ( 'no_gate' === $progression ) {
 					continue;
 				}
-				++$assessment_total;
 				$attempt = Parish_Formation_Assessment_Repository::get_latest_attempt( $row->id, $assessment->ID );
+				if ( Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment->ID ) ) {
+					++$acknowledgement_total;
+					$acknowledgement_submitted += $attempt ? 1 : 0;
+					continue;
+				}
+				++$assessment_total;
 				if ( $attempt && $attempt->passed ) {
 					++$assessment_passed;
 				}
@@ -1112,12 +1122,16 @@ final class Parish_Formation_Enrollments_Admin {
 				}
 			}
 			if ( ! $assessment_total ) {
-				$row->report_assessments = __( 'None required', 'parish-formation' );
+				$row->report_assessments = $acknowledgement_total ? '' : __( 'None required', 'parish-formation' );
 			} else {
 				$row->report_assessments = sprintf( __( '%1$d of %2$d passed', 'parish-formation' ), $assessment_passed, $assessment_total );
 				if ( $assessment_pending ) {
 					$row->report_assessments .= ' · ' . sprintf( _n( '%d pending', '%d pending', $assessment_pending, 'parish-formation' ), $assessment_pending );
 				}
+			}
+			if ( $acknowledgement_total ) {
+				$acknowledgement_summary = sprintf( __( '%1$d of %2$d acknowledgements submitted', 'parish-formation' ), $acknowledgement_submitted, $acknowledgement_total );
+				$row->report_assessments .= ( $row->report_assessments ? ' · ' : '' ) . $acknowledgement_summary;
 			}
 			$row->certificate_eligible = 'completed' === $row->status && $required_passed === $required_pass_total;
 			$certificate_enabled       = (bool) get_post_meta( $row->course_id, Parish_Formation_Course_Settings::CERTIFICATE_ENABLED_META_KEY, true );
@@ -1193,6 +1207,19 @@ final class Parish_Formation_Enrollments_Admin {
 			$query = $wpdb->prepare( $query, $parameters );
 		}
 		return $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/** Determine whether a stored attempt is an acknowledgement or response. */
+	private static function is_acknowledgement_attempt( $attempt ) {
+		return 'submission' === ( $attempt->passing_rule ?? '' ) || Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $attempt->assessment_id );
+	}
+
+	/** Return a mode-aware status label for an assessment attempt. */
+	private static function assessment_status_label( $attempt ) {
+		if ( self::is_acknowledgement_attempt( $attempt ) ) {
+			return 'pending_review' === $attempt->status ? __( 'Submitted — awaiting review', 'parish-formation' ) : __( 'Submitted', 'parish-formation' );
+		}
+		return ucwords( str_replace( '_', ' ', $attempt->status ) );
 	}
 
 	/** Prevent spreadsheet applications from interpreting exported text as formulas. */

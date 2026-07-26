@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Parish Formation
  * Description:       Provides focused online formation tools for parishes.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Requires PHP:      8.3
  * Author:            Father Andrew M. Boyd
  * Author URI:        https://fatherboyd.com
@@ -15,8 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PARISH_FORMATION_VERSION', '1.0.1' );
-define( 'PARISH_FORMATION_DB_VERSION', '1.0.1' );
+define( 'PARISH_FORMATION_VERSION', '1.0.2' );
+define( 'PARISH_FORMATION_DB_VERSION', '1.0.2' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -41,6 +41,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-invitation-reposit
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-progress-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-repository.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-design-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-notifications.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-shortcodes.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'public/class-pf-account-shortcodes.php';
@@ -58,6 +59,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-invitations-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-certificates-admin.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-certificate-design-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-notifications-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-lesson-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-assessment-settings.php';
@@ -110,6 +112,14 @@ add_action(
 add_action(
 	'init',
 	array( 'Parish_Formation_Certificate_Verification', 'register_routes' )
+);
+add_action(
+	'init',
+	array( 'Parish_Formation_Certificate_Design_Post_Type', 'register' )
+);
+add_action(
+	'admin_init',
+	array( 'Parish_Formation_Certificate_Design_Settings', 'migrate_existing_signatures' )
 );
 add_action(
 	'template_redirect',
@@ -549,6 +559,10 @@ add_action(
 	'add_meta_boxes',
 	array( 'Parish_Formation_Assessment_Settings', 'register_meta_box' )
 );
+add_action(
+	'add_meta_boxes',
+	array( 'Parish_Formation_Certificate_Design_Settings', 'register_meta_box' )
+);
 
 add_action(
 	'save_post_pf_lesson',
@@ -563,6 +577,10 @@ add_action(
 add_action(
 	'save_post_pf_assessment',
 	array( 'Parish_Formation_Assessment_Settings', 'save' )
+);
+add_action(
+	'save_post_pf_cert_design',
+	array( 'Parish_Formation_Certificate_Design_Settings', 'save' )
 );
 
 add_action(
@@ -623,4 +641,8 @@ add_action(
 add_action(
 	'admin_enqueue_scripts',
 	array( 'Parish_Formation_Course_Settings', 'enqueue_curriculum_assets' )
+);
+add_action(
+	'admin_enqueue_scripts',
+	array( 'Parish_Formation_Certificate_Design_Settings', 'enqueue_assets' )
 );

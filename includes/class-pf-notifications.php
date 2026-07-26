@@ -24,6 +24,8 @@ final class Parish_Formation_Notifications {
 			'assessment_failed' => array( 'participant', __( 'Assessment failed', 'parish-formation' ) ),
 			'assessment_pending_review' => array( 'participant', __( 'Assessment awaiting manual review', 'parish-formation' ) ),
 			'assessment_reviewed' => array( 'participant', __( 'Manual assessment review completed', 'parish-formation' ) ),
+			'acknowledgement_received' => array( 'participant', __( 'Acknowledgement received', 'parish-formation' ) ),
+			'acknowledgement_reviewed' => array( 'participant', __( 'Acknowledgement response reviewed', 'parish-formation' ) ),
 			'certificate_issued' => array( 'participant', __( 'Certificate issued', 'parish-formation' ) ),
 			'certificate_reissued' => array( 'participant', __( 'Certificate reissued', 'parish-formation' ) ),
 			'certificate_revoked' => array( 'participant', __( 'Certificate revoked', 'parish-formation' ) ),
@@ -50,6 +52,8 @@ final class Parish_Formation_Notifications {
 			'assessment_failed' => array( __( 'Assessment result for {assessment_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nYour score for <strong>{assessment_name}</strong> was {score}, which did not meet the passing requirement of {passing_score}. {attempts_message}', 'parish-formation' ) ),
 			'assessment_pending_review' => array( __( '{assessment_name} is awaiting review', 'parish-formation' ), __( 'Hello {participant_name},\n\nYour submission for <strong>{assessment_name}</strong> was received and is awaiting review by parish staff.', 'parish-formation' ) ),
 			'assessment_reviewed' => array( __( 'Your {assessment_name} review is complete', 'parish-formation' ), __( 'Hello {participant_name},\n\nParish staff completed the review of <strong>{assessment_name}</strong>. Your result is {assessment_result} with a score of {score}. {review_note}\n\n<a href="{formation_url}">Return to My Formation</a>', 'parish-formation' ) ),
+			'acknowledgement_received' => array( __( 'Your {assessment_name} submission was received', 'parish-formation' ), __( 'Hello {participant_name},\n\nYour acknowledgement or response for <strong>{assessment_name}</strong> in {course_name} was received successfully.\n\n<a href="{formation_url}">Continue My Formation</a>', 'parish-formation' ) ),
+			'acknowledgement_reviewed' => array( __( 'Your {assessment_name} response was reviewed', 'parish-formation' ), __( 'Hello {participant_name},\n\nParish staff reviewed your response for <strong>{assessment_name}</strong>. {review_note}\n\n<a href="{formation_url}">Return to My Formation</a>', 'parish-formation' ) ),
 			'certificate_issued' => array( __( 'Your certificate for {course_name}', 'parish-formation' ), __( 'Congratulations, {participant_name}!\n\nYour certificate for <strong>{course_name}</strong> has been issued. Your verification code is <strong>{certificate_code}</strong>.\n\n<a href="{certificate_url}">View Certificate</a> &nbsp; <a href="{certificate_pdf_url}">Download PDF</a>', 'parish-formation' ) ),
 			'certificate_reissued' => array( __( 'Replacement certificate for {course_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nA replacement certificate for <strong>{course_name}</strong> has been issued. Your new verification code is <strong>{certificate_code}</strong>.\n\n<a href="{certificate_url}">View Certificate</a> &nbsp; <a href="{certificate_pdf_url}">Download PDF</a>', 'parish-formation' ) ),
 			'certificate_revoked' => array( __( 'Certificate revoked for {course_name}', 'parish-formation' ), __( 'Hello {participant_name},\n\nYour certificate for <strong>{course_name}</strong> has been revoked for the following reason:\n\n{revocation_reason}\n\nPlease contact the parish if you have questions.', 'parish-formation' ) ),
@@ -72,6 +76,7 @@ final class Parish_Formation_Notifications {
 			'course_completed' => array( 'completion_date' ), 'assessment_submitted' => array( 'assessment_name' ),
 			'assessment_passed' => array( 'assessment_name', 'score' ), 'assessment_failed' => array( 'assessment_name', 'score', 'passing_score', 'attempts_message' ),
 			'assessment_pending_review' => array( 'assessment_name' ), 'assessment_reviewed' => array( 'assessment_name', 'assessment_result', 'score', 'review_note' ),
+			'acknowledgement_received' => array( 'assessment_name' ), 'acknowledgement_reviewed' => array( 'assessment_name', 'review_note' ),
 			'certificate_issued' => array( 'certificate_code', 'certificate_url', 'certificate_pdf_url' ), 'certificate_reissued' => array( 'certificate_code', 'certificate_url', 'certificate_pdf_url' ),
 			'certificate_revoked' => array( 'revocation_reason' ), 'course_reset' => array( 'course_run' ),
 			'manual_participant_reminder' => array( 'reminder_message' ),
@@ -281,6 +286,13 @@ final class Parish_Formation_Notifications {
 		$remaining  = max( 0, $max_attempts - absint( $attempt->attempt_number ) );
 		$values     = array( 'assessment_name' => get_the_title( $assessment_id ), 'score' => $score_text, 'passing_score' => $passing, 'attempts_message' => $remaining ? sprintf( _n( 'You have %d attempt remaining.', 'You have %d attempts remaining.', $remaining, 'parish-formation' ), $remaining ) : __( 'No attempts remain.', 'parish-formation' ) );
 		$suffix     = 'attempt_' . absint( $attempt->id );
+		if ( Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment_id ) ) {
+			self::send_participant_event( 'acknowledgement_received', $enrollment_id, $values, $suffix . '_acknowledgement_received' );
+			if ( 'pending_review' === $attempt->status ) {
+				self::send_staff_event( 'staff_assessment_pending', $enrollment_id, array_merge( $values, array( 'review_url' => admin_url( 'admin.php?page=parish-formation-assessment-reviews' ) ) ), $suffix . '_staff_pending' );
+			}
+			return;
+		}
 		self::send_participant_event( 'assessment_submitted', $enrollment_id, $values, $suffix . '_submitted' );
 		if ( 'passed' === $attempt->status ) {
 			self::send_participant_event( 'assessment_passed', $enrollment_id, $values, $suffix . '_passed' );
@@ -295,6 +307,10 @@ final class Parish_Formation_Notifications {
 	/** Notify a participant after staff completes a manual assessment review. */
 	public static function send_assessment_reviewed( $enrollment_id, $attempt, $review_note ) {
 		if ( ! $attempt ) {
+			return;
+		}
+		if ( Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $attempt->assessment_id ) || 'submission' === $attempt->passing_rule ) {
+			self::send_participant_event( 'acknowledgement_reviewed', $enrollment_id, array( 'assessment_name' => get_the_title( $attempt->assessment_id ), 'review_note' => $review_note ), 'attempt_' . absint( $attempt->id ) . '_acknowledgement_reviewed' );
 			return;
 		}
 		$maximum   = (float) $attempt->max_points;

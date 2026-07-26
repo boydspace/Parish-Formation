@@ -26,6 +26,14 @@ final class Parish_Formation_Course_Settings {
 	public const CERTIFICATE_VALIDITY_DAYS_META_KEY = '_pf_certificate_validity_days';
 	public const CERTIFICATE_SIGNATORY_NAME_META_KEY = '_pf_certificate_signatory_name';
 	public const CERTIFICATE_SIGNATORY_TITLE_META_KEY = '_pf_certificate_signatory_title';
+	public const CERTIFICATE_LOGO_ID_META_KEY = '_pf_certificate_logo_id';
+	public const CERTIFICATE_SIGNATURE_ID_META_KEY = '_pf_certificate_signature_id';
+	public const CERTIFICATE_HEADING_META_KEY = '_pf_certificate_heading';
+	public const CERTIFICATE_COMPLETION_TEXT_META_KEY = '_pf_certificate_completion_text';
+	public const CERTIFICATE_ACCENT_COLOR_META_KEY = '_pf_certificate_accent_color';
+	public const CERTIFICATE_BORDER_COLOR_META_KEY = '_pf_certificate_border_color';
+	public const CERTIFICATE_ORIENTATION_META_KEY = '_pf_certificate_orientation';
+	public const CERTIFICATE_DESIGN_ID_META_KEY = '_pf_certificate_design_id';
 	public const NOTIFICATION_DISABLED_META_KEY = '_pf_notification_disabled';
 	public const NOTIFICATION_STAFF_EMAILS_META_KEY = '_pf_notification_staff_emails';
 	public const OPEN_ENROLLMENT_META_KEY = '_pf_open_enrollment';
@@ -84,11 +92,9 @@ final class Parish_Formation_Course_Settings {
 	public static function render_meta_box( $post ) {
 		$completion_message = get_post_meta( $post->ID, self::COMPLETION_MESSAGE_META_KEY, true );
 		$certificate_enabled = (bool) get_post_meta( $post->ID, self::CERTIFICATE_ENABLED_META_KEY, true );
-		$certificate_title = get_post_meta( $post->ID, self::CERTIFICATE_TITLE_META_KEY, true );
-		$certificate_issuer = get_post_meta( $post->ID, self::CERTIFICATE_ISSUER_META_KEY, true );
 		$validity_days = absint( get_post_meta( $post->ID, self::CERTIFICATE_VALIDITY_DAYS_META_KEY, true ) );
-		$signatory_name = get_post_meta( $post->ID, self::CERTIFICATE_SIGNATORY_NAME_META_KEY, true );
-		$signatory_title = get_post_meta( $post->ID, self::CERTIFICATE_SIGNATORY_TITLE_META_KEY, true );
+		$certificate_design_id = absint( get_post_meta( $post->ID, self::CERTIFICATE_DESIGN_ID_META_KEY, true ) );
+		$certificate_designs = get_posts( array( 'post_type' => Parish_Formation_Certificate_Design_Post_Type::POST_TYPE, 'post_status' => 'publish', 'posts_per_page' => -1, 'orderby' => 'title', 'order' => 'ASC' ) );
 		$notification_disabled = (array) get_post_meta( $post->ID, self::NOTIFICATION_DISABLED_META_KEY, true );
 		$notification_staff_emails = get_post_meta( $post->ID, self::NOTIFICATION_STAFF_EMAILS_META_KEY, true );
 		$open_enrollment = (bool) get_post_meta( $post->ID, self::OPEN_ENROLLMENT_META_KEY, true );
@@ -134,16 +140,10 @@ final class Parish_Formation_Course_Settings {
 		<hr>
 		<h3><?php esc_html_e( 'Completion Certificate', 'parish-formation' ); ?></h3>
 		<p><label><input type="checkbox" name="pf_certificate_enabled" value="1" <?php checked( $certificate_enabled ); ?>> <?php esc_html_e( 'Issue a certificate when an eligible participant completes this course', 'parish-formation' ); ?></label></p>
-		<p><label for="pf-certificate-title"><strong><?php esc_html_e( 'Certificate title', 'parish-formation' ); ?></strong></label><br>
-		<input id="pf-certificate-title" name="pf_certificate_title" type="text" class="widefat" value="<?php echo esc_attr( $certificate_title ); ?>" placeholder="<?php esc_attr_e( 'Certificate of Completion', 'parish-formation' ); ?>"></p>
-		<p><label for="pf-certificate-issuer"><strong><?php esc_html_e( 'Issuing organization', 'parish-formation' ); ?></strong></label><br>
-		<input id="pf-certificate-issuer" name="pf_certificate_issuer" type="text" class="widefat" value="<?php echo esc_attr( $certificate_issuer ); ?>" placeholder="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>"></p>
+		<p><label for="pf-certificate-design"><strong><?php esc_html_e( 'Certificate design', 'parish-formation' ); ?></strong></label><br><select id="pf-certificate-design" name="pf_certificate_design_id"><option value="0"><?php esc_html_e( 'Select a design', 'parish-formation' ); ?></option><?php foreach ( $certificate_designs as $design ) : ?><option value="<?php echo esc_attr( $design->ID ); ?>" <?php selected( $certificate_design_id, $design->ID ); ?>><?php echo esc_html( $design->post_title ); ?></option><?php endforeach; ?></select></p>
+		<?php if ( ! $certificate_designs ) : ?><p class="description"><a href="<?php echo esc_url( admin_url( 'post-new.php?post_type=' . Parish_Formation_Certificate_Design_Post_Type::POST_TYPE ) ); ?>"><?php esc_html_e( 'Create the first certificate design', 'parish-formation' ); ?></a></p><?php else : ?><p class="description"><a href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . Parish_Formation_Certificate_Design_Post_Type::POST_TYPE ) ); ?>"><?php esc_html_e( 'Manage certificate designs', 'parish-formation' ); ?></a></p><?php endif; ?>
 		<p><label for="pf-certificate-validity"><strong><?php esc_html_e( 'Validity period in days', 'parish-formation' ); ?></strong></label><br>
 		<input id="pf-certificate-validity" name="pf_certificate_validity_days" type="number" min="0" max="36500" step="1" value="<?php echo esc_attr( $validity_days ); ?>" class="small-text"> <span class="description"><?php esc_html_e( 'Use 0 for no expiration.', 'parish-formation' ); ?></span></p>
-		<p><label for="pf-certificate-signatory-name"><strong><?php esc_html_e( 'Signatory name', 'parish-formation' ); ?></strong></label><br>
-		<input id="pf-certificate-signatory-name" name="pf_certificate_signatory_name" type="text" class="regular-text" value="<?php echo esc_attr( $signatory_name ); ?>"></p>
-		<p><label for="pf-certificate-signatory-title"><strong><?php esc_html_e( 'Signatory title', 'parish-formation' ); ?></strong></label><br>
-		<input id="pf-certificate-signatory-title" name="pf_certificate_signatory_title" type="text" class="regular-text" value="<?php echo esc_attr( $signatory_title ); ?>"></p>
 		<hr>
 		<h3><?php esc_html_e( 'Course Email Notifications', 'parish-formation' ); ?></h3>
 		<p><?php esc_html_e( 'These settings override the global notification settings for this course.', 'parish-formation' ); ?></p>
@@ -277,21 +277,14 @@ final class Parish_Formation_Course_Settings {
 			delete_post_meta( $post_id, self::ACCESS_CODE_EXPIRES_META_KEY );
 		}
 		update_post_meta( $post_id, self::ACCESS_CODE_LIMIT_META_KEY, isset( $_POST['pf_access_code_limit'] ) ? min( 1000000, absint( $_POST['pf_access_code_limit'] ) ) : 0 );
-		$certificate_fields = array(
-			self::CERTIFICATE_TITLE_META_KEY           => isset( $_POST['pf_certificate_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_title'] ) ) : '',
-			self::CERTIFICATE_ISSUER_META_KEY          => isset( $_POST['pf_certificate_issuer'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_issuer'] ) ) : '',
-			self::CERTIFICATE_SIGNATORY_NAME_META_KEY  => isset( $_POST['pf_certificate_signatory_name'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_signatory_name'] ) ) : '',
-			self::CERTIFICATE_SIGNATORY_TITLE_META_KEY => isset( $_POST['pf_certificate_signatory_title'] ) ? sanitize_text_field( wp_unslash( $_POST['pf_certificate_signatory_title'] ) ) : '',
-		);
-		foreach ( $certificate_fields as $meta_key => $value ) {
-			if ( '' === $value ) {
-				delete_post_meta( $post_id, $meta_key );
-			} else {
-				update_post_meta( $post_id, $meta_key, $value );
-			}
-		}
 		$validity_days = isset( $_POST['pf_certificate_validity_days'] ) ? min( 36500, absint( $_POST['pf_certificate_validity_days'] ) ) : 0;
 		update_post_meta( $post_id, self::CERTIFICATE_VALIDITY_DAYS_META_KEY, $validity_days );
+		$design_id = isset( $_POST['pf_certificate_design_id'] ) ? absint( $_POST['pf_certificate_design_id'] ) : 0;
+		if ( $design_id && Parish_Formation_Certificate_Design_Post_Type::POST_TYPE === get_post_type( $design_id ) && 'publish' === get_post_status( $design_id ) ) {
+			update_post_meta( $post_id, self::CERTIFICATE_DESIGN_ID_META_KEY, $design_id );
+		} else {
+			delete_post_meta( $post_id, self::CERTIFICATE_DESIGN_ID_META_KEY );
+		}
 		$posted_notifications = isset( $_POST['pf_notification_enabled'] ) && is_array( $_POST['pf_notification_enabled'] ) ? wp_unslash( $_POST['pf_notification_enabled'] ) : array();
 		$disabled_notifications = array();
 		foreach ( Parish_Formation_Notifications::types() as $type => $definition ) {

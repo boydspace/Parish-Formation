@@ -1,0 +1,15 @@
+.pf-certificate-media-preview { display:flex; align-items:center; justify-content:center; width:180px; min-height:70px; padding:8px; border:1px dashed #8c8f94; background:#fff; color:#646970; }
+.pf-certificate-media-preview img { display:block; max-width:100%; max-height:90px; }
+.pf-certificate-design-grid { display:grid; grid-template-columns:minmax(260px,360px) minmax(480px,1fr); gap:28px; align-items:start; }
+.pf-certificate-branding-preview { box-sizing:border-box; position:relative; width:100%; max-width:760px; aspect-ratio:11/8.5; padding:5% 7%; overflow:hidden; border:7px double var(--pf-certificate-border); background:#fffdf7; text-align:center; }
+.pf-certificate-branding-preview.is-portrait { max-width:560px; aspect-ratio:8.5/11; padding:10% 8%; }
+.pf-certificate-branding-preview .pf-preview-logo img { width:var(--pf-certificate-logo-width, 140px); max-width:55%; max-height:120px; object-fit:contain; }
+.pf-certificate-branding-preview .pf-preview-issuer { display:block; margin:8px 0; letter-spacing:1.5px; text-transform:uppercase; }
+.pf-certificate-branding-preview .pf-preview-title { margin:4% 0; color:#2d3448; font-family:Georgia,serif; font-size:30px; }
+.pf-certificate-branding-preview h3 { margin:2% 0; color:var(--pf-certificate-accent); font-family:Georgia,serif; font-size:25px; }
+.pf-certificate-branding-preview h4 { margin:2% 0; font-size:18px; }
+.pf-certificate-branding-preview p { margin:10px 0; }
+.pf-preview-signature-image img { display:block; max-width:150px; max-height:55px; margin:20px auto 0; }
+.pf-preview-signer { width:220px; margin:4px auto 0; padding-top:5px; border-top:1px solid #333; }
+.pf-preview-signer span,.pf-preview-signer small { display:block; }
+@media (max-width:1100px) { .pf-certificate-design-grid { grid-template-columns:1fr; } }

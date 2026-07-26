@@ -101,8 +101,16 @@ medical information.
 
 ### 1.2.0 — Acknowledgements and responses
 
-- Dedicated participant acknowledgements.
-- Response review and exports independent of graded assessments.
+- Assessment acknowledgement mode with one immutable, non-graded submission
+  per participant course run. **Implemented**
+- Acknowledgement and reflection question blocks using the existing assessment
+  editor and course curriculum. **Implemented**
+- Submission-based course progression without score or passing requirements.
+  **Implemented**
+- Mode-aware participant and staff email notifications. **Implemented**
+- Mode-aware assessment history, course reports, detailed responses, and CSV
+  exports. **Implemented**
+- Acknowledgements excluded from graded certificate requirements. **Implemented**
 
 ### 1.3.0 — Certificate branding
 

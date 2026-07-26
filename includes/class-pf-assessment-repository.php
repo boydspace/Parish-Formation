@@ -58,7 +58,8 @@ final class Parish_Formation_Assessment_Repository {
 		global $wpdb;
 		$questions     = self::get_questions( $assessment_id );
 		$latest        = self::get_latest_attempt( $enrollment->id, $assessment_id );
-		$max_attempts  = max( 1, absint( get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
+		$acknowledgement_mode = Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment_id );
+		$max_attempts  = $acknowledgement_mode ? 1 : max( 1, absint( get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
 		$attempt_number = $latest ? absint( $latest->attempt_number ) + 1 : 1;
 		if ( $latest && ( 'pending_review' === $latest->status || (bool) $latest->passed ) ) {
 			return new WP_Error( 'attempt_closed', __( 'This assessment has already been submitted successfully.', 'parish-formation' ) );
@@ -128,8 +129,12 @@ final class Parish_Formation_Assessment_Repository {
 		$value = metadata_exists( 'post', $assessment_id, Parish_Formation_Assessment_Settings::PASSING_VALUE_META_KEY )
 			? max( 0, (float) get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::PASSING_VALUE_META_KEY, true ) )
 			: 100;
+		if ( $acknowledgement_mode ) {
+			$rule  = 'submission';
+			$value = 1;
+		}
 		$metric = 'correct_count' === $rule ? $correct_count : ( 'points' === $rule ? $score : ( $maximum > 0 ? ( $score / $maximum ) * 100 : 100 ) );
-		$passed = ! $needs_review && $metric >= $value;
+		$passed = ! $needs_review && ( $acknowledgement_mode || $metric >= $value );
 		$status = $needs_review ? 'pending_review' : ( $passed ? 'passed' : 'failed' );
 		$now = current_time( 'mysql', true );
 

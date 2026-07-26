@@ -43,12 +43,37 @@ final class Parish_Formation_Certificate_Repository {
 		);
 	}
 
+	/** Resolve a certificate's immutable design or its current legacy fallback. */
+	public static function get_design( $certificate ) {
+		if ( ! empty( $certificate->design_snapshot ) ) {
+			$snapshot = json_decode( $certificate->design_snapshot, true );
+			if ( is_array( $snapshot ) ) {
+				return self::normalize_design( $snapshot );
+			}
+		}
+		$design_id = absint( get_post_meta( $certificate->course_id, Parish_Formation_Course_Settings::CERTIFICATE_DESIGN_ID_META_KEY, true ) );
+		if ( $design_id && Parish_Formation_Certificate_Design_Post_Type::POST_TYPE === get_post_type( $design_id ) ) {
+			return self::normalize_design( Parish_Formation_Certificate_Design_Settings::get_values( $design_id ) );
+		}
+		return self::normalize_design(
+			array(
+				'title' => $certificate->certificate_title,
+				'issuer' => $certificate->issuer_name,
+				'signatory_name' => $certificate->signatory_name,
+				'signatory_title' => $certificate->signatory_title,
+			)
+		);
+	}
+
 	/** Determine whether all pass-required assessments have been passed. */
 	public static function is_eligible( $enrollment ) {
 		if ( ! $enrollment || 'completed' !== $enrollment->status || empty( $enrollment->completed_at ) ) {
 			return false;
 		}
 		foreach ( Parish_Formation_Course_Repository::get_published_assessments( $enrollment->course_id ) as $assessment ) {
+			if ( Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment->ID ) ) {
+				continue;
+			}
 			$progression = get_post_meta( $assessment->ID, Parish_Formation_Assessment_Settings::PROGRESSION_META_KEY, true );
 			if ( 'pass_to_continue' !== $progression ) {
 				continue;
@@ -86,8 +111,8 @@ final class Parish_Formation_Certificate_Repository {
 		if ( ! $code ) {
 			return new WP_Error( 'certificate_code_error', __( 'A unique certificate verification code could not be created.', 'parish-formation' ) );
 		}
-		$certificate_title = sanitize_text_field( get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_TITLE_META_KEY, true ) );
-		$issuer_name       = sanitize_text_field( get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_ISSUER_META_KEY, true ) );
+		$design_id = absint( get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_DESIGN_ID_META_KEY, true ) );
+		$design = $design_id ? self::normalize_design( Parish_Formation_Certificate_Design_Settings::get_values( $design_id ) ) : self::normalize_design( array( 'title' => get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_TITLE_META_KEY, true ), 'issuer' => get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_ISSUER_META_KEY, true ), 'signatory_name' => get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_SIGNATORY_NAME_META_KEY, true ), 'signatory_title' => get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_SIGNATORY_TITLE_META_KEY, true ) ) );
 		$saved = $wpdb->insert(
 			$wpdb->prefix . 'pf_certificates',
 			array(
@@ -101,16 +126,17 @@ final class Parish_Formation_Certificate_Repository {
 				'status' => 'issued',
 				'participant_name' => sanitize_text_field( $user->display_name ),
 				'course_title' => sanitize_text_field( get_the_title( $enrollment->course_id ) ),
-				'certificate_title' => $certificate_title ?: __( 'Certificate of Completion', 'parish-formation' ),
-				'issuer_name' => $issuer_name ?: sanitize_text_field( get_bloginfo( 'name' ) ),
-				'signatory_name' => sanitize_text_field( get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_SIGNATORY_NAME_META_KEY, true ) ),
-				'signatory_title' => sanitize_text_field( get_post_meta( $enrollment->course_id, Parish_Formation_Course_Settings::CERTIFICATE_SIGNATORY_TITLE_META_KEY, true ) ),
+				'certificate_title' => $design['title'],
+				'issuer_name' => $design['issuer'],
+				'signatory_name' => $design['signatory_name'],
+				'signatory_title' => $design['signatory_title'],
+				'design_snapshot' => wp_json_encode( $design ),
 				'completed_at' => $enrollment->completed_at,
 				'issued_at' => $now,
 				'expires_at' => $expires_at,
 				'issued_by' => absint( $issued_by ),
 			),
-			array( '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d' )
+			array( '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d' )
 		);
 		if ( false === $saved ) {
 			$existing = self::get_for_enrollment_run( $enrollment->id, $course_run );
@@ -172,10 +198,10 @@ final class Parish_Formation_Certificate_Repository {
 				'user_id' => $source->user_id, 'course_id' => $source->course_id, 'course_run' => $source->course_run,
 				'issue_number' => absint( $latest->issue_number ) + 1, 'status' => 'issued', 'participant_name' => $source->participant_name,
 				'course_title' => $source->course_title, 'certificate_title' => $source->certificate_title, 'issuer_name' => $source->issuer_name,
-				'signatory_name' => $source->signatory_name, 'signatory_title' => $source->signatory_title, 'completed_at' => $source->completed_at,
+				'signatory_name' => $source->signatory_name, 'signatory_title' => $source->signatory_title, 'design_snapshot' => $source->design_snapshot, 'completed_at' => $source->completed_at,
 				'issued_at' => $now, 'expires_at' => $source->expires_at, 'issued_by' => absint( $staff_user_id ), 'reissue_of' => $source->id,
 			),
-			array( '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
+			array( '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d' )
 		);
 		if ( ! $saved ) {
 			return new WP_Error( 'certificate_database_error', __( 'The replacement certificate could not be issued.', 'parish-formation' ) );
@@ -196,5 +222,25 @@ final class Parish_Formation_Certificate_Repository {
 			}
 		}
 		return '';
+	}
+
+	/** Normalize design values for safe rendering and snapshots. */
+	private static function normalize_design( $design ) {
+		$orientation = sanitize_key( $design['orientation'] ?? 'landscape' );
+		return array(
+			'title' => sanitize_text_field( $design['title'] ?? '' ) ?: __( 'Certificate of Completion', 'parish-formation' ),
+			'issuer' => sanitize_text_field( $design['issuer'] ?? '' ) ?: sanitize_text_field( get_bloginfo( 'name' ) ),
+			'heading' => sanitize_text_field( $design['heading'] ?? '' ) ?: __( 'This certifies that', 'parish-formation' ),
+			'completion_text' => sanitize_text_field( $design['completion_text'] ?? '' ) ?: __( 'has successfully completed', 'parish-formation' ),
+			'signatory_name' => sanitize_text_field( $design['signatory_name'] ?? '' ),
+			'signatory_title' => sanitize_text_field( $design['signatory_title'] ?? '' ),
+			'logo_id' => absint( $design['logo_id'] ?? 0 ),
+			'logo_width' => min( 320, max( 60, absint( $design['logo_width'] ?? 140 ) ) ),
+			'signature_id' => absint( $design['signature_id'] ?? 0 ),
+			'signature_data' => is_string( $design['signature_data'] ?? null ) && preg_match( '#^data:image/png;base64,[A-Za-z0-9+/=]+$#', $design['signature_data'] ) ? $design['signature_data'] : '',
+			'accent_color' => sanitize_hex_color( $design['accent_color'] ?? '' ) ?: '#1c5b8f',
+			'border_color' => sanitize_hex_color( $design['border_color'] ?? '' ) ?: '#b58d18',
+			'orientation' => in_array( $orientation, array( 'landscape', 'portrait' ), true ) ? $orientation : 'landscape',
+		);
 	}
 }

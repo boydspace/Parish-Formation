@@ -55,17 +55,19 @@
 			const alert = document.createElement( 'div' );
 			alert.className = 'uk-alert ' + ( data.status === 'passed' ? 'uk-alert-success' : data.status === 'failed' ? 'uk-alert-danger' : 'uk-alert-primary' );
 			addText( alert, 'p', data.statusLabel );
-			if ( data.status !== 'pending_review' ) {
+			if ( data.assessmentMode !== 'acknowledgement' && data.status !== 'pending_review' ) {
 				addText( alert, 'p', 'Score: ' + data.score + ' of ' + data.maximum + ' points; ' + data.correct + ' of ' + data.totalGraded + ' correct.' );
 			}
-			addText( alert, 'p', 'Attempt ' + data.attempt + ' of ' + data.maxAttempts + '.' );
+			if ( data.assessmentMode !== 'acknowledgement' ) {
+				addText( alert, 'p', 'Attempt ' + data.attempt + ' of ' + data.maxAttempts + '.' );
+			}
 			resultBox.appendChild( alert );
 
 			document.querySelectorAll( '.uk-progress' ).forEach( function ( progress ) { progress.value = data.progress; } );
 			const progressText = document.querySelector( '.pf-progress-text' );
 			if ( progressText ) { progressText.textContent = data.progress + '% complete'; }
 
-			if ( data.status === 'passed' ) {
+			if ( data.status === 'passed' || data.assessmentMode === 'acknowledgement' ) {
 				form.querySelectorAll( 'input, textarea, button' ).forEach( function ( field ) { field.disabled = true; } );
 				button.hidden = true;
 				const item = document.querySelector( '.pf-lesson-navigation [data-item-id="' + form.elements.assessment_id.value + '"]' );

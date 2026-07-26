@@ -84,11 +84,13 @@ final class Parish_Formation_Assessment_Actions {
 		} else {
 			$next_url = $base_url . 'course/' . rawurlencode( $course_slug ) . '/';
 		}
-		$max_attempts = max( 1, absint( get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
+		$acknowledgement_mode = Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment_id );
+		$max_attempts = $acknowledgement_mode ? 1 : max( 1, absint( get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
 		return rest_ensure_response(
 			array(
 				'status'       => sanitize_key( $result->status ),
-				'statusLabel'  => ucwords( str_replace( '_', ' ', $result->status ) ),
+				'statusLabel'  => $acknowledgement_mode ? ( 'pending_review' === $result->status ? __( 'Submitted — awaiting review', 'parish-formation' ) : __( 'Submitted', 'parish-formation' ) ) : ucwords( str_replace( '_', ' ', $result->status ) ),
+				'assessmentMode' => $acknowledgement_mode ? 'acknowledgement' : 'standard',
 				'score'        => (float) $result->score_points,
 				'maximum'      => (float) $result->max_points,
 				'correct'      => absint( $result->correct_count ),

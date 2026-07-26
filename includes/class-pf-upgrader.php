@@ -80,6 +80,9 @@ final class Parish_Formation_Upgrader {
 		if ( version_compare( $installed_version, '1.0.1', '<' ) ) {
 			self::install_notification_log_table();
 		}
+		if ( version_compare( $installed_version, '1.0.2', '<' ) ) {
+			self::install_certificates_table();
+		}
 
 		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() || ! self::invitations_table_exists() || ! self::participant_notes_tables_exist() ) {
 			return;
@@ -329,6 +332,7 @@ final class Parish_Formation_Upgrader {
 			issuer_name varchar(255) NOT NULL,
 			signatory_name varchar(255) DEFAULT NULL,
 			signatory_title varchar(255) DEFAULT NULL,
+			design_snapshot longtext DEFAULT NULL,
 			completed_at datetime NOT NULL,
 			issued_at datetime NOT NULL,
 			expires_at datetime DEFAULT NULL,

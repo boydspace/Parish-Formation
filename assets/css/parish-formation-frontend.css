@@ -170,7 +170,7 @@
 
 .pf-certificate {
 	padding: clamp(35px, 7vw, 80px);
-	border: 12px double #c9a227;
+	border: 12px double var(--pf-certificate-border, #c9a227);
 	background: #fffdf7;
 	color: #252525;
 	text-align: center;
@@ -194,7 +194,12 @@
 	margin: 18px 0;
 	font-family: Georgia, serif;
 	font-size: clamp(1.8rem, 4vw, 3rem);
+	color: var(--pf-certificate-accent, #1c5b8f);
 }
+
+.pf-certificate-logo { display:block; width:var(--pf-certificate-logo-width, 140px); max-width:80%; max-height:180px; margin:0 auto 12px; object-fit:contain; }
+.pf-certificate-signature img { display:block; max-width:190px; max-height:70px; margin:0 auto 5px; }
+.pf-certificate-portrait { max-width:8.5in; min-height:11in; margin-right:auto; margin-left:auto; }
 
 .pf-certificate h3 {
 	margin: 18px 0 36px;
@@ -205,9 +210,13 @@
 	display: inline-flex;
 	min-width: 260px;
 	margin: 55px auto 35px;
+	padding-top: 0;
+	flex-direction: column;
+}
+
+.pf-certificate-signature > span {
 	padding-top: 8px;
 	border-top: 1px solid #333;
-	flex-direction: column;
 }
 
 .pf-certificate-signature small,
@@ -219,8 +228,12 @@
 	display: flex;
 	margin-top: 45px;
 	font-size: 0.78rem;
-	justify-content: space-between;
+	justify-content: flex-start;
 	gap: 20px;
+}
+
+.pf-certificate footer span:last-child:not(:first-child) {
+	margin-left: auto;
 }
 
 .pf-verification-page {
@@ -529,5 +542,16 @@
 		box-sizing: border-box;
 		box-shadow: none;
 		overflow: hidden;
+	}
+
+	.pf-certificate-page:has(.pf-certificate-portrait) {
+		width: 7.5in;
+		height: 10in;
+	}
+
+	.pf-certificate.pf-certificate-portrait {
+		width: 7.5in;
+		height: 10in;
+		padding: 0.72in 0.6in;
 	}
 }

@@ -532,31 +532,31 @@ final class Parish_Formation_Shortcodes {
 			'pf_download_certificate_' . $certificate->certificate_uuid
 		);
 		$expired  = $certificate->expires_at && strtotime( $certificate->expires_at . ' UTC' ) < current_time( 'timestamp', true );
-		$verification_url = Parish_Formation_Certificate_Verification::get_verification_url( $certificate->verification_code );
+		$design = Parish_Formation_Certificate_Repository::get_design( $certificate );
+		$logo_url = $design['logo_id'] ? wp_get_attachment_image_url( $design['logo_id'], 'medium' ) : '';
 		ob_start();
 		?>
 		<div class="pf-certificate-page uk-container uk-container-small uk-section">
 			<div class="pf-certificate-actions uk-margin-bottom">
 				<a class="uk-button uk-button-default" href="<?php echo esc_url( $back_url ); ?>">&larr; <?php esc_html_e( 'My Formation', 'parish-formation' ); ?></a>
-				<button class="uk-button uk-button-primary" type="button" onclick="window.print();"><?php esc_html_e( 'Print Certificate', 'parish-formation' ); ?></button>
 				<a class="uk-button uk-button-secondary" href="<?php echo esc_url( $pdf_url ); ?>"><?php esc_html_e( 'Download PDF', 'parish-formation' ); ?></a>
 			</div>
 			<?php if ( 'issued' !== $certificate->status ) : ?><div class="uk-alert uk-alert-danger"><p><?php esc_html_e( 'This certificate is no longer valid.', 'parish-formation' ); ?></p></div><?php endif; ?>
 			<?php if ( $expired ) : ?><div class="uk-alert uk-alert-warning"><p><?php esc_html_e( 'This certificate has expired.', 'parish-formation' ); ?></p></div><?php endif; ?>
-			<article class="pf-certificate" aria-label="<?php esc_attr_e( 'Completion certificate', 'parish-formation' ); ?>">
-				<p class="pf-certificate-issuer"><?php echo esc_html( $certificate->issuer_name ); ?></p>
-				<h1><?php echo esc_html( $certificate->certificate_title ); ?></h1>
-				<p><?php esc_html_e( 'This certifies that', 'parish-formation' ); ?></p>
+			<article class="pf-certificate pf-certificate-<?php echo esc_attr( $design['orientation'] ); ?>" style="--pf-certificate-accent:<?php echo esc_attr( $design['accent_color'] ); ?>;--pf-certificate-border:<?php echo esc_attr( $design['border_color'] ); ?>;--pf-certificate-logo-width:<?php echo esc_attr( $design['logo_width'] ); ?>px" aria-label="<?php esc_attr_e( 'Completion certificate', 'parish-formation' ); ?>">
+				<?php if ( $logo_url ) : ?><img class="pf-certificate-logo" src="<?php echo esc_url( $logo_url ); ?>" alt=""><?php endif; ?>
+				<p class="pf-certificate-issuer"><?php echo esc_html( $design['issuer'] ); ?></p>
+				<h1><?php echo esc_html( $design['title'] ); ?></h1>
+				<p><?php echo esc_html( $design['heading'] ); ?></p>
 				<h2><?php echo esc_html( $certificate->participant_name ); ?></h2>
-				<p><?php esc_html_e( 'has successfully completed', 'parish-formation' ); ?></p>
+				<p><?php echo esc_html( $design['completion_text'] ); ?></p>
 				<h3><?php echo esc_html( $certificate->course_title ); ?></h3>
 				<p><?php echo esc_html( sprintf( __( 'Completed %s', 'parish-formation' ), self::format_utc_date( $certificate->completed_at ) ) ); ?></p>
-				<?php if ( $certificate->signatory_name ) : ?>
-					<div class="pf-certificate-signature"><span><?php echo esc_html( $certificate->signatory_name ); ?></span><?php if ( $certificate->signatory_title ) : ?><small><?php echo esc_html( $certificate->signatory_title ); ?></small><?php endif; ?></div>
+				<?php if ( $design['signatory_name'] ) : ?>
+					<div class="pf-certificate-signature"><span><?php echo esc_html( $design['signatory_name'] ); ?></span><?php if ( $design['signatory_title'] ) : ?><small><?php echo esc_html( $design['signatory_title'] ); ?></small><?php endif; ?></div>
 				<?php endif; ?>
 				<footer>
 					<span><?php echo esc_html( sprintf( __( 'Verification code: %s', 'parish-formation' ), $certificate->verification_code ) ); ?></span>
-					<span><a href="<?php echo esc_url( $verification_url ); ?>"><?php esc_html_e( 'Verify certificate', 'parish-formation' ); ?></a></span>
 					<?php if ( $certificate->expires_at ) : ?><span><?php echo esc_html( sprintf( __( 'Valid through: %s', 'parish-formation' ), self::format_utc_date( $certificate->expires_at ) ) ); ?></span><?php endif; ?>
 				</footer>
 			</article>
@@ -572,7 +572,8 @@ final class Parish_Formation_Shortcodes {
 			return '<div class="uk-alert uk-alert-primary"><p>' . esc_html__( 'No questions have been added to this assessment yet.', 'parish-formation' ) . '</p></div>';
 		}
 		$latest = Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment->id, $assessment->ID );
-		$max_attempts = max( 1, absint( get_post_meta( $assessment->ID, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
+		$acknowledgement_mode = Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment->ID );
+		$max_attempts = $acknowledgement_mode ? 1 : max( 1, absint( get_post_meta( $assessment->ID, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
 		$closed = $latest && ( 'pending_review' === $latest->status || (bool) $latest->passed || absint( $latest->attempt_number ) >= $max_attempts );
 		$return_url = self::get_curriculum_item_url( $enrollment->course_id, array( 'type' => 'assessment', 'post' => $assessment ), self::current_url() );
 		$next_item  = self::get_next_curriculum_item( $curriculum, $assessment->ID );
@@ -585,9 +586,9 @@ final class Parish_Formation_Shortcodes {
 		<?php if ( isset( $_GET['pf_assessment_error'] ) ) : ?><div class="uk-alert uk-alert-danger"><p><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['pf_assessment_error'] ) ) ); ?></p></div><?php endif; ?>
 		<?php if ( $latest ) : ?>
 			<div class="uk-alert <?php echo 'passed' === $latest->status ? 'uk-alert-success' : ( 'failed' === $latest->status ? 'uk-alert-danger' : 'uk-alert-primary' ); ?>">
-				<p><strong><?php echo esc_html( ucwords( str_replace( '_', ' ', $latest->status ) ) ); ?></strong></p>
-				<?php if ( 'pending_review' !== $latest->status ) : ?><p><?php echo esc_html( sprintf( __( 'Score: %1$s of %2$s points; %3$d of %4$d correct.', 'parish-formation' ), $latest->score_points, $latest->max_points, $latest->correct_count, $latest->total_graded ) ); ?></p><?php endif; ?>
-				<p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, $max_attempts ) ); ?></p>
+				<p><strong><?php echo esc_html( $acknowledgement_mode ? ( 'pending_review' === $latest->status ? __( 'Submitted — awaiting review', 'parish-formation' ) : __( 'Submitted', 'parish-formation' ) ) : ucwords( str_replace( '_', ' ', $latest->status ) ) ); ?></strong></p>
+				<?php if ( ! $acknowledgement_mode && 'pending_review' !== $latest->status ) : ?><p><?php echo esc_html( sprintf( __( 'Score: %1$s of %2$s points; %3$d of %4$d correct.', 'parish-formation' ), $latest->score_points, $latest->max_points, $latest->correct_count, $latest->total_graded ) ); ?></p><?php endif; ?>
+				<?php if ( ! $acknowledgement_mode ) : ?><p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, $max_attempts ) ); ?></p><?php endif; ?>
 			</div>
 		<?php endif; ?>
 		<div class="pf-assessment-ajax-result" aria-live="polite"></div>
@@ -596,6 +597,7 @@ final class Parish_Formation_Shortcodes {
 			<input type="hidden" name="enrollment_id" value="<?php echo esc_attr( $enrollment->id ); ?>" />
 			<input type="hidden" name="course_id" value="<?php echo esc_attr( $enrollment->course_id ); ?>" />
 			<input type="hidden" name="assessment_id" value="<?php echo esc_attr( $assessment->ID ); ?>" />
+			<input type="hidden" name="assessment_mode" value="<?php echo esc_attr( $acknowledgement_mode ? 'acknowledgement' : 'standard' ); ?>" />
 			<input type="hidden" name="return_url" value="<?php echo esc_url( $return_url ); ?>" />
 			<input type="hidden" name="formation_base_url" value="<?php echo esc_url( self::current_url() ); ?>" />
 			<?php wp_nonce_field( 'pf_submit_assessment_' . $enrollment->id . '_' . $assessment->ID ); ?>
@@ -625,9 +627,9 @@ final class Parish_Formation_Shortcodes {
 					<?php endif; ?>
 				</section>
 			<?php endforeach; ?>
-			<?php if ( ! $closed ) : ?><button class="uk-button uk-button-primary" type="submit"><?php esc_html_e( 'Submit Assessment', 'parish-formation' ); ?></button><?php endif; ?>
+			<?php if ( ! $closed ) : ?><button class="uk-button uk-button-primary" type="submit"><?php echo esc_html( $acknowledgement_mode ? __( 'Submit Acknowledgement', 'parish-formation' ) : __( 'Submit Assessment', 'parish-formation' ) ); ?></button><?php endif; ?>
 		</form>
-		<?php if ( $latest && (bool) $latest->passed ) : ?>
+		<?php if ( $latest && ( (bool) $latest->passed || $acknowledgement_mode ) ) : ?>
 			<div class="pf-assessment-continue uk-margin-top">
 				<a class="uk-button uk-button-primary" href="<?php echo esc_url( $next_url ); ?>">
 					<?php echo $next_item ? esc_html__( 'Continue to Next Section', 'parish-formation' ) : esc_html__( 'Finish Course', 'parish-formation' ); ?> &rarr;
