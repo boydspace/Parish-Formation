@@ -7,6 +7,19 @@ final class Parish_Formation_Question_Config {
 	public const META_KEY = '_pf_question_config';
 	public const VERSION  = 1;
 
+	/** Return the effective maximum after applying type-specific point allocation. */
+	public static function maximum_points( $config ) {
+		$config = is_array( $config ) ? $config : array();
+		if ( empty( $config['graded'] ) ) { return 0.0; }
+		$type = Parish_Formation_Question_Type_Registry::normalize( $config['type'] ?? '' );
+		$type_config = is_array( $config['type_config'] ?? null ) ? $config['type_config'] : array();
+		if ( 'custom' === ( $type_config['point_mode'] ?? 'equal' ) ) {
+			$items = 'fill_blank' === $type ? ( $type_config['blanks'] ?? array() ) : ( 'matching' === $type ? ( $type_config['pairs'] ?? array() ) : array() );
+			if ( $items ) { return max( 0.0, (float) array_sum( array_map( static fn( $item ) => (float) ( $item['points'] ?? 0 ), $items ) ) ); }
+		}
+		return max( 0.0, (float) ( $config['points'] ?? 0 ) );
+	}
+
 	/** Read normalized configuration while adapting legacy question meta. */
 	public static function get( $question_id ) {
 		$type       = Parish_Formation_Question_Type_Registry::normalize( get_post_meta( $question_id, '_pf_question_type', true ) );
@@ -117,6 +130,23 @@ final class Parish_Formation_Question_Config {
 				);
 			}
 			return array( 'point_mode' => 'custom' === $mode ? 'custom' : 'equal', 'blanks' => $blanks );
+		}
+		if ( 'matching' === $type ) {
+			$mode = sanitize_key( $values['point_mode'] ?? 'equal' );
+			$pairs = array();
+			$used_ids = array();
+			foreach ( is_array( $values['pairs'] ?? null ) ? $values['pairs'] : array() as $index => $pair ) {
+				if ( ! is_array( $pair ) ) { continue; }
+				$prompt = sanitize_text_field( $pair['prompt'] ?? '' );
+				$answer = sanitize_text_field( $pair['answer'] ?? '' );
+				if ( '' === $prompt || '' === $answer ) { continue; }
+				$id = sanitize_key( $pair['id'] ?? '' ) ?: 'pair-' . ( $index + 1 );
+				if ( isset( $used_ids[ $id ] ) ) { $id .= '-' . ( $index + 1 ); }
+				$used_ids[ $id ] = true;
+				$answer_id = sanitize_key( $pair['answer_id'] ?? '' ) ?: 'answer-' . ( $index + 1 );
+				$pairs[] = array( 'id' => $id, 'answer_id' => $answer_id, 'prompt' => $prompt, 'answer' => $answer, 'points' => max( 0, (float) ( $pair['points'] ?? 1 ) ), 'order' => count( $pairs ) + 1 );
+			}
+			return array( 'point_mode' => 'custom' === $mode ? 'custom' : 'equal', 'pairs' => $pairs );
 		}
 		return self::sanitize_nested( $values );
 	}

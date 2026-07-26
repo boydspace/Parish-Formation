@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && ! Parish_Formation_Question_Type_Registry::implemented( 'matching' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -149,6 +149,33 @@ try {
 	$assert( ! $fill_forged['valid'] && 'invalid_answer' === $fill_forged['error_code'], 'Fill in the Blank accepted an unknown blank ID.' );
 	$fill_html = Parish_Formation_Question_Renderer::render( $fill, 'pf_answers[' . $fill->ID . ']', false );
 	$assert( 2 === substr_count( $fill_html, 'type="text"' ) && false !== strpos( $fill_html, '[sacrament]' ) && false !== strpos( $fill_html, '[matter]' ) && false === strpos( $fill_html, 'Holy Baptism' ), 'Fill in the Blank inline renderer is incomplete or exposes accepted answers.' );
+
+	$matching = $create_question( 'matching', 'Match each sacrament to its description.', '', array(), 6 );
+	$matching_config = Parish_Formation_Question_Config::get( $matching->ID );
+	$matching_config['randomize_choices'] = true;
+	$matching_config['type_config'] = array(
+		'point_mode' => 'equal',
+		'pairs' => array(
+			array( 'id' => 'baptism-pair', 'answer_id' => 'gateway-answer', 'prompt' => 'Baptism', 'answer' => 'Gateway to Christian life', 'points' => 2 ),
+			array( 'id' => 'confirmation-pair', 'answer_id' => 'grace-answer', 'prompt' => 'Confirmation', 'answer' => 'Strengthens baptismal grace', 'points' => 4 ),
+		),
+	);
+	update_post_meta( $matching->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $matching_config, 'matching' ) );
+	$matching_partial = Parish_Formation_Question_Grading_Service::grade( $matching, array( 'baptism-pair' => 'gateway-answer', 'confirmation-pair' => 'gateway-answer' ) );
+	$assert( $matching_partial['valid'] && false === $matching_partial['is_correct'] && 3.0 === (float) $matching_partial['earned_points'], 'Matching equal partial-credit grading failed.' );
+	$matching_config['type_config']['point_mode'] = 'custom';
+	update_post_meta( $matching->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $matching_config, 'matching' ) );
+	$assert( 6.0 === Parish_Formation_Question_Config::maximum_points( Parish_Formation_Question_Config::get( $matching->ID ) ), 'Matching effective maximum did not use custom pair points.' );
+	$matching_full = Parish_Formation_Question_Grading_Service::grade( $matching, array( 'baptism-pair' => 'gateway-answer', 'confirmation-pair' => 'grace-answer' ) );
+	$assert( $matching_full['is_correct'] && 6.0 === (float) $matching_full['earned_points'] && 6.0 === (float) $matching_full['maximum_points'], 'Matching custom-point full grading failed.' );
+	$matching_missing = Parish_Formation_Question_Grading_Service::grade( $matching, array( 'baptism-pair' => 'gateway-answer', 'confirmation-pair' => '' ) );
+	$assert( ! $matching_missing['valid'] && 'required_answer' === $matching_missing['error_code'], 'Matching accepted an unanswered required pair.' );
+	$matching_forged = Parish_Formation_Question_Grading_Service::grade( $matching, array( 'baptism-pair' => 'forged-pair', 'confirmation-pair' => 'grace-answer' ) );
+	$assert( ! $matching_forged['valid'] && 'invalid_answer' === $matching_forged['error_code'], 'Matching accepted an unknown answer ID.' );
+	$matching_html = Parish_Formation_Question_Renderer::render( $matching, 'pf_answers[' . $matching->ID . ']', false );
+	$assert( 2 === substr_count( $matching_html, '<select' ) && false !== strpos( $matching_html, '[baptism-pair]' ) && false === strpos( $matching_html, 'correct_answer' ), 'Matching learner controls are incomplete or expose grading configuration.' );
+	$matching_snapshot = Parish_Formation_Question_Snapshot::create( $matching, Parish_Formation_Question_Config::get( $matching->ID ) );
+	$assert( 'baptism-pair' === $matching_snapshot['type_config']['pairs'][0]['id'] && 'gateway-answer' === $matching_snapshot['type_config']['pairs'][0]['answer_id'] && 'Gateway to Christian life' === $matching_snapshot['type_config']['pairs'][0]['answer'], 'Matching snapshot lost the original pair configuration.' );
 } catch ( Throwable $error ) {
 	$failures[] = 'Test setup failed: ' . $error->getMessage();
 } finally {

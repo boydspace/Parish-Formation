@@ -33,7 +33,8 @@
 			explanation: { type: 'string', default: '' }, correctFeedback: { type: 'string', default: '' }, incorrectFeedback: { type: 'string', default: '' }, feedbackTiming: { type: 'string', default: 'assessment' },
 			manualReview: { type: 'boolean', default: false }, adminNotes: { type: 'string', default: '' }, randomizeChoices: { type: 'boolean', default: false }, gradingMode: { type: 'string', default: 'all_or_nothing' },
 			caseSensitive: { type: 'boolean', default: false }, trimSpaces: { type: 'boolean', default: true }, normalizeSpaces: { type: 'boolean', default: false }, ignorePunctuation: { type: 'boolean', default: false }, matchMode: { type: 'string', default: 'exact' },
-			blanks: { type: 'array', default: [] }, blankPointMode: { type: 'string', default: 'equal' }
+			blanks: { type: 'array', default: [] }, blankPointMode: { type: 'string', default: 'equal' },
+			matchingPairs: { type: 'array', default: [] }, matchingPointMode: { type: 'string', default: 'equal' }
 		},
 		supports: { html: false, reusable: false },
 		edit: function ( props ) {
@@ -47,6 +48,8 @@
 			const blanks = ( attrs.blanks || [] ).slice( 0, blankCount );
 			while ( blanks.length < blankCount ) { blanks.push( { id: 'blank-' + props.clientId.replace( /[^a-z0-9]/gi, '' ).slice( 0, 8 ) + '-' + ( blanks.length + 1 ), acceptedAnswers: [], caseSensitive: false, matchMode: 'normalized', points: 1 } ); }
 			const blankError = attrs.type === 'fill_blank' && ( ! blankCount || blanks.some( function ( blank ) { return ! ( blank.acceptedAnswers || [] ).filter( Boolean ).length; } ) ) ? __( 'Use at least one [blank] placeholder and enter an accepted answer for every blank.', 'parish-formation' ) : '';
+			const matchingPairs = attrs.matchingPairs || [];
+			const matchingError = attrs.type === 'matching' && ( matchingPairs.length < 2 || matchingPairs.some( function ( pair ) { return ! String( pair.prompt || '' ).trim() || ! String( pair.answer || '' ).trim(); } ) ) ? __( 'Add at least two complete prompt-and-answer pairs.', 'parish-formation' ) : '';
 
 			function saveChoices( next ) {
 				props.setAttributes( { choices: next, options: next.map( function ( choice ) { return choice.label; } ), answer: attrs.type === 'multiple_choice' ? ( ( next.find( function ( choice ) { return choice.correct; } ) || {} ).id || '' ) : '' } );
@@ -75,6 +78,19 @@
 				while ( next.length < count ) { next.push( { id: 'blank-' + props.clientId.replace( /[^a-z0-9]/gi, '' ).slice( 0, 8 ) + '-' + ( next.length + 1 ), acceptedAnswers: [], caseSensitive: false, matchMode: 'normalized', points: 1 } ); }
 				props.setAttributes( { prompt: value, blanks: next } );
 			}
+			function saveMatchingPairs( next ) { props.setAttributes( { matchingPairs: next } ); }
+			function updateMatchingPair( index, changes ) {
+				const next = matchingPairs.map( function ( pair ) { return Object.assign( {}, pair ); } );
+				next[ index ] = Object.assign( {}, next[ index ], changes ); saveMatchingPairs( next );
+			}
+			function moveMatchingPair( index, direction ) {
+				const target = index + direction; if ( target < 0 || target >= matchingPairs.length ) { return; }
+				const next = matchingPairs.slice(); const row = next[ index ]; next[ index ] = next[ target ]; next[ target ] = row; saveMatchingPairs( next );
+			}
+			function addMatchingPair() {
+				const id = 'pair-' + props.clientId.replace( /[^a-z0-9]/gi, '' ).slice( 0, 8 ) + '-' + Date.now().toString( 36 );
+				saveMatchingPairs( matchingPairs.concat( [ { id: id, answerId: 'answer-' + props.clientId.replace( /[^a-z0-9]/gi, '' ).slice( 0, 8 ) + '-' + ( Date.now() + 1 ).toString( 36 ), prompt: '', answer: '', points: 1 } ] ) );
+			}
 
 			return el( 'div', blockEditor.useBlockProps( { className: 'pf-question-block' } ),
 				el( InspectorControls, {},
@@ -82,15 +98,15 @@
 						el( SelectControl, { label: __( 'Question type', 'parish-formation' ), value: attrs.type, options: [
 							{ label: __( '— Automatically Graded —', 'parish-formation' ), value: '__automatic', disabled: true },
 							{ label: __( 'Multiple Choice', 'parish-formation' ), value: 'multiple_choice' }, { label: __( 'Multiple Select', 'parish-formation' ), value: 'multiple_select' }, { label: __( 'True / False', 'parish-formation' ), value: 'true_false' }, { label: __( 'Short Answer', 'parish-formation' ), value: 'short_answer' },
-							{ label: __( 'Fill in the Blank', 'parish-formation' ), value: 'fill_blank' }, { label: __( 'Matching (coming next)', 'parish-formation' ), value: '__matching', disabled: true }, { label: __( 'Ordering (coming next)', 'parish-formation' ), value: '__ordering', disabled: true }, { label: __( 'Numeric Response (Phase 3)', 'parish-formation' ), value: '__numeric', disabled: true },
+							{ label: __( 'Fill in the Blank', 'parish-formation' ), value: 'fill_blank' }, { label: __( 'Matching', 'parish-formation' ), value: 'matching' }, { label: __( 'Ordering (coming next)', 'parish-formation' ), value: '__ordering', disabled: true }, { label: __( 'Numeric Response (Phase 3)', 'parish-formation' ), value: '__numeric', disabled: true },
 							{ label: __( '— Instructor Reviewed —', 'parish-formation' ), value: '__review', disabled: true }, { label: __( 'Paragraph Response (Phase 3)', 'parish-formation' ), value: '__paragraph', disabled: true }, { label: __( 'File Upload (Phase 3)', 'parish-formation' ), value: '__file_upload', disabled: true },
 							{ label: __( '— Formation and Feedback —', 'parish-formation' ), value: '__formation', disabled: true }, { label: __( 'Reflection Response', 'parish-formation' ), value: 'reflection' }, { label: __( 'Rating Scale (Phase 3)', 'parish-formation' ), value: '__rating', disabled: true }, { label: __( 'Yes / No (Phase 3)', 'parish-formation' ), value: '__yes_no', disabled: true }, { label: __( 'Acknowledgment', 'parish-formation' ), value: 'acknowledgement' }, { label: __( 'Image Selection (Phase 3)', 'parish-formation' ), value: '__image', disabled: true }
 						], onChange: function ( value ) { if ( value.indexOf( '__' ) === 0 ) { return; } props.setAttributes( { type: value, graded: ! [ 'reflection', 'acknowledgement' ].includes( value ), manualReview: value === 'reflection' } ); } } ),
 						el( TextareaControl, { label: __( 'Optional instructions', 'parish-formation' ), value: attrs.instructions, onChange: function ( value ) { props.setAttributes( { instructions: value } ); } } ),
 						el( ToggleControl, { label: __( 'Graded question', 'parish-formation' ), checked: attrs.graded, onChange: function ( value ) { props.setAttributes( { graded: value } ); } } ),
-						attrs.graded && ! ( attrs.type === 'fill_blank' && attrs.blankPointMode === 'custom' ) && el( TextControl, { label: __( 'Points', 'parish-formation' ), type: 'number', min: 1, value: attrs.points, onChange: function ( value ) { props.setAttributes( { points: Math.max( 1, parseInt( value, 10 ) || 1 ) } ); } } ),
+						attrs.graded && ! ( ( attrs.type === 'fill_blank' && attrs.blankPointMode === 'custom' ) || ( attrs.type === 'matching' && attrs.matchingPointMode === 'custom' ) ) && el( TextControl, { label: __( 'Points', 'parish-formation' ), type: 'number', min: 1, value: attrs.points, onChange: function ( value ) { props.setAttributes( { points: Math.max( 1, parseInt( value, 10 ) || 1 ) } ); } } ),
 						el( ToggleControl, { label: __( 'Required question', 'parish-formation' ), checked: attrs.required, onChange: function ( value ) { props.setAttributes( { required: value } ); } } ),
-						choiceType && el( ToggleControl, { label: __( 'Randomize answer choices', 'parish-formation' ), checked: attrs.randomizeChoices, onChange: function ( value ) { props.setAttributes( { randomizeChoices: value } ); } } ),
+						( choiceType || attrs.type === 'matching' ) && el( ToggleControl, { label: attrs.type === 'matching' ? __( 'Randomize matching answers', 'parish-formation' ) : __( 'Randomize answer choices', 'parish-formation' ), checked: attrs.randomizeChoices, onChange: function ( value ) { props.setAttributes( { randomizeChoices: value } ); } } ),
 						attrs.type === 'reflection' && el( ToggleControl, { label: __( 'Require staff review', 'parish-formation' ), checked: attrs.manualReview, onChange: function ( value ) { props.setAttributes( { manualReview: value } ); } } )
 					),
 					el( PanelBody, { title: __( 'Feedback and Staff Notes', 'parish-formation' ), initialOpen: false },
@@ -139,6 +155,22 @@
 						el( SelectControl, { label: __( 'Matching method', 'parish-formation' ), value: blank.matchMode || 'normalized', options: [ { label: __( 'Normalized match (trim and collapse spaces)', 'parish-formation' ), value: 'normalized' }, { label: __( 'Exact match', 'parish-formation' ), value: 'exact' } ], onChange: function ( value ) { updateBlank( index, { matchMode: value } ); } } ),
 						attrs.blankPointMode === 'custom' && el( TextControl, { label: __( 'Points for this blank', 'parish-formation' ), type: 'number', min: 0, step: 0.25, value: blank.points, onChange: function ( value ) { updateBlank( index, { points: Math.max( 0, parseFloat( value ) || 0 ) } ); } } )
 					); } )
+				),
+				attrs.type === 'matching' && el( 'div', { className: 'pf-question-matching-settings' },
+					el( 'p', { className: 'description' }, __( 'Learners will choose an answer from an accessible dropdown for each prompt.', 'parish-formation' ) ),
+					matchingError && el( Notice, { status: 'warning', isDismissible: false }, matchingError ),
+					el( SelectControl, { label: __( 'Point allocation', 'parish-formation' ), value: attrs.matchingPointMode, options: [ { label: __( 'Divide question points equally', 'parish-formation' ), value: 'equal' }, { label: __( 'Custom points for each pair', 'parish-formation' ), value: 'custom' } ], onChange: function ( value ) { props.setAttributes( { matchingPointMode: value } ); } } ),
+					matchingPairs.map( function ( pair, index ) { return el( 'div', { className: 'pf-question-choice-row', key: pair.id },
+						el( TextControl, { label: __( 'Prompt', 'parish-formation' ), value: pair.prompt || '', onChange: function ( value ) { updateMatchingPair( index, { prompt: value } ); } } ),
+						el( TextControl, { label: __( 'Matching answer', 'parish-formation' ), value: pair.answer || '', onChange: function ( value ) { updateMatchingPair( index, { answer: value } ); } } ),
+						attrs.matchingPointMode === 'custom' && el( TextControl, { label: __( 'Points for this pair', 'parish-formation' ), type: 'number', min: 0, step: 0.25, value: pair.points, onChange: function ( value ) { updateMatchingPair( index, { points: Math.max( 0, parseFloat( value ) || 0 ) } ); } } ),
+						el( 'div', { className: 'pf-question-choice-actions' },
+							el( Button, { variant: 'secondary', disabled: index === 0, onClick: function () { moveMatchingPair( index, -1 ); } }, __( 'Move up', 'parish-formation' ) ),
+							el( Button, { variant: 'secondary', disabled: index === matchingPairs.length - 1, onClick: function () { moveMatchingPair( index, 1 ); } }, __( 'Move down', 'parish-formation' ) ),
+							el( Button, { isDestructive: true, onClick: function () { saveMatchingPairs( matchingPairs.filter( function ( unused, rowIndex ) { return rowIndex !== index; } ) ); } }, __( 'Remove', 'parish-formation' ) )
+						)
+					); } ),
+					el( Button, { variant: 'primary', onClick: addMatchingPair }, __( 'Add matching pair', 'parish-formation' ) )
 				),
 				el( 'div', { className: 'pf-question-block__summary' }, __( 'Type:', 'parish-formation' ) + ' ' + attrs.type.replaceAll( '_', ' ' ) + ' · ' + ( attrs.graded ? attrs.points : 0 ) + ' ' + __( 'point(s)', 'parish-formation' ) )
 			);

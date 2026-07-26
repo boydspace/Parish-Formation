@@ -53,6 +53,8 @@ final class Parish_Formation_Question_Block {
 					'matchMode' => array( 'type' => 'string', 'default' => 'exact' ),
 					'blanks' => array( 'type' => 'array', 'default' => array(), 'items' => array( 'type' => 'object' ) ),
 					'blankPointMode' => array( 'type' => 'string', 'default' => 'equal' ),
+					'matchingPairs' => array( 'type' => 'array', 'default' => array(), 'items' => array( 'type' => 'object' ) ),
+					'matchingPointMode' => array( 'type' => 'string', 'default' => 'equal' ),
 					'points'     => array( 'type' => 'integer', 'default' => 1 ),
 					'required'   => array( 'type' => 'boolean', 'default' => true ),
 					'instructions' => array( 'type' => 'string', 'default' => '' ),
@@ -130,6 +132,11 @@ final class Parish_Formation_Question_Block {
 				foreach ( is_array( $attributes['blanks'] ?? null ) ? $attributes['blanks'] : array() as $blank ) { $question_points += max( 0, (float) ( $blank['points'] ?? 0 ) ); }
 				$question_points = max( 1, $question_points );
 			}
+			if ( 'matching' === $type && 'custom' === sanitize_key( $attributes['matchingPointMode'] ?? '' ) ) {
+				$question_points = 0;
+				foreach ( is_array( $attributes['matchingPairs'] ?? null ) ? $attributes['matchingPairs'] : array() as $pair ) { $question_points += max( 0, (float) ( $pair['points'] ?? 0 ) ); }
+				$question_points = max( 1, $question_points );
+			}
 			update_post_meta( $question_id, '_pf_assessment_id', $post_id );
 			update_post_meta( $question_id, '_pf_question_type', $type );
 			update_post_meta( $question_id, '_pf_question_order', $index + 1 );
@@ -155,8 +162,9 @@ final class Parish_Formation_Question_Block {
 						'normalize_spaces' => ! empty( $attributes['normalizeSpaces'] ),
 						'ignore_punctuation' => ! empty( $attributes['ignorePunctuation'] ),
 						'match_mode' => $attributes['matchMode'] ?? 'exact',
-						'point_mode' => $attributes['blankPointMode'] ?? 'equal',
+						'point_mode' => 'matching' === $type ? ( $attributes['matchingPointMode'] ?? 'equal' ) : ( $attributes['blankPointMode'] ?? 'equal' ),
 						'blanks' => self::normalize_block_blanks( $attributes['blanks'] ?? array() ),
+						'pairs' => self::normalize_block_pairs( $attributes['matchingPairs'] ?? array() ),
 					),
 				),
 				$type
@@ -244,6 +252,15 @@ final class Parish_Formation_Question_Block {
 			);
 		}
 		return $blanks;
+	}
+
+	private static function normalize_block_pairs( $rows ) {
+		$pairs = array();
+		foreach ( is_array( $rows ) ? $rows : array() as $index => $row ) {
+			if ( ! is_array( $row ) ) { continue; }
+			$pairs[] = array( 'id' => $row['id'] ?? 'pair-' . ( $index + 1 ), 'answer_id' => $row['answerId'] ?? ( $row['answer_id'] ?? 'answer-' . ( $index + 1 ) ), 'prompt' => $row['prompt'] ?? '', 'answer' => $row['answer'] ?? '', 'points' => $row['points'] ?? 1 );
+		}
+		return $pairs;
 	}
 
 }

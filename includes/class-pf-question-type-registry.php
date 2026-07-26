@@ -12,7 +12,7 @@ final class Parish_Formation_Question_Type_Registry {
 			'true_false'      => self::type( 'true_false', __( 'True/False', 'parish-formation' ), 'automatic', true, true, false ),
 			'short_answer'    => self::type( 'short_answer', __( 'Short Answer', 'parish-formation' ), 'automatic', true, true, false ),
 			'fill_blank'      => self::type( 'fill_blank', __( 'Fill in the Blank', 'parish-formation' ), 'automatic', true, true, false ),
-			'matching'        => self::type( 'matching', __( 'Matching', 'parish-formation' ), 'automatic', false, true, false ),
+			'matching'        => self::type( 'matching', __( 'Matching', 'parish-formation' ), 'automatic', true, true, false ),
 			'ordering'        => self::type( 'ordering', __( 'Ordering', 'parish-formation' ), 'automatic', false, true, false ),
 			'numeric'         => self::type( 'numeric', __( 'Numeric Response', 'parish-formation' ), 'automatic', false, true, true ),
 			'paragraph'       => self::type( 'paragraph', __( 'Paragraph Response', 'parish-formation' ), 'review', false, true, true ),

@@ -30,7 +30,9 @@ const inputs = [
 	{ type: 'checkbox', checked: false, name: 'pf_answers[246][]', value: 'choice-c' },
 	{ type: 'text', checked: false, name: 'pf_answers[247]', value: 'Original response' },
 	{ type: 'text', checked: false, name: 'pf_answers[248][blank-one]', value: 'Baptism' },
-	{ type: 'text', checked: false, name: 'pf_answers[248][blank-two]', value: 'Confirmation' }
+	{ type: 'text', checked: false, name: 'pf_answers[248][blank-two]', value: 'Confirmation' },
+	{ type: 'select-one', checked: false, name: 'pf_answers[249][prompt-one]', value: 'answer-two' },
+	{ type: 'select-one', checked: false, name: 'pf_answers[249][prompt-two]', value: 'answer-one' }
 ];
 const form = {
 	previousElementSibling: resultBox,
@@ -52,4 +54,7 @@ if ( requestBody.answers['247'] !== 'Original response' ) {
 if ( JSON.stringify( requestBody.answers['248'] ) !== JSON.stringify( { 'blank-one': 'Baptism', 'blank-two': 'Confirmation' } ) ) {
 	throw new Error( 'Fill in the Blank values were not serialized by stable blank ID.' );
 }
-process.stdout.write( 'Assessment submission JavaScript test passed: 3 checks.\n' );
+if ( JSON.stringify( requestBody.answers['249'] ) !== JSON.stringify( { 'prompt-one': 'answer-two', 'prompt-two': 'answer-one' } ) ) {
+	throw new Error( 'Matching values were not serialized by stable pair IDs.' );
+}
+process.stdout.write( 'Assessment submission JavaScript test passed: 4 checks.\n' );

@@ -111,6 +111,32 @@ final class Parish_Formation_Question_Grading_Service {
 			return self::result( true, '', $responses, $config['graded'] ? $earned : 0, $config['graded'] ? $maximum : 0, true, $all_correct, false, $config );
 		}
 
+		if ( 'matching' === $type ) {
+			$pairs = $config['type_config']['pairs'] ?? array();
+			if ( count( $pairs ) < 2 ) {
+				return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This Matching question needs at least two complete pairs.', 'parish-formation' ) );
+			}
+			$responses = is_array( $response ) ? $response : array();
+			$pair_ids = array_column( $pairs, 'id' );
+			$answer_ids = array_column( $pairs, 'answer_id' );
+			if ( array_diff( array_keys( $responses ), $pair_ids ) || array_diff( array_filter( array_values( $responses ), static fn( $value ) => '' !== (string) $value ), $answer_ids ) ) {
+				return self::result( false, 'invalid_answer', $original, 0, $config['points'], false, null, false, $config, __( 'A submitted match is not available.', 'parish-formation' ) );
+			}
+			$point_mode = $config['type_config']['point_mode'] ?? 'equal';
+			$maximum = 'custom' === $point_mode ? array_sum( array_map( static fn( $pair ) => (float) $pair['points'], $pairs ) ) : (float) $config['points'];
+			$equal_points = $maximum / count( $pairs );
+			$earned = 0;
+			$all_correct = true;
+			foreach ( $pairs as $pair ) {
+				$selected = sanitize_key( $responses[ $pair['id'] ] ?? '' );
+				if ( $config['required'] && '' === $selected ) {
+					return self::result( false, 'required_answer', $original, 0, $maximum, false, false, false, $config, __( 'Please complete every required match.', 'parish-formation' ) );
+				}
+				if ( $selected === $pair['answer_id'] ) { $earned += 'custom' === $point_mode ? (float) $pair['points'] : $equal_points; } else { $all_correct = false; }
+			}
+			return self::result( true, '', $responses, $config['graded'] ? $earned : 0, $config['graded'] ? $maximum : 0, true, $all_correct, false, $config );
+		}
+
 		if ( 'acknowledgement' === $type ) {
 			$completed = in_array( strtolower( sanitize_text_field( (string) $response ) ), array( 'acknowledged', '1', 'yes', 'true' ), true );
 			if ( $config['required'] && ! $completed ) {

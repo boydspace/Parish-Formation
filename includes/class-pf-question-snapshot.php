@@ -15,7 +15,7 @@ final class Parish_Formation_Question_Snapshot {
 			'prompt'           => wp_kses_post( $question->post_content ),
 			'type'             => $config['type'],
 			'instructions'     => $config['instructions'],
-			'points'           => $config['points'],
+			'points'           => Parish_Formation_Question_Config::maximum_points( $config ),
 			'required'         => $config['required'],
 			'graded'           => $config['graded'],
 			'manual_review'    => $config['manual_review'],

@@ -63,6 +63,22 @@ final class Parish_Formation_Question_Renderer {
 			<label><span class="screen-reader-text"><?php esc_html_e( 'Your answer', 'parish-formation' ); ?></span><input class="uk-input" type="text" name="<?php echo esc_attr( $field_name ); ?>" autocomplete="off"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			?> /></label>
 			<?php
+		} elseif ( 'matching' === $type ) {
+			$pairs = $config['type_config']['pairs'] ?? array();
+			$answers = $pairs;
+			if ( $config['randomize_choices'] && count( $answers ) > 1 ) { shuffle( $answers ); }
+			?><div class="pf-matching-response">
+				<p class="pf-question-response-instruction"><?php esc_html_e( 'Choose the matching answer for each item.', 'parish-formation' ); ?></p>
+				<?php foreach ( $pairs as $index => $pair ) { ?>
+					<div class="pf-matching-row">
+						<label for="pf-match-<?php echo esc_attr( $question->ID . '-' . $pair['id'] ); ?>"><?php echo esc_html( $pair['prompt'] ); ?></label>
+						<select class="uk-select" id="pf-match-<?php echo esc_attr( $question->ID . '-' . $pair['id'] ); ?>" name="<?php echo esc_attr( $field_name . '[' . $pair['id'] . ']' ); ?>"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> >
+							<option value=""><?php esc_html_e( 'Select a match', 'parish-formation' ); ?></option>
+							<?php foreach ( $answers as $answer ) { ?><option value="<?php echo esc_attr( $answer['answer_id'] ); ?>"><?php echo esc_html( $answer['answer'] ); ?></option><?php } ?>
+						</select>
+					</div>
+				<?php } ?>
+			</div><?php
 		} elseif ( 'acknowledgement' === $type ) {
 			?>
 			<label class="pf-assessment-option"><input class="uk-checkbox" type="checkbox" name="<?php echo esc_attr( $field_name ); ?>" value="acknowledged"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

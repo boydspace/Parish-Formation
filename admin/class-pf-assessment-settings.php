@@ -284,7 +284,7 @@ final class Parish_Formation_Assessment_Settings {
 		foreach ( Parish_Formation_Assessment_Repository::get_questions( $assessment_id ) as $question ) {
 			$config = Parish_Formation_Question_Config::get( $question->ID );
 			if ( $config['graded'] && ! $config['manual_review'] ) {
-				$points += (float) $config['points'];
+				$points += Parish_Formation_Question_Config::maximum_points( $config );
 				++$count;
 			}
 		}

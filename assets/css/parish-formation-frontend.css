@@ -170,6 +170,22 @@
 	width: clamp(9rem, 20vw, 15rem);
 }
 
+.pf-matching-response {
+	display: grid;
+	gap: 16px;
+}
+
+.pf-matching-row {
+	display: grid;
+	grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.25fr);
+	align-items: center;
+	gap: 16px;
+}
+
+.pf-matching-row label {
+	font-weight: 600;
+}
+
 .pf-content-footer {
 	margin-top: auto;
 	padding: 20px 28px;
@@ -185,6 +201,11 @@
 }
 
 @media (max-width: 800px) {
+	.pf-matching-row {
+		grid-template-columns: 1fr;
+		gap: 6px;
+	}
+
 	.pf-learning-layout {
 		grid-template-columns: 1fr;
 	}
