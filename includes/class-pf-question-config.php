@@ -217,6 +217,29 @@ final class Parish_Formation_Question_Config {
 				'no_message' => wp_kses_post( $values['no_message'] ?? '' ),
 			);
 		}
+		if ( 'image_selection' === $type ) {
+			$mode = 'multiple' === sanitize_key( $values['selection_mode'] ?? 'single' ) ? 'multiple' : 'single';
+			$grading_mode = sanitize_key( $values['grading_mode'] ?? 'all_or_nothing' );
+			$images = array();
+			$used_ids = array();
+			foreach ( is_array( $values['images'] ?? null ) ? $values['images'] : array() as $index => $image ) {
+				if ( ! is_array( $image ) ) { continue; }
+				$attachment_id = absint( $image['attachment_id'] ?? ( $image['attachmentId'] ?? 0 ) );
+				$alt = sanitize_text_field( $image['alt'] ?? '' );
+				$attachment = $attachment_id ? get_post( $attachment_id ) : null;
+				$mime_type = $attachment ? (string) get_post_mime_type( $attachment ) : '';
+				if ( ! $attachment || 'attachment' !== $attachment->post_type || '' === $alt || ! str_starts_with( $mime_type, 'image/' ) ) { continue; }
+				$id = sanitize_key( $image['id'] ?? '' ) ?: 'image-' . ( $index + 1 );
+				if ( isset( $used_ids[ $id ] ) ) { $id .= '-' . ( $index + 1 ); }
+				$used_ids[ $id ] = true;
+				$images[] = array( 'id' => $id, 'attachment_id' => $attachment_id, 'label' => sanitize_text_field( $image['label'] ?? '' ), 'alt' => $alt, 'correct' => ! empty( $image['correct'] ), 'order' => count( $images ) + 1 );
+			}
+			return array(
+				'selection_mode' => $mode,
+				'grading_mode' => in_array( $grading_mode, array( 'all_or_nothing', 'partial', 'partial_penalty' ), true ) ? $grading_mode : 'all_or_nothing',
+				'images' => $images,
+			);
+		}
 		return self::sanitize_nested( $values );
 	}
 }

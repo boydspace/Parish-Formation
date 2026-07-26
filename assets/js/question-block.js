@@ -5,6 +5,8 @@
 	const __ = i18n.__;
 	const InspectorControls = blockEditor.InspectorControls;
 	const RichText = blockEditor.RichText;
+	const MediaUpload = blockEditor.MediaUpload;
+	const MediaUploadCheck = blockEditor.MediaUploadCheck;
 	const Button = components.Button;
 	const CheckboxControl = components.CheckboxControl;
 	const Notice = components.Notice;
@@ -39,7 +41,8 @@
 			reflectionMinCharacters: { type: 'integer', default: 0 }, reflectionMaxCharacters: { type: 'integer', default: 0 }, reflectionCompletionCredit: { type: 'boolean', default: false }, reflectionPrivateNotice: { type: 'string', default: '' }, reflectionSamplePrompt: { type: 'string', default: '' },
 			acknowledgementCheckboxLabel: { type: 'string', default: 'I acknowledge this statement.' }, acknowledgementPolicyUrl: { type: 'string', default: '' }, acknowledgementRequireOpen: { type: 'boolean', default: false }, acknowledgementCompletionCredit: { type: 'boolean', default: false },
 			ratingMinimum: { type: 'integer', default: 1 }, ratingMaximum: { type: 'integer', default: 5 }, ratingFirstLabel: { type: 'string', default: 'Lowest' }, ratingLastLabel: { type: 'string', default: 'Highest' }, ratingValueLabels: { type: 'array', default: [] }, ratingOrientation: { type: 'string', default: 'horizontal' },
-			yesNoYesLabel: { type: 'string', default: 'Yes' }, yesNoNoLabel: { type: 'string', default: 'No' }, yesNoCorrectAnswer: { type: 'string', default: '' }, yesNoYesMessage: { type: 'string', default: '' }, yesNoNoMessage: { type: 'string', default: '' }
+			yesNoYesLabel: { type: 'string', default: 'Yes' }, yesNoNoLabel: { type: 'string', default: 'No' }, yesNoCorrectAnswer: { type: 'string', default: '' }, yesNoYesMessage: { type: 'string', default: '' }, yesNoNoMessage: { type: 'string', default: '' },
+			imageChoices: { type: 'array', default: [] }, imageSelectionMode: { type: 'string', default: 'single' }, imageGradingMode: { type: 'string', default: 'all_or_nothing' }
 		},
 		supports: { html: false, reusable: false },
 		edit: function ( props ) {
@@ -57,6 +60,9 @@
 			const matchingError = attrs.type === 'matching' && ( matchingPairs.length < 2 || matchingPairs.some( function ( pair ) { return ! String( pair.prompt || '' ).trim() || ! String( pair.answer || '' ).trim(); } ) ) ? __( 'Add at least two complete prompt-and-answer pairs.', 'parish-formation' ) : '';
 			const orderingItems = attrs.orderingItems || [];
 			const orderingError = attrs.type === 'ordering' && ( orderingItems.length < 2 || orderingItems.some( function ( item ) { return ! String( item.label || '' ).trim(); } ) ) ? __( 'Add at least two complete items in the correct order.', 'parish-formation' ) : '';
+			const imageChoices = attrs.imageChoices || [];
+			const imageCorrectCount = imageChoices.filter( function ( image ) { return image.correct; } ).length;
+			const imageError = attrs.type === 'image_selection' && ( imageChoices.length < 2 || imageChoices.some( function ( image ) { return ! image.attachmentId || ! String( image.alt || '' ).trim(); } ) || imageCorrectCount < 1 || ( attrs.imageSelectionMode === 'single' && imageCorrectCount !== 1 ) ) ? __( 'Add at least two images, provide alt text for every image, and mark the appropriate correct image choices.', 'parish-formation' ) : '';
 
 			function saveChoices( next ) {
 				props.setAttributes( { choices: next, options: next.map( function ( choice ) { return choice.label; } ), answer: attrs.type === 'multiple_choice' ? ( ( next.find( function ( choice ) { return choice.correct; } ) || {} ).id || '' ) : '' } );
@@ -111,6 +117,20 @@
 				const id = 'item-' + props.clientId.replace( /[^a-z0-9]/gi, '' ).slice( 0, 8 ) + '-' + Date.now().toString( 36 );
 				saveOrderingItems( orderingItems.concat( [ { id: id, label: '', points: 1 } ] ) );
 			}
+			function saveImageChoices( next ) { props.setAttributes( { imageChoices: next } ); }
+			function updateImageChoice( index, changes ) {
+				let next = imageChoices.map( function ( image ) { return Object.assign( {}, image ); } );
+				if ( changes.correct && attrs.imageSelectionMode === 'single' ) { next = next.map( function ( image ) { return Object.assign( {}, image, { correct: false } ); } ); }
+				next[ index ] = Object.assign( {}, next[ index ], changes ); saveImageChoices( next );
+			}
+			function moveImageChoice( index, direction ) {
+				const target = index + direction; if ( target < 0 || target >= imageChoices.length ) { return; }
+				const next = imageChoices.slice(); const row = next[ index ]; next[ index ] = next[ target ]; next[ target ] = row; saveImageChoices( next );
+			}
+			function addImageChoice( media ) {
+				const id = 'image-' + props.clientId.replace( /[^a-z0-9]/gi, '' ).slice( 0, 8 ) + '-' + Date.now().toString( 36 );
+				saveImageChoices( imageChoices.concat( [ { id: id, attachmentId: media.id, url: media.url, alt: media.alt || media.title || '', label: '', correct: false } ] ) );
+			}
 
 			return el( 'div', blockEditor.useBlockProps( { className: 'pf-question-block' } ),
 				el( InspectorControls, {},
@@ -120,7 +140,7 @@
 							{ label: __( 'Multiple Choice', 'parish-formation' ), value: 'multiple_choice' }, { label: __( 'Multiple Select', 'parish-formation' ), value: 'multiple_select' }, { label: __( 'True / False', 'parish-formation' ), value: 'true_false' }, { label: __( 'Short Answer', 'parish-formation' ), value: 'short_answer' },
 							{ label: __( 'Fill in the Blank', 'parish-formation' ), value: 'fill_blank' }, { label: __( 'Matching', 'parish-formation' ), value: 'matching' }, { label: __( 'Ordering', 'parish-formation' ), value: 'ordering' }, { label: __( 'Numeric Response (Phase 3)', 'parish-formation' ), value: '__numeric', disabled: true },
 							{ label: __( '— Instructor Reviewed —', 'parish-formation' ), value: '__review', disabled: true }, { label: __( 'Paragraph Response (Phase 3)', 'parish-formation' ), value: '__paragraph', disabled: true }, { label: __( 'File Upload (Phase 3)', 'parish-formation' ), value: '__file_upload', disabled: true },
-							{ label: __( '— Formation and Feedback —', 'parish-formation' ), value: '__formation', disabled: true }, { label: __( 'Reflection Response', 'parish-formation' ), value: 'reflection' }, { label: __( 'Rating Scale', 'parish-formation' ), value: 'rating_scale' }, { label: __( 'Yes / No', 'parish-formation' ), value: 'yes_no' }, { label: __( 'Acknowledgment', 'parish-formation' ), value: 'acknowledgement' }, { label: __( 'Image Selection (Phase 3)', 'parish-formation' ), value: '__image', disabled: true }
+							{ label: __( '— Formation and Feedback —', 'parish-formation' ), value: '__formation', disabled: true }, { label: __( 'Reflection Response', 'parish-formation' ), value: 'reflection' }, { label: __( 'Rating Scale', 'parish-formation' ), value: 'rating_scale' }, { label: __( 'Yes / No', 'parish-formation' ), value: 'yes_no' }, { label: __( 'Acknowledgment', 'parish-formation' ), value: 'acknowledgement' }, { label: __( 'Image Selection', 'parish-formation' ), value: 'image_selection' }
 						], onChange: function ( value ) { if ( value.indexOf( '__' ) === 0 ) { return; } props.setAttributes( { type: value, graded: ! [ 'reflection', 'acknowledgement', 'rating_scale', 'yes_no' ].includes( value ), manualReview: value === 'reflection' } ); } } ),
 						el( TextareaControl, { label: __( 'Optional instructions', 'parish-formation' ), value: attrs.instructions, onChange: function ( value ) { props.setAttributes( { instructions: value } ); } } ),
 						! [ 'reflection', 'acknowledgement', 'rating_scale', 'yes_no' ].includes( attrs.type ) && el( ToggleControl, { label: __( 'Graded question', 'parish-formation' ), checked: attrs.graded, onChange: function ( value ) { props.setAttributes( { graded: value } ); } } ),
@@ -243,6 +263,24 @@
 					attrs.graded && ! attrs.yesNoCorrectAnswer && el( Notice, { status: 'warning', isDismissible: false }, __( 'Choose a correct response before publishing a graded Yes/No question.', 'parish-formation' ) ),
 					el( TextareaControl, { label: __( 'Follow-up message after Yes (optional)', 'parish-formation' ), value: attrs.yesNoYesMessage, onChange: function ( value ) { props.setAttributes( { yesNoYesMessage: value } ); } } ),
 					el( TextareaControl, { label: __( 'Follow-up message after No (optional)', 'parish-formation' ), value: attrs.yesNoNoMessage, onChange: function ( value ) { props.setAttributes( { yesNoNoMessage: value } ); } } )
+				),
+				attrs.type === 'image_selection' && el( 'div', { className: 'pf-question-image-settings' },
+					imageError && el( Notice, { status: 'warning', isDismissible: false }, imageError ),
+					el( SelectControl, { label: __( 'Selection mode', 'parish-formation' ), value: attrs.imageSelectionMode, options: [ { label: __( 'Select one image', 'parish-formation' ), value: 'single' }, { label: __( 'Select multiple images', 'parish-formation' ), value: 'multiple' } ], onChange: function ( value ) { props.setAttributes( { imageSelectionMode: value } ); if ( value === 'single' && imageCorrectCount > 1 ) { saveImageChoices( imageChoices.map( function ( image, index ) { return Object.assign( {}, image, { correct: index === imageChoices.findIndex( function ( item ) { return item.correct; } ) } ); } ) ); } } } ),
+					attrs.imageSelectionMode === 'multiple' && el( SelectControl, { label: __( 'Grading mode', 'parish-formation' ), value: attrs.imageGradingMode, options: [ { label: __( 'All or nothing', 'parish-formation' ), value: 'all_or_nothing' }, { label: __( 'Partial credit', 'parish-formation' ), value: 'partial' }, { label: __( 'Partial credit with incorrect-selection penalty', 'parish-formation' ), value: 'partial_penalty' } ], onChange: function ( value ) { props.setAttributes( { imageGradingMode: value } ); } } ),
+					el( ToggleControl, { label: __( 'Randomize image order', 'parish-formation' ), checked: attrs.randomizeChoices, onChange: function ( value ) { props.setAttributes( { randomizeChoices: value } ); } } ),
+					imageChoices.map( function ( image, index ) { return el( 'div', { className: 'pf-question-choice-row', key: image.id },
+						image.url && el( 'img', { src: image.url, alt: image.alt || '', style: { maxHeight: '140px', width: 'auto' } } ),
+						el( TextControl, { label: __( 'Alternative text (required)', 'parish-formation' ), value: image.alt || '', onChange: function ( value ) { updateImageChoice( index, { alt: value } ); } } ),
+						el( TextControl, { label: __( 'Visible label (optional)', 'parish-formation' ), value: image.label || '', onChange: function ( value ) { updateImageChoice( index, { label: value } ); } } ),
+						el( CheckboxControl, { label: __( 'Correct answer', 'parish-formation' ), checked: !! image.correct, onChange: function ( value ) { updateImageChoice( index, { correct: value } ); } } ),
+						el( 'div', { className: 'pf-question-choice-actions' },
+							el( Button, { variant: 'secondary', disabled: index === 0, onClick: function () { moveImageChoice( index, -1 ); } }, __( 'Move up', 'parish-formation' ) ),
+							el( Button, { variant: 'secondary', disabled: index === imageChoices.length - 1, onClick: function () { moveImageChoice( index, 1 ); } }, __( 'Move down', 'parish-formation' ) ),
+							el( Button, { isDestructive: true, onClick: function () { saveImageChoices( imageChoices.filter( function ( unused, rowIndex ) { return rowIndex !== index; } ) ); } }, __( 'Remove', 'parish-formation' ) )
+						)
+					); } ),
+					el( MediaUploadCheck, {}, el( MediaUpload, { allowedTypes: [ 'image' ], onSelect: addImageChoice, render: function ( mediaProps ) { return el( Button, { variant: 'primary', onClick: mediaProps.open }, __( 'Add image', 'parish-formation' ) ); } } ) )
 				),
 				el( 'div', { className: 'pf-question-block__summary' }, __( 'Type:', 'parish-formation' ) + ' ' + attrs.type.replaceAll( '_', ' ' ) + ' · ' + ( attrs.graded || attrs.reflectionCompletionCredit || attrs.acknowledgementCompletionCredit ? attrs.points : 0 ) + ' ' + __( 'point(s)', 'parish-formation' ) )
 			);

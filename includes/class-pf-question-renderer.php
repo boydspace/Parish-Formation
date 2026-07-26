@@ -105,6 +105,22 @@ final class Parish_Formation_Question_Renderer {
 				<?php if ( $require_open && ! $disabled ) { ?><p class="description pf-acknowledgement-open-notice"><?php esc_html_e( 'Open the linked item before checking the acknowledgment.', 'parish-formation' ); ?></p><?php } ?>
 			</div>
 			<?php
+		} elseif ( 'image_selection' === $type ) {
+			$images = $config['type_config']['images'] ?? array();
+			if ( $config['randomize_choices'] ) { $images = self::randomized_order( $images, 'id' ); }
+			$multiple = 'multiple' === ( $config['type_config']['selection_mode'] ?? 'single' );
+			?><fieldset class="pf-image-selection"<?php echo $config['required'] ? ' aria-required="true"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+				<legend class="pf-question-response-instruction"><?php echo esc_html( $multiple ? __( 'Select all that apply.', 'parish-formation' ) : __( 'Select one image.', 'parish-formation' ) ); ?></legend>
+				<div class="pf-image-selection__grid">
+				<?php foreach ( $images as $index => $image ) { ?>
+					<label class="pf-image-selection__choice">
+						<input class="<?php echo $multiple ? 'uk-checkbox' : 'uk-radio'; ?>" type="<?php echo $multiple ? 'checkbox' : 'radio'; ?>" name="<?php echo esc_attr( $field_name . ( $multiple ? '[]' : '' ) ); ?>" value="<?php echo esc_attr( $image['id'] ); ?>"<?php echo ! $multiple && 0 === $index ? $control_attrs : $disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> />
+						<?php echo wp_get_attachment_image( $image['attachment_id'], 'medium', false, array( 'alt' => $image['alt'], 'loading' => 'lazy' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<span class="pf-image-selection__label"><?php echo esc_html( $image['label'] ?: $image['alt'] ); ?></span>
+					</label>
+				<?php } ?>
+				</div>
+			</fieldset><?php
 		} elseif ( 'yes_no' === $type ) {
 			$yes_label = $config['type_config']['yes_label'] ?? __( 'Yes', 'parish-formation' );
 			$no_label = $config['type_config']['no_label'] ?? __( 'No', 'parish-formation' );

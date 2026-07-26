@@ -222,6 +222,30 @@ final class Parish_Formation_Question_Grading_Service {
 			return $result;
 		}
 
+		if ( 'image_selection' === $type ) {
+			$images = $config['type_config']['images'] ?? array();
+			$available = array_column( $images, 'id' );
+			$correct = array_values( array_column( array_filter( $images, static fn( $image ) => ! empty( $image['correct'] ) ), 'id' ) );
+			$selected = array_values( array_unique( array_filter( array_map( 'sanitize_key', is_array( $response ) ? $response : array( $response ) ) ) ) );
+			$selection_mode = $config['type_config']['selection_mode'] ?? 'single';
+			if ( count( $images ) < 2 || empty( $correct ) || ( 'single' === $selection_mode && 1 !== count( $correct ) ) ) {
+				return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This Image Selection question is not configured correctly.', 'parish-formation' ) );
+			}
+			if ( array_diff( $selected, $available ) || ( 'single' === $selection_mode && count( $selected ) > 1 ) ) {
+				return self::result( false, 'invalid_answer', $original, 0, $config['points'], false, null, false, $config, __( 'The selected image is not available.', 'parish-formation' ) );
+			}
+			$correct_selected = count( array_intersect( $selected, $correct ) );
+			$incorrect_selected = count( array_diff( $selected, $correct ) );
+			$is_correct = 0 === $incorrect_selected && count( $correct ) === $correct_selected;
+			$fraction = $is_correct ? 1 : 0;
+			$grading_mode = $config['type_config']['grading_mode'] ?? 'all_or_nothing';
+			if ( 'multiple' === $selection_mode && in_array( $grading_mode, array( 'partial', 'partial_penalty' ), true ) ) {
+				$fraction = $correct_selected / count( $correct );
+				if ( 'partial_penalty' === $grading_mode && $incorrect_selected ) { $fraction -= $incorrect_selected / max( 1, count( $available ) - count( $correct ) ); }
+			}
+			return self::result( true, '', 'single' === $selection_mode ? ( $selected[0] ?? '' ) : $selected, $config['graded'] ? max( 0, $fraction ) * $config['points'] : 0, $config['graded'] ? $config['points'] : 0, true, $is_correct, false, $config );
+		}
+
 		if ( 'paragraph' === $type ) {
 			$maximum = $config['graded'] ? $config['points'] : 0;
 			return self::result( true, '', $original, 0, $maximum, true, null, true, $config );

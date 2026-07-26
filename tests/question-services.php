@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ) && Parish_Formation_Question_Type_Registry::implemented( 'image_selection' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -152,6 +152,36 @@ try {
 	$assert( 2 === substr_count( $yes_no_html, 'type="radio"' ) && false !== strpos( $yes_no_html, 'I have' ) && false !== strpos( $yes_no_html, 'Not yet' ) && false === strpos( $yes_no_html, 'correct_answer' ), 'Yes/No learner controls are incomplete or expose the grading key.' );
 	$yes_no_snapshot = Parish_Formation_Question_Snapshot::create( $yes_no, Parish_Formation_Question_Config::get( $yes_no->ID ) );
 	$assert( 'I have' === $yes_no_snapshot['type_config']['yes_label'] && 'Not yet' === $yes_no_snapshot['type_config']['no_label'], 'Yes/No snapshot lost its historical labels.' );
+
+	$image_one = wp_insert_post( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'Baptismal font', 'post_mime_type' => 'image/jpeg' ) );
+	$image_two = wp_insert_post( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'Parish picnic', 'post_mime_type' => 'image/jpeg' ) );
+	$posts[] = $image_one;
+	$posts[] = $image_two;
+	$image_question = $create_question( 'image_selection', 'Select the image of a baptismal font.', '', array(), 4 );
+	$image_config = Parish_Formation_Question_Config::get( $image_question->ID );
+	$image_config['type_config'] = array(
+		'selection_mode' => 'single', 'grading_mode' => 'all_or_nothing',
+		'images' => array(
+			array( 'id' => 'font', 'attachment_id' => $image_one, 'label' => 'Font', 'alt' => 'Stone baptismal font', 'correct' => true ),
+			array( 'id' => 'picnic', 'attachment_id' => $image_two, 'label' => 'Picnic', 'alt' => 'People eating outdoors', 'correct' => false ),
+		),
+	);
+	update_post_meta( $image_question->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $image_config, 'image_selection' ) );
+	$image_correct = Parish_Formation_Question_Grading_Service::grade( $image_question, 'font' );
+	$image_wrong = Parish_Formation_Question_Grading_Service::grade( $image_question, 'picnic' );
+	$image_invalid = Parish_Formation_Question_Grading_Service::grade( $image_question, 'unknown-image' );
+	$assert( true === $image_correct['is_correct'] && 4.0 === (float) $image_correct['earned_points'] && false === $image_wrong['is_correct'], 'Single Image Selection grading failed.' );
+	$assert( ! $image_invalid['valid'] && 'invalid_answer' === $image_invalid['error_code'], 'Image Selection accepted an unknown image ID.' );
+	$image_html = Parish_Formation_Question_Renderer::render( $image_question, 'pf_answers[' . $image_question->ID . ']', false );
+	$assert( 2 === substr_count( $image_html, 'type="radio"' ) && false !== strpos( $image_html, '>Font<' ) && false === strpos( $image_html, 'correct_answer' ), 'Image Selection learner grid is incomplete or exposes the grading key.' );
+	$image_config['type_config']['selection_mode'] = 'multiple';
+	$image_config['type_config']['grading_mode'] = 'partial';
+	$image_config['type_config']['images'][1]['correct'] = true;
+	update_post_meta( $image_question->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $image_config, 'image_selection' ) );
+	$image_partial = Parish_Formation_Question_Grading_Service::grade( $image_question, array( 'font' ) );
+	$assert( 2.0 === (float) $image_partial['earned_points'] && false === $image_partial['is_correct'], 'Multiple Image Selection partial-credit grading failed.' );
+	$image_snapshot = Parish_Formation_Question_Snapshot::create( $image_question, Parish_Formation_Question_Config::get( $image_question->ID ) );
+	$assert( 'font' === $image_snapshot['type_config']['images'][0]['id'] && 'Stone baptismal font' === $image_snapshot['type_config']['images'][0]['alt'], 'Image Selection snapshot lost its stable image ID or alt text.' );
 
 	$multiple_select = $create_question( 'multiple_select', 'Select the two sacraments.', '', array(), 6 );
 	$multi_base = Parish_Formation_Question_Config::get( $multiple_select->ID );
