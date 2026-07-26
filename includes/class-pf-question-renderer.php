@@ -105,6 +105,15 @@ final class Parish_Formation_Question_Renderer {
 				<?php if ( $require_open && ! $disabled ) { ?><p class="description pf-acknowledgement-open-notice"><?php esc_html_e( 'Open the linked item before checking the acknowledgment.', 'parish-formation' ); ?></p><?php } ?>
 			</div>
 			<?php
+		} elseif ( 'yes_no' === $type ) {
+			$yes_label = $config['type_config']['yes_label'] ?? __( 'Yes', 'parish-formation' );
+			$no_label = $config['type_config']['no_label'] ?? __( 'No', 'parish-formation' );
+			?>
+			<fieldset class="pf-yes-no-response"<?php echo $config['required'] ? ' aria-required="true"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+				<legend class="screen-reader-text"><?php esc_html_e( 'Choose one response', 'parish-formation' ); ?></legend>
+				<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="yes"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> /> <?php echo esc_html( $yes_label ); ?></label>
+				<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="no"<?php echo $disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> /> <?php echo esc_html( $no_label ); ?></label>
+			</fieldset><?php
 		} elseif ( 'rating_scale' === $type ) {
 			$minimum = (int) ( $config['type_config']['minimum'] ?? 1 );
 			$maximum = (int) ( $config['type_config']['maximum'] ?? 5 );

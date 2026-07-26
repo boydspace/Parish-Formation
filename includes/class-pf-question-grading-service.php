@@ -206,6 +206,22 @@ final class Parish_Formation_Question_Grading_Service {
 			return self::result( true, '', $stored, 0, 0, true, null, false, $config );
 		}
 
+		if ( 'yes_no' === $type ) {
+			$answer = sanitize_key( is_array( $response ) ? ( $response['value'] ?? '' ) : $response );
+			if ( ! in_array( $answer, array( 'yes', 'no' ), true ) ) {
+				return self::result( false, 'invalid_answer', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, __( 'Please select Yes or No.', 'parish-formation' ) );
+			}
+			$correct_answer = $config['type_config']['correct_answer'] ?? '';
+			if ( $config['graded'] && ! in_array( $correct_answer, array( 'yes', 'no' ), true ) ) {
+				return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This graded Yes/No question needs a correct answer.', 'parish-formation' ) );
+			}
+			$is_correct = $config['graded'] ? $answer === $correct_answer : null;
+			$result = self::result( true, '', $answer, true === $is_correct ? $config['points'] : 0, $config['graded'] ? $config['points'] : 0, true, $is_correct, false, $config );
+			$follow_up = $config['type_config'][ $answer . '_message' ] ?? '';
+			if ( '' !== $follow_up ) { $result['feedback'] = $follow_up; }
+			return $result;
+		}
+
 		if ( 'paragraph' === $type ) {
 			$maximum = $config['graded'] ? $config['points'] : 0;
 			return self::result( true, '', $original, 0, $maximum, true, null, true, $config );

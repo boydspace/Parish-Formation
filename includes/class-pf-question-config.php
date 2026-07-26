@@ -207,6 +207,16 @@ final class Parish_Formation_Question_Config {
 				'orientation' => 'vertical' === sanitize_key( $values['orientation'] ?? 'horizontal' ) ? 'vertical' : 'horizontal',
 			);
 		}
+		if ( 'yes_no' === $type ) {
+			$correct = sanitize_key( $values['correct_answer'] ?? '' );
+			return array(
+				'yes_label' => sanitize_text_field( $values['yes_label'] ?? '' ) ?: __( 'Yes', 'parish-formation' ),
+				'no_label' => sanitize_text_field( $values['no_label'] ?? '' ) ?: __( 'No', 'parish-formation' ),
+				'correct_answer' => in_array( $correct, array( 'yes', 'no' ), true ) ? $correct : '',
+				'yes_message' => wp_kses_post( $values['yes_message'] ?? '' ),
+				'no_message' => wp_kses_post( $values['no_message'] ?? '' ),
+			);
+		}
 		return self::sanitize_nested( $values );
 	}
 }

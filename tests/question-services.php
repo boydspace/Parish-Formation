@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -133,6 +133,25 @@ try {
 	$assert( 5 === substr_count( $rating_html, 'type="radio"' ) && false !== strpos( $rating_html, 'Not confident' ) && false !== strpos( $rating_html, 'Somewhat confident' ) && false !== strpos( $rating_html, 'Very confident' ), 'Rating Scale controls or labels did not render.' );
 	$rating_snapshot = Parish_Formation_Question_Snapshot::create( $rating, Parish_Formation_Question_Config::get( $rating->ID ) );
 	$assert( 1 === $rating_snapshot['type_config']['minimum'] && 5 === $rating_snapshot['type_config']['maximum'], 'Rating Scale snapshot lost its historical configuration.' );
+
+	$yes_no = $create_question( 'yes_no', 'Have you attended preparation before?', '', array(), 2 );
+	$yes_no_config = Parish_Formation_Question_Config::get( $yes_no->ID );
+	$yes_no_config['type_config'] = array( 'yes_label' => 'I have', 'no_label' => 'Not yet', 'correct_answer' => '', 'yes_message' => 'Thank you for letting us know.', 'no_message' => 'We will explain the next step.' );
+	update_post_meta( $yes_no->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $yes_no_config, 'yes_no' ) );
+	$yes_no_neutral = Parish_Formation_Question_Grading_Service::grade( $yes_no, 'no' );
+	$assert( $yes_no_neutral['valid'] && $yes_no_neutral['completed'] && null === $yes_no_neutral['is_correct'] && 'We will explain the next step.' === $yes_no_neutral['feedback'], 'Non-graded Yes/No response or follow-up feedback failed.' );
+	$yes_no_config['graded'] = true;
+	$yes_no_config['type_config']['correct_answer'] = 'yes';
+	update_post_meta( $yes_no->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $yes_no_config, 'yes_no' ) );
+	$yes_no_correct = Parish_Formation_Question_Grading_Service::grade( $yes_no, 'yes' );
+	$yes_no_wrong = Parish_Formation_Question_Grading_Service::grade( $yes_no, 'no' );
+	$yes_no_invalid = Parish_Formation_Question_Grading_Service::grade( $yes_no, 'maybe' );
+	$assert( true === $yes_no_correct['is_correct'] && 2.0 === (float) $yes_no_correct['earned_points'] && false === $yes_no_wrong['is_correct'], 'Graded Yes/No scoring failed.' );
+	$assert( ! $yes_no_invalid['valid'] && 'invalid_answer' === $yes_no_invalid['error_code'], 'Yes/No accepted an unknown response.' );
+	$yes_no_html = Parish_Formation_Question_Renderer::render( $yes_no, 'pf_answers[' . $yes_no->ID . ']', false );
+	$assert( 2 === substr_count( $yes_no_html, 'type="radio"' ) && false !== strpos( $yes_no_html, 'I have' ) && false !== strpos( $yes_no_html, 'Not yet' ) && false === strpos( $yes_no_html, 'correct_answer' ), 'Yes/No learner controls are incomplete or expose the grading key.' );
+	$yes_no_snapshot = Parish_Formation_Question_Snapshot::create( $yes_no, Parish_Formation_Question_Config::get( $yes_no->ID ) );
+	$assert( 'I have' === $yes_no_snapshot['type_config']['yes_label'] && 'Not yet' === $yes_no_snapshot['type_config']['no_label'], 'Yes/No snapshot lost its historical labels.' );
 
 	$multiple_select = $create_question( 'multiple_select', 'Select the two sacraments.', '', array(), 6 );
 	$multi_base = Parish_Formation_Question_Config::get( $multiple_select->ID );
