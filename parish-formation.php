@@ -32,6 +32,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-account-service.ph
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-participant-note-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-privacy.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-retention.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-multisite.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-block.php';
@@ -68,20 +69,9 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-notifications-admin.p
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-lesson-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-assessment-settings.php';
 
-register_activation_hook(
-	PARISH_FORMATION_PLUGIN_FILE,
-	array( 'Parish_Formation_Upgrader', 'maybe_upgrade' )
-);
-register_deactivation_hook(
-	PARISH_FORMATION_PLUGIN_FILE,
-	array( 'Parish_Formation_Notifications', 'clear_scheduled_events' )
-);
-register_deactivation_hook( PARISH_FORMATION_PLUGIN_FILE, array( 'Parish_Formation_Retention', 'unschedule' ) );
-
-register_activation_hook(
-	PARISH_FORMATION_PLUGIN_FILE,
-	array( 'Parish_Formation_Capabilities', 'maybe_install' )
-);
+register_activation_hook( PARISH_FORMATION_PLUGIN_FILE, array( 'Parish_Formation_Multisite', 'activate' ) );
+register_deactivation_hook( PARISH_FORMATION_PLUGIN_FILE, array( 'Parish_Formation_Multisite', 'deactivate' ) );
+add_action( 'wp_initialize_site', array( 'Parish_Formation_Multisite', 'initialize_new_site' ), 200 );
 
 add_action(
 	'plugins_loaded',

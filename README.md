@@ -102,6 +102,20 @@ failed email records, and inactive course invitations under **Parish Formation
 → Settings → Privacy & Retention**. A daily WordPress scheduled event performs
 cleanup, and administrators can also run it manually.
 
+## Multisite
+
+Parish Formation keeps courses, settings, custom tables, roles, rewrite rules,
+and scheduled tasks scoped to each WordPress site. Network activation installs
+the required state on every existing site, new network sites are initialized
+automatically, and network deactivation clears each site's scheduled events.
+
+## Local verification
+
+Run `composer test` from the plugin directory to perform a read-only integration
+smoke test against the local WordPress installation. It checks plugin versions,
+custom tables, roles, post types, shortcodes, privacy hooks, multisite setup, and
+scheduled events.
+
 ## Development
 
 The public plugin release version and internal database schema version are

@@ -6,5 +6,8 @@
     "require": {
         "php": ">=8.3",
         "dompdf/dompdf": "^3.1"
+    },
+    "scripts": {
+        "test": "@php tests/smoke.php"
     }
 }

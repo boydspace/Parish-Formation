@@ -130,7 +130,7 @@ medical information.
 - WordPress personal-data export and privacy erasure integration. **Implemented**
 - Administrative retention-period controls and scheduled cleanup for email
   activity and inactive invitations. **Implemented**
-- Accessibility and multisite review.
+- Accessibility and multisite lifecycle review. **Implemented**
 - Performance, upgrade, and release-package testing.
 - System status and scheduled-task diagnostics. **Implemented**
 - Automated repository, authorization, grading, progression, certificate, and
