@@ -117,7 +117,9 @@ installation. Together they check plugin versions, custom tables, roles, post
 types, shortcodes, privacy hooks, multisite setup, scheduled events, authorization,
 self-enrollment, sequential lesson progression, assessment grading and attempt
 limits, manual review, certificate issuance/revocation/reissue, completion, and
-unenrollment. Behavioral fixtures are uniquely named and removed when the suite
+unenrollment. An isolated schema suite also rebuilds every historical custom
+table in a temporary namespace and verifies critical columns and indexes without
+altering parish data. Test fixtures are uniquely named and removed when the suite
 finishes.
 
 Run `composer build` to create a versioned, installable archive in `dist/`. The
@@ -142,7 +144,7 @@ unless its schema changes.
 Source changes should follow WordPress security practices, support PHP 8.3, and
 be linted and browser-tested before commit.
 
-The current feature release is **1.3.0**. The current database schema version is
+The current feature release is **1.4.0**. The current database schema version is
 **1.0.2**.
 
 See [docs/roadmap.md](docs/roadmap.md) for completed and planned milestones.

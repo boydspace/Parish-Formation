@@ -18,6 +18,15 @@ final class Parish_Formation_Security_Events_Admin {
 		}
 		$events    = Parish_Formation_Security_Event_Repository::get_recent( 200 );
 		$integrity = Parish_Formation_Security_Event_Repository::verify_chain();
+		$user_ids  = array();
+		$course_ids = array();
+		foreach ( $events as $event ) {
+			if ( $event->actor_user_id ) { $user_ids[] = absint( $event->actor_user_id ); }
+			if ( $event->participant_user_id ) { $user_ids[] = absint( $event->participant_user_id ); }
+			if ( $event->course_id ) { $course_ids[] = absint( $event->course_id ); }
+		}
+		if ( $user_ids ) { cache_users( array_values( array_unique( $user_ids ) ) ); }
+		if ( $course_ids ) { _prime_post_caches( array_values( array_unique( $course_ids ) ), false, false ); }
 		?>
 		<div class="wrap pf-security-events">
 			<h2><?php esc_html_e( 'Security Events', 'parish-formation' ); ?></h2>

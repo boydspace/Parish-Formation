@@ -123,18 +123,18 @@ medical information.
 - PDF-only certificate distribution, public verification, revocation, and
   replacement issuance. **Implemented**
 
-## Planned milestones
+## Latest milestone
 
-### 1.4.0 — Production hardening (next)
+### 1.4.0 — Production hardening (completed)
 
 - WordPress personal-data export and privacy erasure integration. **Implemented**
 - Administrative retention-period controls and scheduled cleanup for email
   activity and inactive invitations. **Implemented**
 - Accessibility and multisite lifecycle review. **Implemented**
-- Performance, upgrade, and release-package testing.
+- Performance, upgrade, and release-package testing. **Implemented**
 - System status and scheduled-task diagnostics. **Implemented**
 - Automated repository, authorization, grading, progression, certificate, and
-  upgrade tests. **Authorization, grading, progression, and certificates implemented**
+  upgrade tests. **Implemented**
 - Immutable, tamper-evident enrollment-access and security event history. **Implemented**
 
 ## Versioning
@@ -142,7 +142,7 @@ medical information.
 - The plugin release version tracks user-facing feature milestones.
 - The database schema version changes only when tables or stored schema must be
   upgraded.
-- Release 1.3.0 currently uses database schema 1.0.2.
+- Release 1.4.0 currently uses database schema 1.0.3.
 
 ## Development rules
 
