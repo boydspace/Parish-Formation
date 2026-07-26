@@ -144,6 +144,23 @@ medical information.
   upgraded.
 - Release 1.4.0 currently uses database schema 1.0.3.
 
+## In development
+
+### 1.5.0 — Expanded assessments
+
+- Central question registry, normalized configuration, grading, rendering, and
+  immutable snapshot services. **Phase 1 implemented**
+- Categorized question selector with legacy Multiple Choice, True/False,
+  Reflection Response, and Acknowledgment compatibility. **Phase 1 implemented**
+- Multiple Select, Short Answer, Fill in the Blank, Matching, Ordering,
+  Reflection Response improvements, and Acknowledgment improvements. **Phase 2**
+- Rating Scale, Yes/No, Image Selection, Numeric Response, Paragraph Response,
+  and protected File Upload. **Phase 3**
+- Per-response review, resubmission, feedback, reporting, exports, and expanded
+  assessment completion rules. **Phase 4**
+- The Phase 1 storage extension uses post meta and existing `LONGTEXT` response
+  columns, so database schema 1.0.3 remains unchanged.
+
 ## Development rules
 
 - Support PHP 8.3 and follow WordPress coding and security practices.

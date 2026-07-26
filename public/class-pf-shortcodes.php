@@ -603,28 +603,13 @@ final class Parish_Formation_Shortcodes {
 			<?php wp_nonce_field( 'pf_submit_assessment_' . $enrollment->id . '_' . $assessment->ID ); ?>
 			<?php foreach ( $questions as $index => $question ) : ?>
 				<?php
-				$type       = sanitize_key( get_post_meta( $question->ID, '_pf_question_type', true ) );
 				$prompt     = wp_kses_post( $question->post_content );
-				$options    = get_post_meta( $question->ID, '_pf_question_options', true );
-				$options    = is_array( $options ) ? $options : array();
 				$field_name = 'pf_answers[' . $question->ID . ']';
-				$required   = ! metadata_exists( 'post', $question->ID, '_pf_question_required' ) || (bool) get_post_meta( $question->ID, '_pf_question_required', true );
 				?>
 				<section class="pf-assessment-question uk-card uk-card-default uk-card-body uk-margin">
 					<h3><?php echo esc_html( sprintf( __( 'Question %d', 'parish-formation' ), $index + 1 ) ); ?></h3>
 					<div class="pf-assessment-prompt"><?php echo $prompt; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
-					<?php if ( 'multiple_choice' === $type ) : ?>
-						<?php foreach ( $options as $option_index => $option ) : ?>
-							<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="<?php echo esc_attr( $option_index + 1 ); ?>" <?php disabled( $closed ); ?> <?php echo $required ? 'required' : ''; ?> /> <?php echo esc_html( sanitize_text_field( $option ) ); ?></label>
-						<?php endforeach; ?>
-					<?php elseif ( 'true_false' === $type ) : ?>
-						<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="true" <?php disabled( $closed ); ?> <?php echo $required ? 'required' : ''; ?> /> <?php esc_html_e( 'True', 'parish-formation' ); ?></label>
-						<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="false" <?php disabled( $closed ); ?> /> <?php esc_html_e( 'False', 'parish-formation' ); ?></label>
-					<?php elseif ( 'acknowledgement' === $type ) : ?>
-						<label class="pf-assessment-option"><input class="uk-checkbox" type="checkbox" name="<?php echo esc_attr( $field_name ); ?>" value="acknowledged" <?php disabled( $closed ); ?> <?php echo $required ? 'required' : ''; ?> /> <?php esc_html_e( 'I acknowledge this statement.', 'parish-formation' ); ?></label>
-					<?php else : ?>
-						<label><span class="screen-reader-text"><?php esc_html_e( 'Your response', 'parish-formation' ); ?></span><textarea class="uk-textarea" name="<?php echo esc_attr( $field_name ); ?>" rows="6" placeholder="<?php esc_attr_e( 'Enter your response…', 'parish-formation' ); ?>" <?php disabled( $closed ); ?> <?php echo $required ? 'required' : ''; ?>></textarea></label>
-					<?php endif; ?>
+					<?php echo Parish_Formation_Question_Renderer::render( $question, $field_name, $closed ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				</section>
 			<?php endforeach; ?>
 			<?php if ( ! $closed ) : ?><button class="uk-button uk-button-primary" type="submit"><?php echo esc_html( $acknowledgement_mode ? __( 'Submit Acknowledgement', 'parish-formation' ) : __( 'Submit Assessment', 'parish-formation' ) ); ?></button><?php endif; ?>

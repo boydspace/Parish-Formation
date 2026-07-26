@@ -45,6 +45,14 @@ final class Parish_Formation_Question_Block {
 					'answer'     => array( 'type' => 'string', 'default' => '' ),
 					'points'     => array( 'type' => 'integer', 'default' => 1 ),
 					'required'   => array( 'type' => 'boolean', 'default' => true ),
+					'instructions' => array( 'type' => 'string', 'default' => '' ),
+					'graded' => array( 'type' => 'boolean', 'default' => true ),
+					'explanation' => array( 'type' => 'string', 'default' => '' ),
+					'correctFeedback' => array( 'type' => 'string', 'default' => '' ),
+					'incorrectFeedback' => array( 'type' => 'string', 'default' => '' ),
+					'feedbackTiming' => array( 'type' => 'string', 'default' => 'assessment' ),
+					'manualReview' => array( 'type' => 'boolean', 'default' => false ),
+					'adminNotes' => array( 'type' => 'string', 'default' => '' ),
 				),
 			)
 		);
@@ -96,8 +104,8 @@ final class Parish_Formation_Question_Block {
 				continue;
 			}
 
-			$type = isset( $attributes['type'] ) ? sanitize_key( $attributes['type'] ) : '';
-			$type = self::valid_type( $type ) ? $type : 'multiple_choice';
+			$type = Parish_Formation_Question_Type_Registry::normalize( $attributes['type'] ?? '' );
+			if ( ! Parish_Formation_Question_Type_Registry::implemented( $type ) ) { $type = 'multiple_choice'; }
 			$options = isset( $attributes['options'] ) && is_array( $attributes['options'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $attributes['options'] ) ) ) : array();
 			update_post_meta( $question_id, '_pf_assessment_id', $post_id );
 			update_post_meta( $question_id, '_pf_question_type', $type );
@@ -106,6 +114,19 @@ final class Parish_Formation_Question_Block {
 			update_post_meta( $question_id, '_pf_question_required', ! isset( $attributes['required'] ) || $attributes['required'] ? 1 : 0 );
 			update_post_meta( $question_id, '_pf_question_options', $options );
 			update_post_meta( $question_id, '_pf_question_correct_answer', isset( $attributes['answer'] ) ? strtolower( sanitize_text_field( $attributes['answer'] ) ) : '' );
+			$config = Parish_Formation_Question_Config::sanitize(
+				array(
+					'type' => $type, 'instructions' => $attributes['instructions'] ?? '', 'required' => ! isset( $attributes['required'] ) || $attributes['required'],
+					'graded' => array_key_exists( 'graded', $attributes ) ? (bool) $attributes['graded'] : ! in_array( $type, array( 'acknowledgement', 'reflection' ), true ),
+					'points' => max( 1, isset( $attributes['points'] ) ? absint( $attributes['points'] ) : 1 ), 'explanation' => $attributes['explanation'] ?? '',
+					'correct_feedback' => $attributes['correctFeedback'] ?? '', 'incorrect_feedback' => $attributes['incorrectFeedback'] ?? '', 'feedback_timing' => $attributes['feedbackTiming'] ?? 'assessment',
+					'manual_review' => array_key_exists( 'manualReview', $attributes ) ? (bool) $attributes['manualReview'] : 'reflection' === $type,
+					'admin_notes' => $attributes['adminNotes'] ?? '', 'choices' => array_map( static fn( $option, $option_index ) => array( 'id' => 'choice-' . ( $option_index + 1 ), 'label' => $option, 'order' => $option_index + 1 ), $options, array_keys( $options ) ),
+					'correct_answer' => $attributes['answer'] ?? '',
+				),
+				$type
+			);
+			update_post_meta( $question_id, Parish_Formation_Question_Config::META_KEY, $config );
 			$kept_ids[] = $question_id;
 		}
 
@@ -152,7 +173,4 @@ final class Parish_Formation_Question_Block {
 		);
 	}
 
-	private static function valid_type( $value ) {
-		return in_array( $value, array( 'multiple_choice', 'true_false', 'acknowledgement', 'reflection' ), true );
-	}
 }

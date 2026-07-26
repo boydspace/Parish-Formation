@@ -78,49 +78,29 @@ final class Parish_Formation_Assessment_Repository {
 		$total_graded = 0;
 		$needs_review = false;
 		foreach ( $questions as $question ) {
-			$type     = sanitize_key( get_post_meta( $question->ID, '_pf_question_type', true ) );
-			$required = ! metadata_exists( 'post', $question->ID, '_pf_question_required' ) || (bool) get_post_meta( $question->ID, '_pf_question_required', true );
-			$answer   = isset( $submitted_answers[ $question->ID ] ) ? sanitize_textarea_field( $submitted_answers[ $question->ID ] ) : '';
-			if ( $required && '' === trim( $answer ) ) {
-				return new WP_Error( 'required_answer', sprintf( __( 'Please answer Question %d.', 'parish-formation' ), count( $answer_rows ) + 1 ) );
+			$response = $submitted_answers[ $question->ID ] ?? '';
+			$grade    = Parish_Formation_Question_Grading_Service::grade( $question, $response );
+			if ( ! $grade['valid'] ) {
+				$message = $grade['message'] ?: __( 'This response is not valid.', 'parish-formation' );
+				return new WP_Error( $grade['error_code'] ?: 'invalid_answer', sprintf( __( 'Question %1$d: %2$s', 'parish-formation' ), count( $answer_rows ) + 1, $message ) );
 			}
-			$points = max( 1, absint( get_post_meta( $question->ID, '_pf_question_points', true ) ) );
-			$is_correct = null;
-			$awarded = 0;
-			$requires_review = 'reflection' === $type;
-			if ( $requires_review ) {
-				$maximum += $points;
-			}
-			if ( in_array( $type, array( 'multiple_choice', 'true_false' ), true ) ) {
+			$config          = Parish_Formation_Question_Config::get( $question->ID );
+			$score          += $grade['earned_points'];
+			$maximum        += $grade['maximum_points'];
+			$needs_review    = $needs_review || $grade['requires_review'];
+			if ( null !== $grade['is_correct'] ) {
 				++$total_graded;
-				$maximum += $points;
-				$correct = strtolower( sanitize_text_field( get_post_meta( $question->ID, '_pf_question_correct_answer', true ) ) );
-				if ( 'multiple_choice' === $type && ! ctype_digit( $correct ) ) {
-					$options = get_post_meta( $question->ID, '_pf_question_options', true );
-					$options = is_array( $options ) ? $options : array();
-					foreach ( $options as $option_index => $option ) {
-						if ( strtolower( sanitize_text_field( $option ) ) === $correct ) {
-							$correct = (string) ( $option_index + 1 );
-							break;
-						}
-					}
-				}
-				$is_correct = '' !== $answer && strtolower( $answer ) === $correct;
-				if ( $is_correct ) {
-					++$correct_count;
-					$score += $points;
-					$awarded = $points;
-				}
+				if ( $grade['is_correct'] ) { ++$correct_count; }
 			}
-			$needs_review = $needs_review || $requires_review;
 			$answer_rows[] = array(
 				'question' => $question,
-				'answer' => $answer,
-				'points' => $points,
-				'awarded' => $awarded,
-				'is_correct' => $is_correct,
-				'requires_review' => $requires_review,
-				'type' => $type,
+				'answer' => $grade['stored_response'],
+				'points' => $grade['maximum_points'],
+				'awarded' => $grade['earned_points'],
+				'is_correct' => $grade['is_correct'],
+				'requires_review' => $grade['requires_review'],
+				'type' => $config['type'],
+				'config' => $config,
 			);
 		}
 
@@ -150,7 +130,7 @@ final class Parish_Formation_Assessment_Repository {
 		}
 		$attempt_id = $wpdb->insert_id;
 		foreach ( $answer_rows as $row ) {
-			$snapshot = wp_json_encode( array( 'prompt' => $row['question']->post_content, 'type' => $row['type'], 'options' => get_post_meta( $row['question']->ID, '_pf_question_options', true ), 'points' => $row['points'], 'correct_answer' => get_post_meta( $row['question']->ID, '_pf_question_correct_answer', true ) ) );
+			$snapshot = wp_json_encode( Parish_Formation_Question_Snapshot::create( $row['question'], $row['config'] ) );
 			$saved = $wpdb->insert( $wpdb->prefix . 'pf_assessment_answers', array( 'attempt_id' => $attempt_id, 'question_id' => $row['question']->ID, 'question_snapshot' => $snapshot, 'answer' => $row['answer'], 'points_awarded' => $row['awarded'], 'is_correct' => $row['is_correct'], 'requires_review' => $row['requires_review'] ? 1 : 0, 'created_at' => $now ), array( '%d', '%d', '%s', '%s', '%f', '%d', '%d', '%s' ) );
 			if ( false === $saved ) {
 				$wpdb->query( 'ROLLBACK' );
