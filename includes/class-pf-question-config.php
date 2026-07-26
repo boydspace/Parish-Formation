@@ -240,6 +240,25 @@ final class Parish_Formation_Question_Config {
 				'images' => $images,
 			);
 		}
+		if ( 'numeric' === $type ) {
+			$mode = 'range' === sanitize_key( $values['answer_mode'] ?? 'exact' ) ? 'range' : 'exact';
+			return array(
+				'answer_mode' => $mode,
+				'expected' => self::optional_number( $values['expected'] ?? null ),
+				'minimum' => self::optional_number( $values['minimum'] ?? null ),
+				'maximum' => self::optional_number( $values['maximum'] ?? null ),
+				'tolerance' => max( 0, (float) ( $values['tolerance'] ?? 0 ) ),
+				'integer_only' => ! empty( $values['integer_only'] ),
+				'decimal_precision' => min( 10, absint( $values['decimal_precision'] ?? 2 ) ),
+				'unit_label' => sanitize_text_field( $values['unit_label'] ?? '' ),
+				'require_unit' => ! empty( $values['require_unit'] ),
+			);
+		}
 		return self::sanitize_nested( $values );
+	}
+
+	private static function optional_number( $value ) {
+		if ( null === $value || '' === trim( (string) $value ) || ! is_numeric( $value ) ) { return null; }
+		return (float) $value;
 	}
 }

@@ -246,6 +246,28 @@ final class Parish_Formation_Question_Grading_Service {
 			return self::result( true, '', 'single' === $selection_mode ? ( $selected[0] ?? '' ) : $selected, $config['graded'] ? max( 0, $fraction ) * $config['points'] : 0, $config['graded'] ? $config['points'] : 0, true, $is_correct, false, $config );
 		}
 
+		if ( 'numeric' === $type ) {
+			$parsed = self::parse_numeric_response( (string) $response, $config['type_config'] );
+			if ( ! $parsed['valid'] ) {
+				return self::result( false, $parsed['error_code'], $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, $parsed['message'] );
+			}
+			$settings = $config['type_config'];
+			if ( 'range' === ( $settings['answer_mode'] ?? 'exact' ) ) {
+				if ( null === $settings['minimum'] || null === $settings['maximum'] || $settings['maximum'] < $settings['minimum'] ) {
+					return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This Numeric Response question needs a valid minimum and maximum.', 'parish-formation' ) );
+				}
+				$is_correct = $parsed['number'] >= $settings['minimum'] && $parsed['number'] <= $settings['maximum'];
+			} else {
+				if ( null === $settings['expected'] ) {
+					return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This Numeric Response question needs an expected value.', 'parish-formation' ) );
+				}
+				$tolerance = (float) ( $settings['tolerance'] ?? 0 );
+				$is_correct = $tolerance > 0 ? abs( $parsed['number'] - $settings['expected'] ) <= $tolerance : round( $parsed['number'], $settings['decimal_precision'] ) === round( $settings['expected'], $settings['decimal_precision'] );
+			}
+			$points = $config['graded'] && $is_correct ? $config['points'] : 0;
+			return self::result( true, '', $original, $points, $config['graded'] ? $config['points'] : 0, true, $config['graded'] ? $is_correct : null, ! empty( $config['manual_review'] ), $config );
+		}
+
 		if ( 'paragraph' === $type ) {
 			$maximum = $config['graded'] ? $config['points'] : 0;
 			return self::result( true, '', $original, 0, $maximum, true, null, true, $config );
@@ -270,6 +292,29 @@ final class Parish_Formation_Question_Grading_Service {
 	private static function is_empty( $response ) {
 		if ( is_array( $response ) ) { return empty( array_filter( $response, static fn( $value ) => '' !== trim( (string) $value ) ) ); }
 		return '' === trim( (string) $response );
+	}
+
+	private static function parse_numeric_response( $response, $settings ) {
+		$response = trim( $response );
+		if ( ! preg_match( '/^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?:\s+(.+))?$/u', $response, $matches ) ) {
+			return array( 'valid' => false, 'error_code' => 'invalid_number', 'message' => __( 'Please enter a valid number.', 'parish-formation' ) );
+		}
+		$numeric_text = $matches[1];
+		$unit = isset( $matches[2] ) ? trim( $matches[2] ) : '';
+		$expected_unit = trim( (string) ( $settings['unit_label'] ?? '' ) );
+		if ( ! empty( $settings['require_unit'] ) && ( '' === $expected_unit || 0 !== strcasecmp( $unit, $expected_unit ) ) ) {
+			return array( 'valid' => false, 'error_code' => 'invalid_unit', 'message' => sprintf( __( 'Include the required unit: %s.', 'parish-formation' ), $expected_unit ) );
+		}
+		if ( '' !== $unit && '' !== $expected_unit && 0 !== strcasecmp( $unit, $expected_unit ) ) {
+			return array( 'valid' => false, 'error_code' => 'invalid_unit', 'message' => sprintf( __( 'Use the unit %s.', 'parish-formation' ), $expected_unit ) );
+		}
+		if ( '' !== $unit && '' === $expected_unit ) {
+			return array( 'valid' => false, 'error_code' => 'invalid_unit', 'message' => __( 'Enter only the number without a unit.', 'parish-formation' ) );
+		}
+		$number = (float) $numeric_text;
+		if ( ! is_finite( $number ) ) { return array( 'valid' => false, 'error_code' => 'invalid_number', 'message' => __( 'Please enter a finite number.', 'parish-formation' ) ); }
+		if ( ! empty( $settings['integer_only'] ) && floor( $number ) !== $number ) { return array( 'valid' => false, 'error_code' => 'integer_required', 'message' => __( 'Please enter a whole number.', 'parish-formation' ) ); }
+		return array( 'valid' => true, 'number' => $number, 'unit' => $unit );
 	}
 
 	private static function normalize_short_answer( $answer, $settings ) {

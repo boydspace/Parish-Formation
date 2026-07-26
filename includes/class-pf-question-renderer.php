@@ -105,6 +105,12 @@ final class Parish_Formation_Question_Renderer {
 				<?php if ( $require_open && ! $disabled ) { ?><p class="description pf-acknowledgement-open-notice"><?php esc_html_e( 'Open the linked item before checking the acknowledgment.', 'parish-formation' ); ?></p><?php } ?>
 			</div>
 			<?php
+		} elseif ( 'numeric' === $type ) {
+			$settings = $config['type_config'];
+			$unit = $settings['unit_label'] ?? '';
+			$precision = (int) ( $settings['decimal_precision'] ?? 2 );
+			$step = ! empty( $settings['integer_only'] ) || 0 === $precision ? '1' : ( '0.' . str_repeat( '0', max( 0, $precision - 1 ) ) . '1' );
+			?><label class="pf-numeric-response"><span class="screen-reader-text"><?php esc_html_e( 'Numeric response', 'parish-formation' ); ?></span><input class="uk-input" type="text" inputmode="decimal" name="<?php echo esc_attr( $field_name ); ?>" data-numeric-step="<?php echo esc_attr( $step ); ?>" autocomplete="off"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> /><?php if ( $unit ) { ?><span class="pf-numeric-response__unit"><?php echo esc_html( $unit ); ?><?php echo ! empty( $settings['require_unit'] ) ? ' ' . esc_html__( '(include this unit in your answer)', 'parish-formation' ) : ''; ?></span><?php } ?></label><?php
 		} elseif ( 'image_selection' === $type ) {
 			$images = $config['type_config']['images'] ?? array();
 			if ( $config['randomize_choices'] ) { $images = self::randomized_order( $images, 'id' ); }

@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ) && Parish_Formation_Question_Type_Registry::implemented( 'image_selection' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ) && Parish_Formation_Question_Type_Registry::implemented( 'image_selection' ) && Parish_Formation_Question_Type_Registry::implemented( 'numeric' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -182,6 +182,29 @@ try {
 	$assert( 2.0 === (float) $image_partial['earned_points'] && false === $image_partial['is_correct'], 'Multiple Image Selection partial-credit grading failed.' );
 	$image_snapshot = Parish_Formation_Question_Snapshot::create( $image_question, Parish_Formation_Question_Config::get( $image_question->ID ) );
 	$assert( 'font' === $image_snapshot['type_config']['images'][0]['id'] && 'Stone baptismal font' === $image_snapshot['type_config']['images'][0]['alt'], 'Image Selection snapshot lost its stable image ID or alt text.' );
+
+	$numeric = $create_question( 'numeric', 'Enter pi to two decimal places.', '', array(), 3 );
+	$numeric_config = Parish_Formation_Question_Config::get( $numeric->ID );
+	$numeric_config['type_config'] = array( 'answer_mode' => 'exact', 'expected' => '3.14', 'tolerance' => '0.01', 'integer_only' => false, 'decimal_precision' => 2, 'unit_label' => '', 'require_unit' => false );
+	update_post_meta( $numeric->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $numeric_config, 'numeric' ) );
+	$numeric_exact = Parish_Formation_Question_Grading_Service::grade( $numeric, '3.149' );
+	$numeric_wrong = Parish_Formation_Question_Grading_Service::grade( $numeric, '3.2' );
+	$numeric_suffix = Parish_Formation_Question_Grading_Service::grade( $numeric, '3.14 kg' );
+	$assert( true === $numeric_exact['is_correct'] && 3.0 === (float) $numeric_exact['earned_points'] && false === $numeric_wrong['is_correct'], 'Numeric exact-value tolerance grading failed.' );
+	$assert( ! $numeric_suffix['valid'] && 'invalid_unit' === $numeric_suffix['error_code'], 'Numeric Response accepted an unconfigured unit.' );
+	$numeric_config['type_config'] = array( 'answer_mode' => 'range', 'minimum' => '5', 'maximum' => '10', 'integer_only' => true, 'decimal_precision' => 0, 'unit_label' => 'years', 'require_unit' => true );
+	$numeric_config['manual_review'] = true;
+	update_post_meta( $numeric->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $numeric_config, 'numeric' ) );
+	$numeric_range = Parish_Formation_Question_Grading_Service::grade( $numeric, '7 years' );
+	$numeric_fraction = Parish_Formation_Question_Grading_Service::grade( $numeric, '7.5 years' );
+	$numeric_unit = Parish_Formation_Question_Grading_Service::grade( $numeric, '7' );
+	$assert( true === $numeric_range['is_correct'] && $numeric_range['requires_review'] && 'pending_review' === $numeric_range['status'], 'Numeric range, unit, or manual-review handling failed.' );
+	$assert( ! $numeric_fraction['valid'] && 'integer_required' === $numeric_fraction['error_code'], 'Integer-only Numeric Response accepted a decimal.' );
+	$assert( ! $numeric_unit['valid'] && 'invalid_unit' === $numeric_unit['error_code'], 'Numeric Response did not enforce its required unit.' );
+	$numeric_html = Parish_Formation_Question_Renderer::render( $numeric, 'pf_answers[' . $numeric->ID . ']', false );
+	$assert( false !== strpos( $numeric_html, 'inputmode="decimal"' ) && false !== strpos( $numeric_html, 'years' ) && false === strpos( $numeric_html, 'expected' ), 'Numeric learner control is incomplete or exposes its grading key.' );
+	$numeric_snapshot = Parish_Formation_Question_Snapshot::create( $numeric, Parish_Formation_Question_Config::get( $numeric->ID ) );
+	$assert( 5.0 === $numeric_snapshot['type_config']['minimum'] && 'years' === $numeric_snapshot['type_config']['unit_label'], 'Numeric snapshot lost its range or unit configuration.' );
 
 	$multiple_select = $create_question( 'multiple_select', 'Select the two sacraments.', '', array(), 6 );
 	$multi_base = Parish_Formation_Question_Config::get( $multiple_select->ID );

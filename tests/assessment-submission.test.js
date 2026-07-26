@@ -49,6 +49,7 @@ const inputs = [
 	,{ type: 'radio', checked: true, name: 'pf_answers[252][value]', value: '4' }
 	,{ type: 'checkbox', checked: true, name: 'pf_answers[253][]', value: 'image-one' }
 	,{ type: 'checkbox', checked: true, name: 'pf_answers[253][]', value: 'image-three' }
+	,{ type: 'text', checked: false, name: 'pf_answers[254]', value: '7 years' }
 ];
 const form = {
 	previousElementSibling: resultBox,
@@ -84,6 +85,9 @@ if ( JSON.stringify( requestBody.answers['252'] ) !== JSON.stringify( { value: '
 }
 if ( JSON.stringify( requestBody.answers['253'] ) !== JSON.stringify( [ 'image-one', 'image-three' ] ) ) {
 	throw new Error( 'Multiple Image Selection values were not serialized by stable image ID.' );
+}
+if ( requestBody.answers['254'] !== '7 years' ) {
+	throw new Error( 'Numeric Response changed during serialization.' );
 }
 const acknowledgementOpened = { value: '0' };
 const acknowledgementCheckbox = { disabled: true };
@@ -122,4 +126,4 @@ inputHandler( { target: reflectionField } );
 if ( reflectionCounter.textContent.indexOf( '3 more required' ) === -1 || reflectionCounter.textContent.indexOf( '13 non-space characters remaining' ) === -1 ) {
 	throw new Error( 'Reflection character counter did not report minimum and maximum remaining values.' );
 }
-process.stdout.write( 'Assessment submission JavaScript test passed: 11 checks.\n' );
+process.stdout.write( 'Assessment submission JavaScript test passed: 12 checks.\n' );
