@@ -100,6 +100,15 @@ try {
 	$assert( ! $multi_invalid['valid'] && 'invalid_answer' === $multi_invalid['error_code'], 'Multiple Select accepted an unknown choice ID.' );
 	$multi_html = Parish_Formation_Question_Renderer::render( $multiple_select, 'pf_answers[' . $multiple_select->ID . ']', false );
 	$assert( 3 === substr_count( $multi_html, 'type="checkbox"' ) && false !== strpos( $multi_html, 'Select all that apply.' ) && false !== strpos( $multi_html, 'value="baptism"' ), 'Multiple Select learner controls are incomplete.' );
+	$feedback_snapshot = Parish_Formation_Question_Snapshot::create( $multiple_select, Parish_Formation_Question_Config::get( $multiple_select->ID ) );
+	$feedback_snapshot['choices'][0]['feedback'] = 'Selected Baptism feedback.';
+	$feedback_snapshot['choices'][1]['feedback'] = 'Unselected Confirmation feedback.';
+	$feedback_snapshot['feedback'] = array( 'correct' => 'Overall correct.', 'incorrect' => 'Overall incorrect.', 'explanation' => 'General explanation.', 'timing' => 'assessment' );
+	$feedback_answer = (object) array( 'question_snapshot' => wp_json_encode( $feedback_snapshot ), 'answer' => wp_json_encode( array( 'baptism' ) ), 'is_correct' => 1, 'requires_review' => 0 );
+	$learner_feedback = Parish_Formation_Question_Feedback_Service::for_answer( $feedback_answer );
+	$assert( 'correct' === $learner_feedback['status'] && 'Overall correct.' === $learner_feedback['messages'][0] && 'General explanation.' === $learner_feedback['messages'][1], 'General learner feedback was not built correctly.' );
+	$assert( 1 === count( $learner_feedback['choice_feedback'] ) && 'Baptism' === $learner_feedback['choice_feedback'][0]['label'] && 'Selected Baptism feedback.' === $learner_feedback['choice_feedback'][0]['message'], 'Answer-specific feedback included an unselected choice or omitted the selected choice.' );
+	$assert( false === strpos( wp_json_encode( $learner_feedback ), 'Unselected Confirmation feedback' ) && false === strpos( wp_json_encode( $learner_feedback ), 'correct_answer' ), 'Learner feedback exposed an unselected answer or grading key.' );
 
 	$short = $create_question( 'short_answer', 'Name the gateway sacrament.', '', array(), 4 );
 	$short_config = Parish_Formation_Question_Config::get( $short->ID );

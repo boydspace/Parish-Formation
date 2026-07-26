@@ -572,6 +572,7 @@ final class Parish_Formation_Shortcodes {
 			return '<div class="uk-alert uk-alert-primary"><p>' . esc_html__( 'No questions have been added to this assessment yet.', 'parish-formation' ) . '</p></div>';
 		}
 		$latest = Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment->id, $assessment->ID );
+		$latest_feedback = $latest ? Parish_Formation_Question_Feedback_Service::for_attempt( $latest->id ) : array();
 		$acknowledgement_mode = Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment->ID );
 		$max_attempts = $acknowledgement_mode ? 1 : max( 1, absint( get_post_meta( $assessment->ID, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
 		$closed = $latest && ( 'pending_review' === $latest->status || (bool) $latest->passed || absint( $latest->attempt_number ) >= $max_attempts );
@@ -585,7 +586,7 @@ final class Parish_Formation_Shortcodes {
 		?>
 		<?php if ( isset( $_GET['pf_assessment_error'] ) ) : ?><div class="uk-alert uk-alert-danger"><p><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['pf_assessment_error'] ) ) ); ?></p></div><?php endif; ?>
 		<?php if ( $latest ) : ?>
-			<div class="uk-alert <?php echo 'passed' === $latest->status ? 'uk-alert-success' : ( 'failed' === $latest->status ? 'uk-alert-danger' : 'uk-alert-primary' ); ?>">
+			<div class="pf-assessment-latest-result uk-alert <?php echo 'passed' === $latest->status ? 'uk-alert-success' : ( 'failed' === $latest->status ? 'uk-alert-danger' : 'uk-alert-primary' ); ?>">
 				<p><strong><?php echo esc_html( $acknowledgement_mode ? ( 'pending_review' === $latest->status ? __( 'Submitted — awaiting review', 'parish-formation' ) : __( 'Submitted', 'parish-formation' ) ) : ucwords( str_replace( '_', ' ', $latest->status ) ) ); ?></strong></p>
 				<?php if ( ! $acknowledgement_mode && 'pending_review' !== $latest->status ) : ?><p><?php echo esc_html( sprintf( __( 'Score: %1$s of %2$s points; %3$d of %4$d correct.', 'parish-formation' ), $latest->score_points, $latest->max_points, $latest->correct_count, $latest->total_graded ) ); ?></p><?php endif; ?>
 				<?php if ( ! $acknowledgement_mode ) : ?><p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, $max_attempts ) ); ?></p><?php endif; ?>
@@ -606,10 +607,11 @@ final class Parish_Formation_Shortcodes {
 				$prompt     = wp_kses_post( $question->post_content );
 				$field_name = 'pf_answers[' . $question->ID . ']';
 				?>
-				<section class="pf-assessment-question uk-card uk-card-default uk-card-body uk-margin">
+				<section class="pf-assessment-question uk-card uk-card-default uk-card-body uk-margin" data-question-id="<?php echo esc_attr( $question->ID ); ?>">
 					<h3><?php echo esc_html( sprintf( __( 'Question %d', 'parish-formation' ), $index + 1 ) ); ?></h3>
 					<div class="pf-assessment-prompt"><?php echo $prompt; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 					<?php echo Parish_Formation_Question_Renderer::render( $question, $field_name, $closed ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<?php if ( isset( $latest_feedback[ $question->ID ] ) ) : ?><?php echo self::render_question_feedback( $latest_feedback[ $question->ID ] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php endif; ?>
 				</section>
 			<?php endforeach; ?>
 			<?php if ( ! $closed ) : ?><button class="uk-button uk-button-primary" type="submit"><?php echo esc_html( $acknowledgement_mode ? __( 'Submit Acknowledgement', 'parish-formation' ) : __( 'Submit Assessment', 'parish-formation' ) ); ?></button><?php endif; ?>
@@ -621,6 +623,19 @@ final class Parish_Formation_Shortcodes {
 				</a>
 			</div>
 		<?php endif; ?>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/** Render learner-safe feedback from a submitted response. */
+	private static function render_question_feedback( $feedback ) {
+		if ( empty( $feedback['messages'] ) && empty( $feedback['choice_feedback'] ) ) { return ''; }
+		ob_start();
+		?>
+		<div class="pf-question-feedback uk-alert uk-alert-primary" role="status">
+			<?php foreach ( $feedback['choice_feedback'] ?? array() as $choice ) : ?><p><strong><?php echo esc_html( $choice['label'] ); ?>:</strong> <?php echo wp_kses_post( $choice['message'] ); ?></p><?php endforeach; ?>
+			<?php foreach ( $feedback['messages'] ?? array() as $message ) : ?><p><?php echo wp_kses_post( $message ); ?></p><?php endforeach; ?>
+		</div>
 		<?php
 		return (string) ob_get_clean();
 	}

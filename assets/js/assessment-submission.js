@@ -31,6 +31,21 @@
 		return answers;
 	}
 
+	function renderQuestionFeedback( feedbackItems ) {
+		document.querySelectorAll( '.pf-question-feedback' ).forEach( function ( item ) { item.remove(); } );
+		Object.keys( feedbackItems || {} ).forEach( function ( questionId ) {
+			const section = document.querySelector( '.pf-assessment-question[data-question-id="' + questionId + '"]' );
+			const feedback = feedbackItems[ questionId ];
+			if ( ! section || ( ! feedback.messages.length && ! feedback.choice_feedback.length ) ) { return; }
+			const box = document.createElement( 'div' );
+			box.className = 'pf-question-feedback uk-alert uk-alert-primary';
+			box.setAttribute( 'role', 'status' );
+			feedback.choice_feedback.forEach( function ( choice ) { addText( box, 'p', choice.label + ': ' + choice.message ); } );
+			feedback.messages.forEach( function ( message ) { addText( box, 'p', message ); } );
+			section.appendChild( box );
+		} );
+	}
+
 	document.addEventListener( 'submit', function ( event ) {
 		const form = event.target.closest( '.pf-assessment-questions' );
 		if ( ! form || ! window.fetch || ! window.pfAssessmentSubmission ) {
@@ -67,6 +82,8 @@
 				return body;
 			} );
 		} ).then( function ( data ) {
+			const previousResult = document.querySelector( '.pf-assessment-latest-result' );
+			if ( previousResult ) { previousResult.remove(); }
 			const alert = document.createElement( 'div' );
 			alert.className = 'uk-alert ' + ( data.status === 'passed' ? 'uk-alert-success' : data.status === 'failed' ? 'uk-alert-danger' : 'uk-alert-primary' );
 			addText( alert, 'p', data.statusLabel );
@@ -78,6 +95,7 @@
 			}
 			resultBox.appendChild( alert );
 			resultBox.focus();
+			renderQuestionFeedback( data.questionFeedback );
 
 			document.querySelectorAll( '.uk-progress' ).forEach( function ( progress ) { progress.value = data.progress; } );
 			const progressText = document.querySelector( '.pf-progress-text' );

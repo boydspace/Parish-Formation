@@ -86,6 +86,7 @@ final class Parish_Formation_Assessment_Actions {
 		}
 		$acknowledgement_mode = Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment_id );
 		$max_attempts = $acknowledgement_mode ? 1 : max( 1, absint( get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
+		$question_feedback = Parish_Formation_Question_Feedback_Service::for_attempt( $result->id );
 		return rest_ensure_response(
 			array(
 				'status'       => sanitize_key( $result->status ),
@@ -100,6 +101,7 @@ final class Parish_Formation_Assessment_Actions {
 				'progress'     => $progress['percentage'],
 				'nextUrl'      => esc_url_raw( $next_url ),
 				'nextLabel'    => $next_item ? __( 'Continue to Next Section', 'parish-formation' ) : __( 'Finish Course', 'parish-formation' ),
+				'questionFeedback' => $question_feedback,
 			)
 		);
 	}

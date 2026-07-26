@@ -39,6 +39,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-post-type
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-type-registry.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-config.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-grading-service.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-feedback-service.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-snapshot.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-renderer.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-question-block.php';
