@@ -51,6 +51,8 @@ final class Parish_Formation_Question_Block {
 					'normalizeSpaces' => array( 'type' => 'boolean', 'default' => false ),
 					'ignorePunctuation' => array( 'type' => 'boolean', 'default' => false ),
 					'matchMode' => array( 'type' => 'string', 'default' => 'exact' ),
+					'blanks' => array( 'type' => 'array', 'default' => array(), 'items' => array( 'type' => 'object' ) ),
+					'blankPointMode' => array( 'type' => 'string', 'default' => 'equal' ),
 					'points'     => array( 'type' => 'integer', 'default' => 1 ),
 					'required'   => array( 'type' => 'boolean', 'default' => true ),
 					'instructions' => array( 'type' => 'string', 'default' => '' ),
@@ -122,10 +124,16 @@ final class Parish_Formation_Question_Block {
 			if ( 'multiple_choice' === $type ) {
 				foreach ( $choices as $choice ) { if ( ! empty( $choice['correct'] ) ) { $correct_answer = $choice['id']; break; } }
 			}
+			$question_points = max( 1, isset( $attributes['points'] ) ? absint( $attributes['points'] ) : 1 );
+			if ( 'fill_blank' === $type && 'custom' === sanitize_key( $attributes['blankPointMode'] ?? '' ) ) {
+				$question_points = 0;
+				foreach ( is_array( $attributes['blanks'] ?? null ) ? $attributes['blanks'] : array() as $blank ) { $question_points += max( 0, (float) ( $blank['points'] ?? 0 ) ); }
+				$question_points = max( 1, $question_points );
+			}
 			update_post_meta( $question_id, '_pf_assessment_id', $post_id );
 			update_post_meta( $question_id, '_pf_question_type', $type );
 			update_post_meta( $question_id, '_pf_question_order', $index + 1 );
-			update_post_meta( $question_id, '_pf_question_points', max( 1, isset( $attributes['points'] ) ? absint( $attributes['points'] ) : 1 ) );
+			update_post_meta( $question_id, '_pf_question_points', $question_points );
 			update_post_meta( $question_id, '_pf_question_required', ! isset( $attributes['required'] ) || $attributes['required'] ? 1 : 0 );
 			update_post_meta( $question_id, '_pf_question_options', $options );
 			update_post_meta( $question_id, '_pf_question_correct_answer', strtolower( $correct_answer ) );
@@ -133,7 +141,7 @@ final class Parish_Formation_Question_Block {
 				array(
 					'type' => $type, 'instructions' => $attributes['instructions'] ?? '', 'required' => ! isset( $attributes['required'] ) || $attributes['required'],
 					'graded' => array_key_exists( 'graded', $attributes ) ? (bool) $attributes['graded'] : ! in_array( $type, array( 'acknowledgement', 'reflection' ), true ),
-					'points' => max( 1, isset( $attributes['points'] ) ? absint( $attributes['points'] ) : 1 ), 'explanation' => $attributes['explanation'] ?? '',
+					'points' => $question_points, 'explanation' => $attributes['explanation'] ?? '',
 					'correct_feedback' => $attributes['correctFeedback'] ?? '', 'incorrect_feedback' => $attributes['incorrectFeedback'] ?? '', 'feedback_timing' => $attributes['feedbackTiming'] ?? 'assessment',
 					'manual_review' => array_key_exists( 'manualReview', $attributes ) ? (bool) $attributes['manualReview'] : 'reflection' === $type,
 					'randomize_choices' => ! empty( $attributes['randomizeChoices'] ),
@@ -147,6 +155,8 @@ final class Parish_Formation_Question_Block {
 						'normalize_spaces' => ! empty( $attributes['normalizeSpaces'] ),
 						'ignore_punctuation' => ! empty( $attributes['ignorePunctuation'] ),
 						'match_mode' => $attributes['matchMode'] ?? 'exact',
+						'point_mode' => $attributes['blankPointMode'] ?? 'equal',
+						'blanks' => self::normalize_block_blanks( $attributes['blanks'] ?? array() ),
 					),
 				),
 				$type
@@ -219,6 +229,21 @@ final class Parish_Formation_Question_Block {
 			$choices[] = array( 'id' => $id, 'label' => $label, 'correct' => ! empty( $row['correct'] ), 'feedback' => wp_kses_post( $row['feedback'] ?? '' ), 'order' => count( $choices ) + 1 );
 		}
 		return $choices;
+	}
+
+	private static function normalize_block_blanks( $rows ) {
+		$blanks = array();
+		foreach ( is_array( $rows ) ? $rows : array() as $index => $row ) {
+			if ( ! is_array( $row ) ) { continue; }
+			$blanks[] = array(
+				'id' => $row['id'] ?? 'blank-' . ( $index + 1 ),
+				'accepted_answers' => $row['acceptedAnswers'] ?? ( $row['accepted_answers'] ?? array() ),
+				'case_sensitive' => ! empty( $row['caseSensitive'] ) || ! empty( $row['case_sensitive'] ),
+				'match_mode' => $row['matchMode'] ?? ( $row['match_mode'] ?? 'normalized' ),
+				'points' => $row['points'] ?? 1,
+			);
+		}
+		return $blanks;
 	}
 
 }

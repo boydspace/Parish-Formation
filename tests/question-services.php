@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && ! Parish_Formation_Question_Type_Registry::implemented( 'matching' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && ! Parish_Formation_Question_Type_Registry::implemented( 'matching' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -124,6 +124,31 @@ try {
 	$assert( $short_contains['is_correct'], 'Short Answer contains matching failed.' );
 	$short_html = Parish_Formation_Question_Renderer::render( $short, 'pf_answers[' . $short->ID . ']', false );
 	$assert( 1 === substr_count( $short_html, 'type="text"' ) && false === strpos( $short_html, 'Baptism' ), 'Short Answer renderer is missing or exposes accepted answers.' );
+
+	$fill = $create_question( 'fill_blank', 'The sacrament of [blank] is celebrated with [blank].', '', array(), 4 );
+	$fill_config = Parish_Formation_Question_Config::get( $fill->ID );
+	$fill_config['type_config'] = array(
+		'point_mode' => 'equal',
+		'blanks' => array(
+			array( 'id' => 'sacrament', 'accepted_answers' => array( 'Baptism', 'Holy Baptism' ), 'case_sensitive' => false, 'match_mode' => 'normalized', 'points' => 1 ),
+			array( 'id' => 'matter', 'accepted_answers' => array( 'water' ), 'case_sensitive' => false, 'match_mode' => 'normalized', 'points' => 3 ),
+		),
+	);
+	update_post_meta( $fill->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $fill_config, 'fill_blank' ) );
+	$fill_partial = Parish_Formation_Question_Grading_Service::grade( $fill, array( 'sacrament' => '  BAPTISM ', 'matter' => 'oil' ) );
+	$assert( $fill_partial['valid'] && false === $fill_partial['is_correct'] && 2.0 === (float) $fill_partial['earned_points'] && 4.0 === (float) $fill_partial['maximum_points'], 'Fill in the Blank equal partial-credit grading failed.' );
+	$fill_config['type_config']['point_mode'] = 'custom';
+	update_post_meta( $fill->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $fill_config, 'fill_blank' ) );
+	$fill_custom = Parish_Formation_Question_Grading_Service::grade( $fill, array( 'sacrament' => 'wrong', 'matter' => 'Water' ) );
+	$assert( 3.0 === (float) $fill_custom['earned_points'] && 4.0 === (float) $fill_custom['maximum_points'], 'Fill in the Blank custom-point grading failed.' );
+	$fill_complete = Parish_Formation_Question_Grading_Service::grade( $fill, array( 'sacrament' => 'Holy Baptism', 'matter' => 'water' ) );
+	$assert( $fill_complete['is_correct'] && 4.0 === (float) $fill_complete['earned_points'] && array( 'sacrament' => 'Holy Baptism', 'matter' => 'water' ) === json_decode( $fill_complete['stored_response'], true ), 'Fill in the Blank full grading or response storage failed.' );
+	$fill_missing = Parish_Formation_Question_Grading_Service::grade( $fill, array( 'sacrament' => 'Baptism', 'matter' => '' ) );
+	$assert( ! $fill_missing['valid'] && 'required_answer' === $fill_missing['error_code'], 'Fill in the Blank accepted an unanswered required blank.' );
+	$fill_forged = Parish_Formation_Question_Grading_Service::grade( $fill, array( 'sacrament' => 'Baptism', 'matter' => 'water', 'forged' => 'value' ) );
+	$assert( ! $fill_forged['valid'] && 'invalid_answer' === $fill_forged['error_code'], 'Fill in the Blank accepted an unknown blank ID.' );
+	$fill_html = Parish_Formation_Question_Renderer::render( $fill, 'pf_answers[' . $fill->ID . ']', false );
+	$assert( 2 === substr_count( $fill_html, 'type="text"' ) && false !== strpos( $fill_html, '[sacrament]' ) && false !== strpos( $fill_html, '[matter]' ) && false === strpos( $fill_html, 'Holy Baptism' ), 'Fill in the Blank inline renderer is incomplete or exposes accepted answers.' );
 } catch ( Throwable $error ) {
 	$failures[] = 'Test setup failed: ' . $error->getMessage();
 } finally {

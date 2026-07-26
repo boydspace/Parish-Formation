@@ -609,7 +609,7 @@ final class Parish_Formation_Shortcodes {
 				?>
 				<section class="pf-assessment-question uk-card uk-card-default uk-card-body uk-margin" data-question-id="<?php echo esc_attr( $question->ID ); ?>">
 					<h3><?php echo esc_html( sprintf( __( 'Question %d', 'parish-formation' ), $index + 1 ) ); ?></h3>
-					<div class="pf-assessment-prompt"><?php echo $prompt; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+					<?php if ( 'fill_blank' !== Parish_Formation_Question_Config::get( $question->ID )['type'] ) : ?><div class="pf-assessment-prompt"><?php echo $prompt; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div><?php endif; ?>
 					<?php echo Parish_Formation_Question_Renderer::render( $question, $field_name, $closed ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					<?php if ( isset( $latest_feedback[ $question->ID ] ) ) : ?><?php echo self::render_question_feedback( $latest_feedback[ $question->ID ] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php endif; ?>
 				</section>

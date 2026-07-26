@@ -98,6 +98,26 @@ final class Parish_Formation_Question_Config {
 				'match_mode' => in_array( $mode, array( 'exact', 'contains' ), true ) ? $mode : 'exact',
 			);
 		}
+		if ( 'fill_blank' === $type ) {
+			$mode = sanitize_key( $values['point_mode'] ?? 'equal' );
+			$blanks = array();
+			$used_ids = array();
+			foreach ( is_array( $values['blanks'] ?? null ) ? $values['blanks'] : array() as $index => $blank ) {
+				if ( ! is_array( $blank ) ) { continue; }
+				$answers = array_values( array_filter( array_map( 'sanitize_text_field', is_array( $blank['accepted_answers'] ?? null ) ? $blank['accepted_answers'] : array() ), static fn( $answer ) => '' !== $answer ) );
+				$id = sanitize_key( $blank['id'] ?? '' ) ?: 'blank-' . ( $index + 1 );
+				if ( isset( $used_ids[ $id ] ) ) { $id .= '-' . ( $index + 1 ); }
+				$used_ids[ $id ] = true;
+				$blanks[] = array(
+					'id' => $id,
+					'accepted_answers' => $answers,
+					'case_sensitive' => ! empty( $blank['case_sensitive'] ),
+					'match_mode' => 'exact' === sanitize_key( $blank['match_mode'] ?? 'normalized' ) ? 'exact' : 'normalized',
+					'points' => max( 0, (float) ( $blank['points'] ?? 1 ) ),
+				);
+			}
+			return array( 'point_mode' => 'custom' === $mode ? 'custom' : 'equal', 'blanks' => $blanks );
+		}
 		return self::sanitize_nested( $values );
 	}
 }

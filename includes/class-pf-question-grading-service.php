@@ -78,6 +78,39 @@ final class Parish_Formation_Question_Grading_Service {
 			return self::result( true, '', $original, $points, $config['graded'] ? $config['points'] : 0, true, $is_correct, $requires_review, $config );
 		}
 
+		if ( 'fill_blank' === $type ) {
+			$blanks = $config['type_config']['blanks'] ?? array();
+			$placeholder_count = preg_match_all( '/\[blank\]/i', (string) $question->post_content );
+			if ( empty( $blanks ) || $placeholder_count !== count( $blanks ) ) {
+				return self::result( false, 'invalid_question_configuration', $original, 0, $config['points'], false, null, false, $config, __( 'This Fill in the Blank question is not configured correctly.', 'parish-formation' ) );
+			}
+			$responses = is_array( $response ) ? $response : array();
+			$blank_ids = array_column( $blanks, 'id' );
+			if ( array_diff( array_keys( $responses ), $blank_ids ) ) {
+				return self::result( false, 'invalid_answer', $original, 0, $config['points'], false, null, false, $config, __( 'The submitted blank response is not valid.', 'parish-formation' ) );
+			}
+			$point_mode = $config['type_config']['point_mode'] ?? 'equal';
+			$maximum = 'custom' === $point_mode ? array_sum( array_map( static fn( $blank ) => (float) $blank['points'], $blanks ) ) : (float) $config['points'];
+			$equal_points = count( $blanks ) ? $maximum / count( $blanks ) : 0;
+			$earned = 0;
+			$all_correct = true;
+			foreach ( $blanks as $blank ) {
+				if ( empty( $blank['accepted_answers'] ) ) {
+					return self::result( false, 'invalid_question_configuration', $original, 0, $maximum, false, null, false, $config, __( 'Every blank must have at least one accepted answer.', 'parish-formation' ) );
+				}
+				$value = isset( $responses[ $blank['id'] ] ) ? (string) $responses[ $blank['id'] ] : '';
+				if ( $config['required'] && '' === trim( $value ) ) {
+					return self::result( false, 'required_answer', $original, 0, $maximum, false, false, false, $config, __( 'Please complete every required blank.', 'parish-formation' ) );
+				}
+				$matched = false;
+				foreach ( $blank['accepted_answers'] as $accepted ) {
+					if ( self::normalize_blank_answer( $value, $blank ) === self::normalize_blank_answer( $accepted, $blank ) ) { $matched = true; break; }
+				}
+				if ( $matched ) { $earned += 'custom' === $point_mode ? (float) $blank['points'] : $equal_points; } else { $all_correct = false; }
+			}
+			return self::result( true, '', $responses, $config['graded'] ? $earned : 0, $config['graded'] ? $maximum : 0, true, $all_correct, false, $config );
+		}
+
 		if ( 'acknowledgement' === $type ) {
 			$completed = in_array( strtolower( sanitize_text_field( (string) $response ) ), array( 'acknowledged', '1', 'yes', 'true' ), true );
 			if ( $config['required'] && ! $completed ) {
@@ -118,6 +151,15 @@ final class Parish_Formation_Question_Grading_Service {
 		if ( ! empty( $settings['trim_spaces'] ) ) { $answer = trim( $answer ); }
 		if ( ! empty( $settings['normalize_spaces'] ) ) { $answer = preg_replace( '/\s+/u', ' ', $answer ); }
 		if ( ! empty( $settings['ignore_punctuation'] ) ) { $answer = preg_replace( '/[^\p{L}\p{N}\s]/u', '', $answer ); }
+		if ( empty( $settings['case_sensitive'] ) ) { $answer = function_exists( 'mb_strtolower' ) ? mb_strtolower( $answer, 'UTF-8' ) : strtolower( $answer ); }
+		return $answer;
+	}
+
+	private static function normalize_blank_answer( $answer, $settings ) {
+		$answer = (string) $answer;
+		if ( 'normalized' === ( $settings['match_mode'] ?? 'normalized' ) ) {
+			$answer = trim( preg_replace( '/\s+/u', ' ', $answer ) );
+		}
 		if ( empty( $settings['case_sensitive'] ) ) { $answer = function_exists( 'mb_strtolower' ) ? mb_strtolower( $answer, 'UTF-8' ) : strtolower( $answer ); }
 		return $answer;
 	}

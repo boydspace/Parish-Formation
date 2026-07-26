@@ -19,7 +19,11 @@
 				return;
 			}
 			const questionId = match[ 1 ];
-			if ( input.name.endsWith( '[]' ) ) {
+			const childMatch = input.name.match( /pf_answers\[\d+\]\[([a-z0-9_-]+)\]$/i );
+			if ( childMatch && ! [ '__proto__', 'prototype', 'constructor' ].includes( childMatch[ 1 ] ) ) {
+				if ( ! answers[ questionId ] || Array.isArray( answers[ questionId ] ) ) { answers[ questionId ] = {}; }
+				answers[ questionId ][ childMatch[ 1 ] ] = input.value;
+			} else if ( input.name.endsWith( '[]' ) ) {
 				if ( ! Array.isArray( answers[ questionId ] ) ) {
 					answers[ questionId ] = [];
 				}

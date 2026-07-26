@@ -45,6 +45,19 @@ final class Parish_Formation_Question_Renderer {
 			<label class="pf-assessment-option"><input class="uk-radio" type="radio" name="<?php echo esc_attr( $field_name ); ?>" value="false"<?php echo $disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			?>> <?php esc_html_e( 'False', 'parish-formation' ); ?></label>
 			<?php
+		} elseif ( 'fill_blank' === $type ) {
+			$blanks = $config['type_config']['blanks'] ?? array();
+			$segments = preg_split( '/\[blank\]/i', wp_kses_post( $question->post_content ) );
+			?><div class="pf-fill-blank-response"><?php
+			foreach ( $segments as $index => $segment ) {
+				echo wp_kses_post( $segment );
+				if ( isset( $blanks[ $index ] ) ) {
+					$blank = $blanks[ $index ];
+					?><label class="pf-fill-blank-field"><span class="screen-reader-text"><?php echo esc_html( sprintf( __( 'Blank %d', 'parish-formation' ), $index + 1 ) ); ?></span><input class="uk-input" type="text" name="<?php echo esc_attr( $field_name . '[' . $blank['id'] . ']' ); ?>" autocomplete="off"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					?> /></label><?php
+				}
+			}
+			?></div><?php
 		} elseif ( 'short_answer' === $type ) {
 			?>
 			<label><span class="screen-reader-text"><?php esc_html_e( 'Your answer', 'parish-formation' ); ?></span><input class="uk-input" type="text" name="<?php echo esc_attr( $field_name ); ?>" autocomplete="off"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

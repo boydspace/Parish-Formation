@@ -156,6 +156,20 @@
 	margin: 10px 0;
 }
 
+.pf-fill-blank-response {
+	line-height: 2.6;
+}
+
+.pf-fill-blank-field {
+	display: inline-block;
+	margin: 0 0.35em;
+	vertical-align: middle;
+}
+
+.pf-fill-blank-field .uk-input {
+	width: clamp(9rem, 20vw, 15rem);
+}
+
 .pf-content-footer {
 	margin-top: auto;
 	padding: 20px 28px;

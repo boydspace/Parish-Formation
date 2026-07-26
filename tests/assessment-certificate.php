@@ -127,6 +127,18 @@ try {
 	$impossible_q = $create_question( $impossible_id, 'One point cannot satisfy two', 'true_false', 'true', 1, 1 );
 	$impossible = Parish_Formation_Assessment_Repository::submit( $enrollment, $impossible_id, array( $impossible_q => 'true' ) );
 	$assert( is_wp_error( $impossible ) && 'invalid_passing_configuration' === $impossible->get_error_code() && null === Parish_Formation_Assessment_Repository::get_latest_attempt( $enrollment->id, $impossible_id ), 'Impossible passing threshold consumed an attempt instead of returning a configuration error.' );
+	$fill_id = $create_assessment( 'Fill blank assessment', 'points', 2, 1, 'no_gate' );
+	$fill_q = $create_question( $fill_id, 'The sacrament of [blank] uses [blank].', 'fill_blank', null, 4, 1 );
+	$fill_config = Parish_Formation_Question_Config::get( $fill_q );
+	$fill_config['type_config'] = array( 'point_mode' => 'equal', 'blanks' => array(
+		array( 'id' => 'sacrament', 'accepted_answers' => array( 'Baptism' ), 'case_sensitive' => false, 'match_mode' => 'normalized', 'points' => 1 ),
+		array( 'id' => 'matter', 'accepted_answers' => array( 'water' ), 'case_sensitive' => false, 'match_mode' => 'normalized', 'points' => 1 ),
+	) );
+	update_post_meta( $fill_q, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $fill_config, 'fill_blank' ) );
+	$fill_attempt = Parish_Formation_Assessment_Repository::submit( $enrollment, $fill_id, array( $fill_q => array( 'sacrament' => '  BAPTISM ', 'matter' => 'oil' ) ) );
+	$assert( ! is_wp_error( $fill_attempt ) && 'passed' === $fill_attempt->status && 2.0 === (float) $fill_attempt->score_points && 4.0 === (float) $fill_attempt->max_points, 'Fill in the Blank repository lifecycle did not preserve partial credit.' );
+	$fill_answers = Parish_Formation_Assessment_Repository::get_attempt_answers( $fill_attempt->id );
+	$assert( array( 'sacrament' => '  BAPTISM ', 'matter' => 'oil' ) === json_decode( $fill_answers[0]->answer, true ), 'Fill in the Blank responses were not stored separately by stable blank ID.' );
 
 	$review_id = $create_assessment( 'Manual assessment', 'points', 1, 1, 'submit_to_continue' );
 	$rq = $create_question( $review_id, 'Reflection question', 'reflection', null, 3 );
