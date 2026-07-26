@@ -66,6 +66,7 @@ foreach (
 		'pf_invitations',
 		'pf_participant_notes',
 		'pf_participant_note_events',
+		'pf_security_events',
 	) as $suffix
 ) {
 	$table = $wpdb->prefix . $suffix;

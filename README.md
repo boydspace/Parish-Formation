@@ -125,6 +125,15 @@ builder verifies version consistency and required production files, bundles the
 installed Composer dependencies, and excludes repository, test, tooling, and
 other development-only files.
 
+## Security event history
+
+Sensitive enrollment, staff-review, completion-override, and certificate actions
+are appended to a site-specific security ledger under **Parish Formation →
+Settings → Security Events**. Each event contains safe operational context and is
+linked to the preceding event with a keyed hash. The Settings screen verifies the
+full chain and reports if stored event data has been altered. Passwords, tokens,
+email addresses, access codes, and similar secret context keys are rejected.
+
 ## Development
 
 The public plugin release version and internal database schema version are

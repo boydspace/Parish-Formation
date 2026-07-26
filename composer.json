@@ -11,10 +11,12 @@
 		"test": [
 			"@php tests/smoke.php",
 			"@php tests/behavior.php",
-			"@php tests/assessment-certificate.php"
+			"@php tests/assessment-certificate.php",
+			"@php tests/security-events.php"
 		],
 		"test:behavior": "@php tests/behavior.php",
 		"test:assessment": "@php tests/assessment-certificate.php",
+		"test:security": "@php tests/security-events.php",
         "build": "@php tools/build-release.php"
     }
 }

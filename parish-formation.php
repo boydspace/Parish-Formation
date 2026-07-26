@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'PARISH_FORMATION_VERSION', '1.3.0' );
-define( 'PARISH_FORMATION_DB_VERSION', '1.0.2' );
+define( 'PARISH_FORMATION_DB_VERSION', '1.0.3' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -29,6 +29,7 @@ if ( file_exists( PARISH_FORMATION_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-upgrader.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-capabilities.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-account-service.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-security-event-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-participant-note-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-privacy.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-retention.php';
@@ -60,6 +61,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-account-settings.php'
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-participants-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-retention-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-system-status.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-security-events-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-course-settings.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-enrollments-admin.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'admin/class-pf-invitations-admin.php';
@@ -172,6 +174,7 @@ add_action(
 );
 add_action( 'admin_menu', array( 'Parish_Formation_Retention_Settings', 'register_menu' ) );
 add_action( 'admin_menu', array( 'Parish_Formation_System_Status', 'register_menu' ) );
+add_action( 'admin_menu', array( 'Parish_Formation_Security_Events_Admin', 'register_menu' ) );
 
 add_action(
 	'wp_login',

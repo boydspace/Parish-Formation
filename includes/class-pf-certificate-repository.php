@@ -146,6 +146,7 @@ final class Parish_Formation_Certificate_Repository {
 			return new WP_Error( 'certificate_database_error', __( 'The certificate record could not be issued.', 'parish-formation' ) );
 		}
 		$issued = self::get_for_enrollment_run( $enrollment->id, $course_run );
+		Parish_Formation_Security_Event_Repository::record( 'certificate_issued', 'certificate', $issued->id, array( 'course_run' => $course_run, 'issue_number' => $issued->issue_number ), $issued_by, $enrollment->user_id, $enrollment->course_id );
 		Parish_Formation_Notifications::send_certificate_event( 'certificate_issued', $issued );
 		return $issued;
 	}
@@ -172,6 +173,7 @@ final class Parish_Formation_Certificate_Repository {
 			return new WP_Error( 'certificate_database_error', __( 'The certificate could not be revoked.', 'parish-formation' ) );
 		}
 		Parish_Formation_Notifications::send_certificate_event( 'certificate_revoked', self::get_by_id( $certificate_id ), $reason );
+		Parish_Formation_Security_Event_Repository::record( 'certificate_revoked', 'certificate', $certificate_id, array( 'reason' => $reason ), $staff_user_id, $certificate->user_id, $certificate->course_id );
 		return true;
 	}
 
@@ -207,6 +209,7 @@ final class Parish_Formation_Certificate_Repository {
 			return new WP_Error( 'certificate_database_error', __( 'The replacement certificate could not be issued.', 'parish-formation' ) );
 		}
 		$replacement = self::get_by_id( $wpdb->insert_id );
+		Parish_Formation_Security_Event_Repository::record( 'certificate_reissued', 'certificate', $replacement->id, array( 'reissue_of' => $source->id, 'issue_number' => $replacement->issue_number ), $staff_user_id, $source->user_id, $source->course_id );
 		Parish_Formation_Notifications::send_certificate_event( 'certificate_reissued', $replacement );
 		return $replacement;
 	}

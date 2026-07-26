@@ -78,6 +78,7 @@ final class Parish_Formation_Admin_Hubs {
 				'emails' => array( 'label' => __( 'Email Notifications', 'parish-formation' ), 'capability' => 'pf_manage_settings', 'legacy_slug' => 'parish-formation-notifications', 'callback' => array( 'Parish_Formation_Notifications_Admin', 'render_page' ) ),
 				'privacy' => array( 'label' => __( 'Privacy & Retention', 'parish-formation' ), 'capability' => 'pf_manage_settings', 'legacy_slug' => 'parish-formation-retention', 'callback' => array( 'Parish_Formation_Retention_Settings', 'render_page' ) ),
 				'status' => array( 'label' => __( 'System Status', 'parish-formation' ), 'capability' => 'pf_manage_settings', 'legacy_slug' => 'parish-formation-system-status', 'callback' => array( 'Parish_Formation_System_Status', 'render_page' ) ),
+				'security' => array( 'label' => __( 'Security Events', 'parish-formation' ), 'capability' => 'pf_manage_settings', 'legacy_slug' => 'parish-formation-security-events', 'callback' => array( 'Parish_Formation_Security_Events_Admin', 'render_page' ) ),
 			) ),
 		);
 	}

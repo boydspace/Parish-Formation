@@ -15,6 +15,8 @@ $created_posts = array();
 $user_id       = 0;
 $staff_id      = 0;
 $enrollment_id = 0;
+global $wpdb;
+$security_baseline = absint( $wpdb->get_var( "SELECT MAX(id) FROM {$wpdb->prefix}pf_security_events" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 $assert = static function ( $condition, $message ) use ( &$failures, &$checks ) {
 	++$checks;
@@ -134,6 +136,10 @@ try {
 	$assert( $replacement->verification_code !== $certificate->verification_code, 'Replacement certificate reused the verification code.' );
 	$second_reissue = Parish_Formation_Certificate_Repository::reissue( $certificate->id, $staff_id );
 	$assert( is_wp_error( $second_reissue ) && 'certificate_replacement_exists' === $second_reissue->get_error_code(), 'A second replacement was issued from the same revoked certificate.' );
+	$recorded_types = $wpdb->get_col( $wpdb->prepare( "SELECT event_type FROM {$wpdb->prefix}pf_security_events WHERE participant_user_id=%d", $user_id ) );
+	foreach ( array( 'assessment_reviewed', 'certificate_issued', 'certificate_revoked', 'certificate_reissued' ) as $event_type ) {
+		$assert( in_array( $event_type, $recorded_types, true ), "Security ledger is missing {$event_type}." );
+	}
 } catch ( Throwable $error ) {
 	$failures[] = 'Test setup failed: ' . $error->getMessage();
 } finally {
@@ -149,6 +155,7 @@ try {
 		$wpdb->delete( $wpdb->prefix . 'pf_notification_log', array( 'participant_user_id' => $user_id ), array( '%d' ) );
 		$wpdb->delete( $wpdb->prefix . 'pf_enrollments', array( 'id' => $enrollment_id ), array( '%d' ) );
 	}
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}pf_security_events WHERE id > %d", $security_baseline ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	foreach ( array_reverse( $created_posts ) as $post_id ) {
 		wp_delete_post( $post_id, true );
 	}

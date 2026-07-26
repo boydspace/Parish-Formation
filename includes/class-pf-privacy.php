@@ -97,6 +97,10 @@ final class Parish_Formation_Privacy {
 		foreach ( $invitations as $row ) {
 			self::add_item( $data, 'invitation-' . $row->id, __( 'Formation course invitation', 'parish-formation' ), array( __( 'Course', 'parish-formation' ) => get_the_title( $row->course_id ), __( 'Email restriction', 'parish-formation' ) => $row->restricted_email, __( 'Status', 'parish-formation' ) => $row->status, __( 'Created', 'parish-formation' ) => $row->created_at, __( 'Expires', 'parish-formation' ) => $row->expires_at ) );
 		}
+		$security_events = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}pf_security_events WHERE participant_user_id=%d OR actor_user_id=%d ORDER BY id", $user_id, $user_id ) );
+		foreach ( $security_events as $row ) {
+			self::add_item( $data, 'security-event-' . $row->id, __( 'Formation security event', 'parish-formation' ), array( __( 'Event', 'parish-formation' ) => $row->event_type, __( 'Object', 'parish-formation' ) => $row->object_type . ' #' . $row->object_id, __( 'Course', 'parish-formation' ) => $row->course_id ? get_the_title( $row->course_id ) : '', __( 'Details', 'parish-formation' ) => $row->context_json, __( 'Recorded', 'parish-formation' ) => $row->created_at ) );
+		}
 		return array( 'data' => $data, 'done' => true );
 	}
 
@@ -130,7 +134,7 @@ final class Parish_Formation_Privacy {
 		return array(
 			'items_removed' => true,
 			'items_retained' => true,
-			'messages' => array( __( 'Personal responses, staff-note content, notification details, certificate identity, and formation profile metadata were erased. Anonymous enrollment, progress, scoring, and audit records were retained for operational reporting.', 'parish-formation' ) ),
+			'messages' => array( __( 'Personal responses, staff-note content, notification details, certificate identity, and formation profile metadata were erased. Anonymous enrollment, progress, scoring, and audit records were retained for operational reporting. The tamper-evident security ledger is retained unchanged to preserve its integrity.', 'parish-formation' ) ),
 			'done' => true,
 		);
 	}

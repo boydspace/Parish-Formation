@@ -212,6 +212,7 @@ final class Parish_Formation_Enrollment_Repository {
 				if ( false === $reactivated ) {
 					return new WP_Error( 'database_error', __( 'The enrollment could not be saved.', 'parish-formation' ) );
 				}
+				Parish_Formation_Security_Event_Repository::record( 'enrollment_reactivated', 'enrollment', $existing_id, array( 'source' => $source ), $created_by ?: $user_id, $user_id, $course_id );
 
 				return absint( $existing_id );
 			}
@@ -239,8 +240,10 @@ final class Parish_Formation_Enrollment_Repository {
 		if ( false === $inserted ) {
 			return new WP_Error( 'database_error', __( 'The enrollment could not be saved.', 'parish-formation' ) );
 		}
+		$enrollment_id = absint( $wpdb->insert_id );
+		Parish_Formation_Security_Event_Repository::record( 'enrollment_created', 'enrollment', $enrollment_id, array( 'source' => $source ), $created_by ?: $user_id, $user_id, $course_id );
 
-		return absint( $wpdb->insert_id );
+		return $enrollment_id;
 	}
 
 	/**
@@ -282,6 +285,8 @@ final class Parish_Formation_Enrollment_Repository {
 		if ( false === $updated ) {
 			return new WP_Error( 'database_error', __( 'The enrollment could not be updated.', 'parish-formation' ) );
 		}
+		$details = self::get_details( $enrollment_id );
+		Parish_Formation_Security_Event_Repository::record( 'enrollment_unenrolled', 'enrollment', $enrollment_id, array(), null, $details ? $details->user_id : 0, $details ? $details->course_id : 0 );
 
 		return true;
 	}
@@ -359,6 +364,7 @@ final class Parish_Formation_Enrollment_Repository {
 		}
 
 		$wpdb->query( 'COMMIT' );
+		Parish_Formation_Security_Event_Repository::record( 'enrollment_reset', 'enrollment', $enrollment_id, array( 'archived_run' => $run_number, 'new_run' => $run_number + 1 ), $staff_user_id, $enrollment->user_id, $enrollment->course_id );
 
 		return true;
 	}
@@ -418,6 +424,7 @@ final class Parish_Formation_Enrollment_Repository {
 		}
 
 		$wpdb->query( 'COMMIT' );
+		Parish_Formation_Security_Event_Repository::record( 'enrollment_completion_overridden', 'enrollment', $enrollment_id, array(), $staff_user_id, $enrollment->user_id, $enrollment->course_id );
 		$completed_enrollment = self::get_details( $enrollment_id );
 		$certificate          = Parish_Formation_Certificate_Repository::maybe_issue( $completed_enrollment, $staff_user_id );
 		if ( is_wp_error( $certificate ) && 'certificate_not_eligible' !== $certificate->get_error_code() ) {

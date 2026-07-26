@@ -135,7 +135,7 @@ medical information.
 - System status and scheduled-task diagnostics. **Implemented**
 - Automated repository, authorization, grading, progression, certificate, and
   upgrade tests. **Authorization, grading, progression, and certificates implemented**
-- Immutable enrollment-access and security event history.
+- Immutable, tamper-evident enrollment-access and security event history. **Implemented**
 
 ## Versioning
 

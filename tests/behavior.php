@@ -18,6 +18,9 @@ $checks       = 0;
 $created_users = array();
 $created_posts = array();
 $enrollment_id = 0;
+$course_id     = 0;
+global $wpdb;
+$security_baseline = absint( $wpdb->get_var( "SELECT MAX(id) FROM {$wpdb->prefix}pf_security_events" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 $assert = static function ( $condition, $message ) use ( &$failures, &$checks ) {
 	++$checks;
@@ -100,6 +103,8 @@ try {
 	update_post_meta( $course_id, Parish_Formation_Course_Settings::OPEN_ENROLLMENT_META_KEY, 1 );
 	$enrollment_id = Parish_Formation_Enrollment_Repository::create_self_enrollment( $created_users['participant'], $course_id );
 	$assert( is_int( $enrollment_id ) && $enrollment_id > 0, 'Open course did not create an enrollment.' );
+	$created_event = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}pf_security_events WHERE event_type=%s AND object_id=%d ORDER BY id DESC LIMIT 1", 'enrollment_created', $enrollment_id ) );
+	$assert( $created_event && $created_users['participant'] === (int) $created_event->participant_user_id && $course_id === (int) $created_event->course_id, 'Enrollment creation was not recorded in the security ledger.' );
 	$duplicate = Parish_Formation_Enrollment_Repository::create_self_enrollment( $created_users['participant'], $course_id );
 	$assert( is_wp_error( $duplicate ) && 'duplicate_enrollment' === $duplicate->get_error_code(), 'Duplicate enrollment was not rejected.' );
 
@@ -125,6 +130,7 @@ try {
 	$assert( 2 === $summary['finished'] && 100 === $summary['percentage'] && $summary['is_complete'], 'Completed progress summary is incorrect.' );
 	$assert( true === Parish_Formation_Enrollment_Repository::unenroll( $enrollment_id ), 'Enrollment could not be removed.' );
 	$assert( null === Parish_Formation_Enrollment_Repository::get_for_user_course( $created_users['participant'], $course_id ), 'Unenrolled course remains active for participant.' );
+	$assert( (bool) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$wpdb->prefix}pf_security_events WHERE event_type=%s AND object_id=%d", 'enrollment_unenrolled', $enrollment_id ) ), 'Unenrollment was not recorded in the security ledger.' );
 } catch ( Throwable $error ) {
 	$failures[] = 'Test setup failed: ' . $error->getMessage();
 } finally {
@@ -133,6 +139,10 @@ try {
 		$wpdb->delete( $wpdb->prefix . 'pf_progress', array( 'enrollment_id' => $enrollment_id ), array( '%d' ) );
 		$wpdb->delete( $wpdb->prefix . 'pf_enrollments', array( 'id' => $enrollment_id ), array( '%d' ) );
 	}
+	if ( $course_id && ! empty( $created_users['participant'] ) ) {
+		$wpdb->delete( $wpdb->prefix . 'pf_enrollments', array( 'user_id' => $created_users['participant'], 'course_id' => $course_id ), array( '%d', '%d' ) );
+	}
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}pf_security_events WHERE id > %d", $security_baseline ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	foreach ( array_reverse( $created_posts ) as $post_id ) {
 		wp_delete_post( $post_id, true );
 	}

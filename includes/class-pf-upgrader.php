@@ -83,8 +83,11 @@ final class Parish_Formation_Upgrader {
 		if ( version_compare( $installed_version, '1.0.2', '<' ) ) {
 			self::install_certificates_table();
 		}
+		if ( version_compare( $installed_version, '1.0.3', '<' ) ) {
+			self::install_security_events_table();
+		}
 
-		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() || ! self::invitations_table_exists() || ! self::participant_notes_tables_exist() ) {
+		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() || ! self::invitations_table_exists() || ! self::participant_notes_tables_exist() || ! self::security_events_table_exists() ) {
 			return;
 		}
 
@@ -93,6 +96,33 @@ final class Parish_Formation_Upgrader {
 			PARISH_FORMATION_DB_VERSION,
 			false
 		);
+	}
+
+	/** Create the append-only, hash-chained security event ledger. */
+	private static function install_security_events_table() {
+		global $wpdb;
+		$table_name      = $wpdb->prefix . 'pf_security_events';
+		$charset_collate = $wpdb->get_charset_collate();
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			event_type varchar(80) NOT NULL,
+			object_type varchar(40) NOT NULL,
+			object_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			actor_user_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			participant_user_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			course_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			context_json longtext NOT NULL,
+			previous_hash char(64) NOT NULL,
+			event_hash char(64) NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY event_hash (event_hash),
+			KEY event_created (event_type, created_at),
+			KEY actor_created (actor_user_id, created_at),
+			KEY participant_created (participant_user_id, created_at),
+			KEY course_created (course_id, created_at)
+		) {$charset_collate};" );
 	}
 
 	/** Create private participant notes and their immutable audit events. */
@@ -470,5 +500,12 @@ final class Parish_Formation_Upgrader {
 			}
 		}
 		return true;
+	}
+
+	/** Determine whether the security event ledger exists. */
+	private static function security_events_table_exists() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'pf_security_events';
+		return $table_name === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_name ) ) );
 	}
 }

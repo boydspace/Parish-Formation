@@ -206,6 +206,7 @@ final class Parish_Formation_Assessment_Repository {
 			return new WP_Error( 'database_error', __( 'The assessment review could not be saved.', 'parish-formation' ) );
 		}
 		$wpdb->query( 'COMMIT' );
+		Parish_Formation_Security_Event_Repository::record( 'assessment_reviewed', 'assessment_attempt', $attempt_id, array( 'decision' => $decision, 'score_points' => $score, 'max_points' => $maximum ), $reviewer_id, $attempt->user_id, $attempt->course_id );
 		return true;
 	}
 }

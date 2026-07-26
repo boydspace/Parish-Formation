@@ -32,7 +32,7 @@ final class Parish_Formation_System_Status {
 		self::add( $checks, __( 'PHP version', 'parish-formation' ), version_compare( PHP_VERSION, '8.3', '>=' ) ? 'good' : 'bad', PHP_VERSION );
 		self::add( $checks, __( 'WordPress version', 'parish-formation' ), version_compare( get_bloginfo( 'version' ), '6.0', '>=' ) ? 'good' : 'bad', get_bloginfo( 'version' ) );
 
-		$tables = array( 'pf_enrollments', 'pf_progress', 'pf_enrollment_runs', 'pf_assessment_attempts', 'pf_assessment_answers', 'pf_certificates', 'pf_notification_log', 'pf_invitations', 'pf_participant_notes', 'pf_participant_note_events' );
+		$tables = array( 'pf_enrollments', 'pf_progress', 'pf_enrollment_runs', 'pf_assessment_attempts', 'pf_assessment_answers', 'pf_certificates', 'pf_notification_log', 'pf_invitations', 'pf_participant_notes', 'pf_participant_note_events', 'pf_security_events' );
 		$missing = array();
 		foreach ( $tables as $suffix ) { $table = $wpdb->prefix . $suffix; if ( $table !== $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) ) { $missing[] = $suffix; } }
 		self::add( $checks, __( 'Database tables', 'parish-formation' ), $missing ? 'bad' : 'good', $missing ? sprintf( __( 'Missing: %s', 'parish-formation' ), implode( ', ', $missing ) ) : sprintf( __( 'All %d required tables found', 'parish-formation' ), count( $tables ) ) );
