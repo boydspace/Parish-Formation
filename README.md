@@ -116,6 +116,11 @@ smoke test against the local WordPress installation. It checks plugin versions,
 custom tables, roles, post types, shortcodes, privacy hooks, multisite setup, and
 scheduled events.
 
+Run `composer build` to create a versioned, installable archive in `dist/`. The
+builder verifies version consistency and required production files, bundles the
+installed Composer dependencies, and excludes repository, test, tooling, and
+other development-only files.
+
 ## Development
 
 The public plugin release version and internal database schema version are
