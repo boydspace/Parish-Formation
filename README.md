@@ -115,8 +115,10 @@ Run `composer test` from the plugin directory to perform the read-only integrati
 smoke test and the isolated behavioral suite against the local WordPress
 installation. Together they check plugin versions, custom tables, roles, post
 types, shortcodes, privacy hooks, multisite setup, scheduled events, authorization,
-self-enrollment, sequential lesson progression, completion, and unenrollment.
-Behavioral fixtures are uniquely named and removed when the suite finishes.
+self-enrollment, sequential lesson progression, assessment grading and attempt
+limits, manual review, certificate issuance/revocation/reissue, completion, and
+unenrollment. Behavioral fixtures are uniquely named and removed when the suite
+finishes.
 
 Run `composer build` to create a versioned, installable archive in `dist/`. The
 builder verifies version consistency and required production files, bundles the

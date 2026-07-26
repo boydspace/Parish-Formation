@@ -10,9 +10,11 @@
     "scripts": {
 		"test": [
 			"@php tests/smoke.php",
-			"@php tests/behavior.php"
+			"@php tests/behavior.php",
+			"@php tests/assessment-certificate.php"
 		],
 		"test:behavior": "@php tests/behavior.php",
+		"test:assessment": "@php tests/assessment-certificate.php",
         "build": "@php tools/build-release.php"
     }
 }
