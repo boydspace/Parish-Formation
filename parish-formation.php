@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Parish Formation
  * Description:       Provides focused online formation tools for parishes.
- * Version:           1.4.0
+ * Version:           1.5.0
  * Requires PHP:      8.3
  * Author:            Father Andrew M. Boyd
  * Author URI:        https://fatherboyd.com
@@ -15,8 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PARISH_FORMATION_VERSION', '1.4.0' );
-define( 'PARISH_FORMATION_DB_VERSION', '1.0.3' );
+define( 'PARISH_FORMATION_VERSION', '1.5.0' );
+define( 'PARISH_FORMATION_DB_VERSION', '1.0.4' );
 define( 'PARISH_FORMATION_UIKIT_VERSION', '3.25.20' );
 define( 'PARISH_FORMATION_PLUGIN_FILE', __FILE__ );
 define( 'PARISH_FORMATION_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
@@ -143,6 +143,7 @@ add_action(
 	'admin_enqueue_scripts',
 	array( 'Parish_Formation_Admin', 'enqueue_assets' )
 );
+add_action( 'wp_dashboard_setup', array( 'Parish_Formation_Admin', 'register_wordpress_dashboard_widget' ) );
 
 add_action(
 	'wp_ajax_pf_refresh_dashboard',

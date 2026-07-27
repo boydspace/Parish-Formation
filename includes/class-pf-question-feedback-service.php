@@ -24,6 +24,7 @@ final class Parish_Formation_Question_Feedback_Service {
 		$snapshot = is_array( $snapshot ) ? $snapshot : array();
 		$feedback = is_array( $snapshot['feedback'] ?? null ) ? $snapshot['feedback'] : array();
 		$messages = array();
+		if ( isset( $answer->learner_feedback ) && '' !== trim( (string) $answer->learner_feedback ) ) { $messages[] = nl2br( esc_html( $answer->learner_feedback ) ); }
 		if ( null !== $answer->is_correct ) {
 			$message = (bool) $answer->is_correct ? ( $feedback['correct'] ?? '' ) : ( $feedback['incorrect'] ?? '' );
 			if ( '' !== trim( wp_strip_all_tags( (string) $message ) ) ) { $messages[] = wp_kses_post( $message ); }

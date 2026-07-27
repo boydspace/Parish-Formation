@@ -142,7 +142,7 @@ medical information.
 - The plugin release version tracks user-facing feature milestones.
 - The database schema version changes only when tables or stored schema must be
   upgraded.
-- Release 1.4.0 currently uses database schema 1.0.3.
+- Release 1.5.0 uses database schema 1.0.4.
 
 ## In development
 
@@ -156,13 +156,13 @@ medical information.
   modes, answer normalization, learner rendering, snapshots, and tests.
   **Phase 2 implemented**
 - Fill in the Blank, Matching, Ordering, Reflection Response improvements, and
-  Acknowledgment improvements. **Phase 2 remaining**
+  Acknowledgment improvements. **Phase 2 implemented**
 - Rating Scale, Yes/No, Image Selection, Numeric Response, Paragraph Response,
-  and protected File Upload. **Phase 3**
+  and protected File Upload. **Phase 3 implemented**
 - Per-response review, resubmission, feedback, reporting, exports, and expanded
-  assessment completion rules. **Phase 4**
-- The Phase 1 storage extension uses post meta and existing `LONGTEXT` response
-  columns, so database schema 1.0.3 remains unchanged.
+  assessment completion rules. **Phase 4 implemented**
+- Database schema 1.0.4 adds audited per-response review fields and overall
+  learner-visible assessment feedback while preserving existing attempts.
 
 ## Development rules
 

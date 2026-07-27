@@ -86,6 +86,9 @@ final class Parish_Formation_Upgrader {
 		if ( version_compare( $installed_version, '1.0.3', '<' ) ) {
 			self::install_security_events_table();
 		}
+		if ( version_compare( $installed_version, '1.0.4', '<' ) ) {
+			self::install_assessment_tables();
+		}
 
 		if ( ! self::enrollments_table_exists() || ! self::progress_table_exists() || ! self::assessment_tables_exist() || ! self::enrollment_runs_table_exists() || ! self::certificates_table_exists() || ! self::notification_log_table_exists() || ! self::invitations_table_exists() || ! self::participant_notes_tables_exist() || ! self::security_events_table_exists() ) {
 			return;
@@ -250,6 +253,7 @@ final class Parish_Formation_Upgrader {
 			reviewed_by bigint(20) unsigned DEFAULT NULL,
 			reviewed_at datetime DEFAULT NULL,
 			review_note longtext DEFAULT NULL,
+			learner_feedback longtext DEFAULT NULL,
 			submitted_at datetime NOT NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
@@ -268,8 +272,14 @@ final class Parish_Formation_Upgrader {
 			question_snapshot longtext NOT NULL,
 			answer longtext NOT NULL,
 			points_awarded decimal(10,2) NOT NULL DEFAULT 0,
+			automatic_points decimal(10,2) NOT NULL DEFAULT 0,
 			is_correct tinyint(1) DEFAULT NULL,
 			requires_review tinyint(1) NOT NULL DEFAULT 0,
+			review_status varchar(24) NOT NULL DEFAULT 'not_required',
+			reviewer_user_id bigint(20) unsigned DEFAULT NULL,
+			reviewed_at datetime DEFAULT NULL,
+			private_note longtext DEFAULT NULL,
+			learner_feedback longtext DEFAULT NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY attempt_question (attempt_id, question_id),

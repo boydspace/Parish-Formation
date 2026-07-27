@@ -6,8 +6,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Groups related administration screens behind a shorter menu. */
 final class Parish_Formation_Admin_Hubs {
 	public static function register_menu() {
+		$pending_count = current_user_can( 'pf_grade_assessments' ) ? Parish_Formation_Assessment_Repository::get_pending_review_count() : 0;
+		$reports_title = esc_html__( 'Reports', 'parish-formation' );
+		if ( $pending_count ) { $reports_title .= ' <span class="awaiting-mod"><span class="pending-count">' . esc_html( number_format_i18n( $pending_count ) ) . '</span></span>'; }
 		add_submenu_page( 'parish-formation', __( 'People', 'parish-formation' ), __( 'People', 'parish-formation' ), 'pf_manage_enrollments', 'parish-formation-people', array( self::class, 'render_people' ), 29 );
-		add_submenu_page( 'parish-formation', __( 'Reports', 'parish-formation' ), __( 'Reports', 'parish-formation' ), 'pf_view_reports', 'parish-formation-reports', array( self::class, 'render_reports' ), 30 );
+		add_submenu_page( 'parish-formation', __( 'Reports', 'parish-formation' ), $reports_title, 'pf_view_reports', 'parish-formation-reports', array( self::class, 'render_reports' ), 30 );
 		add_submenu_page( 'parish-formation', __( 'Settings', 'parish-formation' ), __( 'Settings', 'parish-formation' ), 'pf_manage_settings', 'parish-formation-settings', array( self::class, 'render_settings' ), 31 );
 	}
 
@@ -55,7 +58,7 @@ final class Parish_Formation_Admin_Hubs {
 		$tab = isset( $config[ $hub ]['tabs'][ $requested ] ) && current_user_can( $config[ $hub ]['tabs'][ $requested ]['capability'] ) ? $requested : self::first_allowed_tab( $config[ $hub ]['tabs'] );
 		$definition = $config[ $hub ]['tabs'][ $tab];
 		?>
-		<div class="wrap pf-admin-hub" data-hub="<?php echo esc_attr( $hub ); ?>"><h1><?php echo esc_html( $config[ $hub ]['label'] ); ?></h1><nav class="nav-tab-wrapper" aria-label="<?php echo esc_attr( $config[ $hub ]['label'] ); ?>"><?php foreach ( $config[ $hub ]['tabs'] as $key => $item ) : if ( ! current_user_can( $item['capability'] ) ) { continue; } $url = add_query_arg( array( 'page' => $config[ $hub ]['slug'], 'hub_tab' => $key ), admin_url( 'admin.php' ) ); ?><a class="nav-tab pf-admin-hub-tab <?php echo $key === $tab ? 'nav-tab-active' : ''; ?>" data-tab="<?php echo esc_attr( $key ); ?>" href="<?php echo esc_url( $url ); ?>" <?php echo $key === $tab ? 'aria-current="page"' : ''; ?>><?php echo esc_html( $item['label'] ); ?></a><?php endforeach; ?></nav><div class="pf-admin-hub-status" role="status" aria-live="polite" aria-atomic="true"></div><div class="pf-admin-hub-content" tabindex="-1"><?php $_GET['page'] = $definition['legacy_slug']; call_user_func( $definition['callback'] ); ?></div></div>
+		<div class="wrap pf-admin-hub" data-hub="<?php echo esc_attr( $hub ); ?>"><h1><?php echo esc_html( $config[ $hub ]['label'] ); ?></h1><nav class="nav-tab-wrapper" aria-label="<?php echo esc_attr( $config[ $hub ]['label'] ); ?>"><?php foreach ( $config[ $hub ]['tabs'] as $key => $item ) : if ( ! current_user_can( $item['capability'] ) ) { continue; } $url = add_query_arg( array( 'page' => $config[ $hub ]['slug'], 'hub_tab' => $key ), admin_url( 'admin.php' ) ); $tab_count = 'reports' === $hub && 'reviews' === $key ? Parish_Formation_Assessment_Repository::get_pending_review_count() : 0; ?><a class="nav-tab pf-admin-hub-tab <?php echo $key === $tab ? 'nav-tab-active' : ''; ?>" data-tab="<?php echo esc_attr( $key ); ?>" href="<?php echo esc_url( $url ); ?>" <?php echo $key === $tab ? 'aria-current="page"' : ''; ?>><?php echo esc_html( $item['label'] ); ?><?php if ( $tab_count ) : ?> <span class="awaiting-mod"><span class="pending-count"><?php echo esc_html( number_format_i18n( $tab_count ) ); ?></span></span><?php endif; ?></a><?php endforeach; ?></nav><div class="pf-admin-hub-status" role="status" aria-live="polite" aria-atomic="true"></div><div class="pf-admin-hub-content" tabindex="-1"><?php $_GET['page'] = $definition['legacy_slug']; call_user_func( $definition['callback'] ); ?></div></div>
 		<?php
 	}
 

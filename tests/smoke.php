@@ -43,6 +43,12 @@ $assert( wp_next_scheduled( Parish_Formation_Retention::CRON_HOOK ) !== false, '
 $assert( class_exists( 'Parish_Formation_Assessment_File_Service' ), 'Private assessment file service is not loaded.' );
 $assert( has_action( 'admin_post_pf_download_assessment_file', array( 'Parish_Formation_Assessment_File_Service', 'download' ) ) !== false, 'Protected assessment download action is not registered.' );
 $assert( has_action( 'admin_post_pf_preview_assessment_file', array( 'Parish_Formation_Assessment_File_Service', 'preview' ) ) !== false, 'Protected assessment image preview action is not registered.' );
+$assert( has_action( 'wp_dashboard_setup', array( 'Parish_Formation_Admin', 'register_wordpress_dashboard_widget' ) ) !== false, 'Pending-review WordPress dashboard widget is not registered.' );
+$notification_types = Parish_Formation_Notifications::types();
+$notification_templates = Parish_Formation_Notifications::default_templates();
+$assert( isset( $notification_types['assessment_resubmission_requested'] ), 'Assessment resubmission notification type is not registered.' );
+$assert( isset( $notification_templates['assessment_resubmission_requested'] ), 'Assessment resubmission notification template is missing.' );
+$assert( in_array( 'learner_feedback', Parish_Formation_Notifications::placeholders( 'assessment_resubmission_requested' ), true ), 'Assessment resubmission template does not expose learner-visible feedback.' );
 
 foreach ( array( 'pf_course', 'pf_lesson', 'pf_assessment', 'pf_question', 'pf_cert_design' ) as $post_type ) {
 	$assert( post_type_exists( $post_type ), "Post type {$post_type} is not registered." );

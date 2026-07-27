@@ -24,9 +24,13 @@ LMS features such as sales, subscriptions, commissions, or marketplaces.
 - Single-use passwordless login by emailed magic link or six-digit code
 - Searchable participant administration with profile, enrollment, and account-security details
 - Responsive front-end My Formation experience with AJAX navigation
-- Automatic and staff-reviewed assessments with configurable passing rules
-- Non-graded acknowledgement and reflection assessments
-- Staff progress, assessment, course, and CSV reporting
+- Automatic and staff-reviewed assessments with configurable passing rules,
+  partial credit, staff approval, feedback, and resubmission
+- Multiple Choice, Multiple Select, True/False, Short Answer, Fill in the Blank,
+  Matching, Ordering, Numeric, Paragraph, File Upload, Reflection, Rating Scale,
+  Yes/No, Acknowledgment, and Image Selection questions
+- Historical question snapshots and audited per-response review records
+- Staff progress, assessment, course, summary CSV, and detailed-response reporting
 - Reusable certificate designs with private PDF-only signature assets
 - Verifiable, revocable, letter-size PDF completion certificates
 - Certificate revocation and replacement issuance

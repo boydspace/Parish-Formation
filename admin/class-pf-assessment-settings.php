@@ -19,6 +19,7 @@ final class Parish_Formation_Assessment_Settings {
 	public const PASSING_RULE_META_KEY = '_pf_assessment_passing_rule';
 	public const PASSING_VALUE_META_KEY = '_pf_assessment_passing_value';
 	public const MAX_ATTEMPTS_META_KEY = '_pf_assessment_max_attempts';
+	public const MANUAL_APPROVAL_META_KEY = '_pf_assessment_manual_approval';
 
 	private const NONCE_ACTION = 'pf_save_assessment_settings';
 	private const NONCE_NAME   = 'pf_assessment_settings_nonce';
@@ -54,6 +55,7 @@ final class Parish_Formation_Assessment_Settings {
 		$passing_rule = get_post_meta( $post->ID, self::PASSING_RULE_META_KEY, true );
 		$passing_value = get_post_meta( $post->ID, self::PASSING_VALUE_META_KEY, true );
 		$max_attempts = absint( get_post_meta( $post->ID, self::MAX_ATTEMPTS_META_KEY, true ) );
+		$manual_approval = (bool) get_post_meta( $post->ID, self::MANUAL_APPROVAL_META_KEY, true );
 		$grading     = self::valid_grading( $grading ) ? $grading : 'immediate';
 		$progression = self::valid_progression( $progression ) ? $progression : 'pass_to_continue';
 		$passing_rule = self::valid_passing_rule( $passing_rule ) ? $passing_rule : 'percentage';
@@ -111,6 +113,9 @@ final class Parish_Formation_Assessment_Settings {
 			<option value="submit_to_continue" <?php selected( $progression, 'submit_to_continue' ); ?>><?php esc_html_e( 'Require submission to continue', 'parish-formation' ); ?></option>
 			<option value="no_gate" <?php selected( $progression, 'no_gate' ); ?>><?php esc_html_e( 'Do not block progression', 'parish-formation' ); ?></option>
 		</select>
+		<p><label><input type="checkbox" name="pf_assessment_manual_approval" value="1" <?php checked( $manual_approval ); ?> /> <strong><?php esc_html_e( 'Require staff approval before passing', 'parish-formation' ); ?></strong></label></p>
+		<p class="description"><?php esc_html_e( 'The submission enters the review queue even when every question can be graded automatically. Staff makes the final pass, fail, or resubmission decision.', 'parish-formation' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Every required question and acknowledgment is always enforced. Questions configured for manual review, including file uploads, always remain pending until reviewed.', 'parish-formation' ); ?></p>
 		</div>
 		<p class="description"><?php esc_html_e( 'Add questions with the block inserter, then arrange this assessment with the lessons from the course editor.', 'parish-formation' ); ?></p>
 		<script>
@@ -163,6 +168,7 @@ final class Parish_Formation_Assessment_Settings {
 				update_post_meta( $post_id, self::PASSING_RULE_META_KEY, 'percentage' );
 				update_post_meta( $post_id, self::PASSING_VALUE_META_KEY, 0 );
 				update_post_meta( $post_id, self::MAX_ATTEMPTS_META_KEY, 1 );
+				delete_post_meta( $post_id, self::MANUAL_APPROVAL_META_KEY );
 				return;
 			}
 			$grading = isset( $_POST['pf_assessment_grading'] ) ? sanitize_key( wp_unslash( $_POST['pf_assessment_grading'] ) ) : '';
@@ -175,6 +181,11 @@ final class Parish_Formation_Assessment_Settings {
 			update_post_meta( $post_id, self::PASSING_VALUE_META_KEY, max( 0, $passing_value ) );
 			$max_attempts = isset( $_POST['pf_assessment_max_attempts'] ) ? absint( $_POST['pf_assessment_max_attempts'] ) : 1;
 			update_post_meta( $post_id, self::MAX_ATTEMPTS_META_KEY, max( 1, $max_attempts ) );
+			if ( ! empty( $_POST['pf_assessment_manual_approval'] ) ) {
+				update_post_meta( $post_id, self::MANUAL_APPROVAL_META_KEY, 1 );
+			} else {
+				delete_post_meta( $post_id, self::MANUAL_APPROVAL_META_KEY );
+			}
 		}
 	}
 

@@ -106,9 +106,9 @@ final class Parish_Formation_Certificates_Admin {
 				<a class="button" href="<?php echo esc_url( $export_url ); ?>"><?php esc_html_e( 'Download Filtered CSV', 'parish-formation' ); ?></a>
 			</form>
 			<?php if ( ! $rows ) : ?><p><?php esc_html_e( 'No certificates match these filters.', 'parish-formation' ); ?></p><?php else : ?>
-			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Participant', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Course', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Run / Issue', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Status', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Verification Code', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Issued', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Expires', 'parish-formation' ); ?></th></tr></thead><tbody>
+			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Participant', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Course', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Run / Issue', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Status', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Verification Code', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Issued', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Expires', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Actions', 'parish-formation' ); ?></th></tr></thead><tbody>
 			<?php foreach ( $rows as $row ) : $detail_url = add_query_arg( array( 'page' => 'parish-formation-certificates', 'certificate_id' => $row->id ), admin_url( 'admin.php' ) ); ?>
-				<tr><td><a href="<?php echo esc_url( $detail_url ); ?>"><?php echo esc_html( $row->participant_name ); ?></a></td><td><?php echo esc_html( $row->course_title ); ?></td><td><?php echo esc_html( $row->course_run . ' / ' . $row->issue_number ); ?></td><td><?php echo esc_html( self::status_label( $row ) ); ?></td><td><code><?php echo esc_html( $row->verification_code ); ?></code></td><td><?php echo esc_html( self::format_utc_date( $row->issued_at ) ); ?></td><td><?php echo $row->expires_at ? esc_html( self::format_utc_date( $row->expires_at ) ) : '&mdash;'; ?></td></tr>
+				<tr><td><a href="<?php echo esc_url( $detail_url ); ?>"><?php echo esc_html( $row->participant_name ); ?></a></td><td><?php echo esc_html( $row->course_title ); ?></td><td><?php echo esc_html( $row->course_run . ' / ' . $row->issue_number ); ?></td><td><?php echo esc_html( self::status_label( $row ) ); ?></td><td><a href="<?php echo esc_url( Parish_Formation_Certificate_Verification::get_verification_url( $row->verification_code ) ); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr( sprintf( __( 'Verify certificate %s', 'parish-formation' ), $row->verification_code ) ); ?>"><code><?php echo esc_html( $row->verification_code ); ?></code></a></td><td><?php echo esc_html( self::format_utc_date( $row->issued_at ) ); ?></td><td><?php echo $row->expires_at ? esc_html( self::format_utc_date( $row->expires_at ) ) : '&mdash;'; ?></td><td><a class="button button-small" href="<?php echo esc_url( self::pdf_download_url( $row ) ); ?>"><?php esc_html_e( 'Download PDF', 'parish-formation' ); ?></a></td></tr>
 			<?php endforeach; ?>
 			</tbody></table><?php endif; ?>
 		</div>
@@ -144,15 +144,16 @@ final class Parish_Formation_Certificates_Admin {
 				__( 'Issued', 'parish-formation' ) => self::format_utc_date( $certificate->issued_at ),
 				__( 'Issued by', 'parish-formation' ) => $issued_by ? $issued_by->display_name : __( 'System', 'parish-formation' ),
 				__( 'Expires', 'parish-formation' ) => $certificate->expires_at ? self::format_utc_date( $certificate->expires_at ) : __( 'Never', 'parish-formation' ),
-				__( 'Verification code', 'parish-formation' ) => $certificate->verification_code,
 			);
 			foreach ( $fields as $label => $value ) : ?><tr><th style="width:210px"><?php echo esc_html( $label ); ?></th><td><?php echo esc_html( $value ); ?></td></tr><?php endforeach;
+			?><tr><th style="width:210px"><?php esc_html_e( 'Verification code', 'parish-formation' ); ?></th><td><a href="<?php echo esc_url( Parish_Formation_Certificate_Verification::get_verification_url( $certificate->verification_code ) ); ?>" target="_blank" rel="noopener noreferrer"><code><?php echo esc_html( $certificate->verification_code ); ?></code></a></td></tr><?php
 			if ( 'revoked' === $certificate->status ) : ?>
 			<tr><th><?php esc_html_e( 'Revoked', 'parish-formation' ); ?></th><td><?php echo esc_html( self::format_utc_date( $certificate->revoked_at ) ); ?></td></tr>
 			<tr><th><?php esc_html_e( 'Revoked by', 'parish-formation' ); ?></th><td><?php echo esc_html( $revoked_by ? $revoked_by->display_name : __( 'Unknown user', 'parish-formation' ) ); ?></td></tr>
 			<tr><th><?php esc_html_e( 'Reason', 'parish-formation' ); ?></th><td><?php echo nl2br( esc_html( $certificate->revocation_reason ) ); ?></td></tr>
 			<?php endif; ?>
 			</tbody></table>
+			<p><a class="button button-primary" href="<?php echo esc_url( self::pdf_download_url( $certificate ) ); ?>"><?php esc_html_e( 'Download Certificate PDF', 'parish-formation' ); ?></a> <a class="button" href="<?php echo esc_url( Parish_Formation_Certificate_Verification::get_verification_url( $certificate->verification_code ) ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Verification Page', 'parish-formation' ); ?></a></p>
 			<?php if ( current_user_can( 'pf_manage_enrollments' ) && 'issued' === $certificate->status ) : ?>
 			<h2><?php esc_html_e( 'Revoke Certificate', 'parish-formation' ); ?></h2>
 			<p><?php esc_html_e( 'Revocation is permanent. The public verification page and PDF will identify this code as revoked.', 'parish-formation' ); ?></p>
@@ -170,6 +171,14 @@ final class Parish_Formation_Certificates_Admin {
 		if ( ! current_user_can( 'pf_view_reports' ) || ! current_user_can( 'pf_manage_enrollments' ) ) {
 			wp_die( esc_html__( 'You do not have permission to manage certificates.', 'parish-formation' ) );
 		}
+	}
+
+	/** Build the existing access-controlled PDF URL for a report viewer. */
+	private static function pdf_download_url( $certificate ) {
+		return wp_nonce_url(
+			add_query_arg( array( 'action' => 'pf_download_certificate', 'certificate' => $certificate->certificate_uuid ), admin_url( 'admin-post.php' ) ),
+			'pf_download_certificate_' . $certificate->certificate_uuid
+		);
 	}
 
 	/** Redirect back to a certificate record with a whitelisted notice code. */

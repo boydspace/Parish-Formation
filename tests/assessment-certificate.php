@@ -103,6 +103,15 @@ try {
 	$limit = Parish_Formation_Assessment_Repository::submit( $enrollment, $limited_id, array( $lq => 'true' ) );
 	$assert( is_wp_error( $limit ) && 'attempt_limit' === $limit->get_error_code(), 'Single-attempt limit was not enforced.' );
 
+	$approval_id = $create_assessment( 'Staff approval assessment', 'percentage', 100, 1, 'pass_to_continue' );
+	update_post_meta( $approval_id, Parish_Formation_Assessment_Settings::MANUAL_APPROVAL_META_KEY, 1 );
+	$approval_q = $create_question( $approval_id, 'Automatically correct but staff approved', 'true_false', 'true' );
+	$approval_pending = Parish_Formation_Assessment_Repository::submit( $enrollment, $approval_id, array( $approval_q => 'true' ) );
+	$assert( ! is_wp_error( $approval_pending ) && 'pending_review' === $approval_pending->status && null === $approval_pending->passed && 1.0 === (float) $approval_pending->score_points, 'Assessment-wide staff approval did not hold an automatically correct submission for review.' );
+	$approval_reviewed = Parish_Formation_Assessment_Repository::review( $approval_pending->id, $enrollment_id, 'passed', array(), '', $staff_id, array(), array(), 'Approved after staff verification.' );
+	$approval_attempt = Parish_Formation_Assessment_Repository::get_attempt( $approval_pending->id );
+	$assert( true === $approval_reviewed && 'passed' === $approval_attempt->status && 1 === (int) $approval_attempt->passed, 'Staff could not approve an assessment-wide manual-approval submission.' );
+
 	$phase_two_id = $create_assessment( 'Structured response assessment', 'points', 5, 1, 'no_gate' );
 	$multi_q = $create_question( $phase_two_id, 'Select both correct choices', 'multiple_select', null, 4, 1 );
 	$multi_config = Parish_Formation_Question_Config::get( $multi_q );
@@ -147,10 +156,22 @@ try {
 	$pending_answers = Parish_Formation_Assessment_Repository::get_attempt_answers( $pending->id );
 	$invalid_review = Parish_Formation_Assessment_Repository::review( $pending->id, $enrollment_id, 'maybe', array(), '', $staff_id );
 	$assert( is_wp_error( $invalid_review ) && 'invalid_decision' === $invalid_review->get_error_code(), 'Invalid review decision was accepted.' );
-	$reviewed = Parish_Formation_Assessment_Repository::review( $pending->id, $enrollment_id, 'passed', array( $pending_answers[0]->id => 3 ), 'Approved for testing.', $staff_id );
+	$reviewed = Parish_Formation_Assessment_Repository::review( $pending->id, $enrollment_id, 'passed', array( $pending_answers[0]->id => 3 ), 'Approved for testing.', $staff_id, array( $pending_answers[0]->id => 'A thoughtful reflection.' ), array( $pending_answers[0]->id => 'Private rubric note.' ), 'Thank you for completing this reflection.' );
 	$assert( true === $reviewed, 'Manual review could not be completed.' );
 	$reviewed_attempt = Parish_Formation_Assessment_Repository::get_attempt( $pending->id );
 	$assert( 'passed' === $reviewed_attempt->status && 1 === (int) $reviewed_attempt->passed && 3.0 === (float) $reviewed_attempt->score_points && $staff_id === (int) $reviewed_attempt->reviewed_by, 'Manual review audit fields are incorrect.' );
+	$reviewed_answer = Parish_Formation_Assessment_Repository::get_attempt_answers( $pending->id )[0];
+	$assert( 'reviewed' === $reviewed_answer->review_status && $staff_id === (int) $reviewed_answer->reviewer_user_id && 'A thoughtful reflection.' === $reviewed_answer->learner_feedback && 'Private rubric note.' === $reviewed_answer->private_note, 'Per-response review feedback or audit fields were not saved.' );
+	$assert( 'Thank you for completing this reflection.' === $reviewed_attempt->learner_feedback, 'Overall learner-visible review feedback was not saved.' );
+
+	$resubmit_id = $create_assessment( 'Resubmission assessment', 'points', 1, 1, 'no_gate' );
+	$resubmit_q = $create_question( $resubmit_id, 'Revise this response', 'reflection', null, 1 );
+	$resubmit_pending = Parish_Formation_Assessment_Repository::submit( $enrollment, $resubmit_id, array( $resubmit_q => 'First response.' ) );
+	$resubmit_answer = Parish_Formation_Assessment_Repository::get_attempt_answers( $resubmit_pending->id )[0];
+	$resubmit_review = Parish_Formation_Assessment_Repository::review( $resubmit_pending->id, $enrollment_id, 'needs_resubmission', array( $resubmit_answer->id => 0 ), '', $staff_id, array( $resubmit_answer->id => 'Please add more detail.' ) );
+	$assert( true === $resubmit_review && 'needs_resubmission' === Parish_Formation_Assessment_Repository::get_attempt( $resubmit_pending->id )->status, 'Staff could not request assessment resubmission.' );
+	$resubmitted = Parish_Formation_Assessment_Repository::submit( $enrollment, $resubmit_id, array( $resubmit_q => 'A revised response with more detail.' ) );
+	$assert( ! is_wp_error( $resubmitted ) && 2 === (int) $resubmitted->attempt_number && 'pending_review' === $resubmitted->status, 'Requested resubmission did not override the normal attempt limit.' );
 
 	$assert( ! Parish_Formation_Certificate_Repository::is_eligible( $enrollment ), 'Incomplete enrollment was certificate-eligible.' );
 	global $wpdb;

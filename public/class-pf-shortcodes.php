@@ -585,7 +585,7 @@ final class Parish_Formation_Shortcodes {
 		$latest_feedback = $latest ? Parish_Formation_Question_Feedback_Service::for_attempt( $latest->id ) : array();
 		$acknowledgement_mode = Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment->ID );
 		$max_attempts = $acknowledgement_mode ? 1 : max( 1, absint( get_post_meta( $assessment->ID, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
-		$closed = $latest && ( 'pending_review' === $latest->status || (bool) $latest->passed || absint( $latest->attempt_number ) >= $max_attempts );
+		$closed = $latest && ( 'pending_review' === $latest->status || (bool) $latest->passed || ( 'needs_resubmission' !== $latest->status && absint( $latest->attempt_number ) >= $max_attempts ) );
 		$return_url = self::get_curriculum_item_url( $enrollment->course_id, array( 'type' => 'assessment', 'post' => $assessment ), self::current_url() );
 		$next_item  = self::get_next_curriculum_item( $curriculum, $assessment->ID );
 		$next_url   = $next_item
@@ -599,7 +599,9 @@ final class Parish_Formation_Shortcodes {
 			<div class="pf-assessment-latest-result uk-alert <?php echo 'passed' === $latest->status ? 'uk-alert-success' : ( 'failed' === $latest->status ? 'uk-alert-danger' : 'uk-alert-primary' ); ?>">
 				<p><strong><?php echo esc_html( $acknowledgement_mode ? ( 'pending_review' === $latest->status ? __( 'Submitted — awaiting review', 'parish-formation' ) : __( 'Submitted', 'parish-formation' ) ) : ucwords( str_replace( '_', ' ', $latest->status ) ) ); ?></strong></p>
 				<?php if ( ! $acknowledgement_mode && 'pending_review' !== $latest->status ) : ?><p><?php echo esc_html( Parish_Formation_Assessment_Repository::format_score_summary( $latest ) ); ?></p><?php endif; ?>
-				<?php if ( ! $acknowledgement_mode ) : ?><p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, $max_attempts ) ); ?></p><?php endif; ?>
+				<?php if ( ! $acknowledgement_mode ) : ?><p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, max( $max_attempts, absint( $latest->attempt_number ) ) ) ); ?></p><?php endif; ?>
+				<?php if ( ! empty( $latest->learner_feedback ) ) : ?><p><strong><?php esc_html_e( 'Staff feedback:', 'parish-formation' ); ?></strong><br><?php echo nl2br( esc_html( $latest->learner_feedback ) ); ?></p><?php endif; ?>
+				<?php if ( 'needs_resubmission' === $latest->status ) : ?><p><?php esc_html_e( 'Staff requested a revised submission. Complete the questions below and submit again.', 'parish-formation' ); ?></p><?php endif; ?>
 			</div>
 		<?php endif; ?>
 		<div class="pf-assessment-ajax-result" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>

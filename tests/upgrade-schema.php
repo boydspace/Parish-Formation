@@ -40,6 +40,7 @@ try {
 	$critical_columns = array(
 		'pf_enrollments'          => array( 'current_run', 'enrollment_source', 'completion_override_by' ),
 		'pf_assessment_attempts'  => array( 'course_run', 'passing_rule', 'reviewed_by' ),
+		'pf_assessment_answers'   => array( 'automatic_points', 'review_status', 'reviewer_user_id', 'learner_feedback' ),
 		'pf_certificates'         => array( 'verification_code', 'design_snapshot', 'reissue_of' ),
 		'pf_notification_log'     => array( 'participant_user_id', 'initiated_by', 'message_body' ),
 		'pf_invitations'          => array( 'token_hash', 'token_encrypted', 'restricted_email' ),

@@ -98,7 +98,7 @@ final class Parish_Formation_Assessment_Actions {
 				'totalGraded'  => absint( $result->total_graded ),
 				'scoreLabel'   => Parish_Formation_Assessment_Repository::format_score_summary( $result ),
 				'attempt'      => absint( $result->attempt_number ),
-				'maxAttempts'  => $max_attempts,
+				'maxAttempts'  => max( $max_attempts, absint( $result->attempt_number ) ),
 				'progress'     => $progress['percentage'],
 				'nextUrl'      => esc_url_raw( $next_url ),
 				'nextLabel'    => $next_item ? __( 'Continue to Next Section', 'parish-formation' ) : __( 'Finish Course', 'parish-formation' ),

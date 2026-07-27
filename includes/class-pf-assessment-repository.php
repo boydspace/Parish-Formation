@@ -6,6 +6,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Parish_Formation_Assessment_Repository {
+	/** Count current-course attempts awaiting staff review. */
+	public static function get_pending_review_count() {
+		global $wpdb;
+		return absint( $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}pf_assessment_attempts AS attempt INNER JOIN {$wpdb->prefix}pf_enrollments AS enrollment ON enrollment.id = attempt.enrollment_id WHERE attempt.status = 'pending_review' AND attempt.course_run = enrollment.current_run" ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
 	/** Build a learner-facing score summary that distinguishes completion responses. */
 	public static function format_score_summary( $attempt ) {
 		$completion_count = max( 0, count( self::get_attempt_answers( $attempt->id ) ) - absint( $attempt->total_graded ) );
@@ -78,12 +83,13 @@ final class Parish_Formation_Assessment_Repository {
 		$questions     = self::get_questions( $assessment_id );
 		$latest        = self::get_latest_attempt( $enrollment->id, $assessment_id );
 		$acknowledgement_mode = Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment_id );
+		$manual_approval = ! $acknowledgement_mode && (bool) get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::MANUAL_APPROVAL_META_KEY, true );
 		$max_attempts  = $acknowledgement_mode ? 1 : max( 1, absint( get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
 		$attempt_number = $latest ? absint( $latest->attempt_number ) + 1 : 1;
 		if ( $latest && ( 'pending_review' === $latest->status || (bool) $latest->passed ) ) {
 			return new WP_Error( 'attempt_closed', __( 'This assessment has already been submitted successfully.', 'parish-formation' ) );
 		}
-		if ( $attempt_number > $max_attempts ) {
+		if ( $attempt_number > $max_attempts && ( ! $latest || 'needs_resubmission' !== $latest->status ) ) {
 			return new WP_Error( 'attempt_limit', __( 'No assessment attempts remain.', 'parish-formation' ) );
 		}
 		if ( ! $questions ) {
@@ -147,6 +153,7 @@ final class Parish_Formation_Assessment_Repository {
 			}
 		}
 		$metric = 'correct_count' === $rule ? $correct_count : ( 'points' === $rule ? $score : ( $maximum > 0 ? ( $score / $maximum ) * 100 : 100 ) );
+		$needs_review = $needs_review || $manual_approval;
 		$passed = ! $needs_review && ( $acknowledgement_mode || $metric >= $value );
 		$status = $needs_review ? 'pending_review' : ( $passed ? 'passed' : 'failed' );
 		$now = current_time( 'mysql', true );
@@ -164,7 +171,7 @@ final class Parish_Formation_Assessment_Repository {
 		$attempt_id = $wpdb->insert_id;
 		foreach ( $answer_rows as $row ) {
 			$snapshot = wp_json_encode( Parish_Formation_Question_Snapshot::create( $row['question'], $row['config'] ) );
-			$saved = $wpdb->insert( $wpdb->prefix . 'pf_assessment_answers', array( 'attempt_id' => $attempt_id, 'question_id' => $row['question']->ID, 'question_snapshot' => $snapshot, 'answer' => $row['answer'], 'points_awarded' => $row['awarded'], 'is_correct' => $row['is_correct'], 'requires_review' => $row['requires_review'] ? 1 : 0, 'created_at' => $now ), array( '%d', '%d', '%s', '%s', '%f', '%d', '%d', '%s' ) );
+			$saved = $wpdb->insert( $wpdb->prefix . 'pf_assessment_answers', array( 'attempt_id' => $attempt_id, 'question_id' => $row['question']->ID, 'question_snapshot' => $snapshot, 'answer' => $row['answer'], 'points_awarded' => $row['awarded'], 'automatic_points' => $row['awarded'], 'is_correct' => $row['is_correct'], 'requires_review' => $row['requires_review'] ? 1 : 0, 'review_status' => $row['requires_review'] ? 'pending_review' : 'not_required', 'created_at' => $now ), array( '%d', '%d', '%s', '%s', '%f', '%f', '%d', '%d', '%s', '%s' ) );
 			if ( false === $saved ) {
 				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'database_error', __( 'The assessment answers could not be saved.', 'parish-formation' ) );
@@ -175,31 +182,36 @@ final class Parish_Formation_Assessment_Repository {
 	}
 
 	/** Finalize a pending manual review with audited staff fields. */
-	public static function review( $attempt_id, $enrollment_id, $decision, $manual_points, $note, $reviewer_id ) {
+	public static function review( $attempt_id, $enrollment_id, $decision, $manual_points, $note, $reviewer_id, $answer_feedback = array(), $answer_notes = array(), $learner_feedback = '' ) {
 		global $wpdb;
 		$attempt = $wpdb->get_row( $wpdb->prepare( "SELECT attempt.* FROM {$wpdb->prefix}pf_assessment_attempts AS attempt INNER JOIN {$wpdb->prefix}pf_enrollments AS enrollment ON enrollment.id = attempt.enrollment_id WHERE attempt.id = %d AND attempt.enrollment_id = %d AND attempt.course_run = enrollment.current_run", absint( $attempt_id ), absint( $enrollment_id ) ) );
 		if ( ! $attempt || 'pending_review' !== $attempt->status ) {
 			return new WP_Error( 'invalid_attempt', __( 'That pending assessment attempt could not be found.', 'parish-formation' ) );
 		}
-		if ( ! in_array( $decision, array( 'passed', 'failed' ), true ) ) {
+		if ( ! in_array( $decision, array( 'passed', 'failed', 'needs_resubmission' ), true ) ) {
 			return new WP_Error( 'invalid_decision', __( 'Select Pass or Fail for this review.', 'parish-formation' ) );
 		}
 		$answers = self::get_attempt_answers( $attempt_id );
 		$score = 0;
-		$maximum = 0;
+		$maximum = (float) $attempt->max_points;
 		$wpdb->query( 'START TRANSACTION' );
 		foreach ( $answers as $answer ) {
 			$snapshot = json_decode( $answer->question_snapshot, true );
 			$question_points = max( 1, absint( $snapshot['points'] ?? 1 ) );
-			if ( in_array( $snapshot['type'] ?? '', array( 'multiple_choice', 'true_false', 'reflection' ), true ) ) {
-				$maximum += $question_points;
-			}
 			$awarded = (bool) $answer->requires_review
 				? min( $question_points, max( 0, isset( $manual_points[ $answer->id ] ) ? (float) $manual_points[ $answer->id ] : 0 ) )
 				: (float) $answer->points_awarded;
 			$score += $awarded;
 			if ( $answer->requires_review ) {
-				$saved = $wpdb->update( $wpdb->prefix . 'pf_assessment_answers', array( 'points_awarded' => $awarded ), array( 'id' => $answer->id ), array( '%f' ), array( '%d' ) );
+				$answer_data = array(
+					'points_awarded' => $awarded,
+					'review_status' => 'needs_resubmission' === $decision ? 'needs_resubmission' : 'reviewed',
+					'reviewer_user_id' => absint( $reviewer_id ),
+					'reviewed_at' => current_time( 'mysql', true ),
+					'private_note' => sanitize_textarea_field( $answer_notes[ $answer->id ] ?? '' ),
+					'learner_feedback' => sanitize_textarea_field( $answer_feedback[ $answer->id ] ?? '' ),
+				);
+				$saved = $wpdb->update( $wpdb->prefix . 'pf_assessment_answers', $answer_data, array( 'id' => $answer->id ), array( '%f', '%s', '%d', '%s', '%s', '%s' ), array( '%d' ) );
 				if ( false === $saved ) {
 					$wpdb->query( 'ROLLBACK' );
 					return new WP_Error( 'database_error', __( 'The manual question score could not be saved.', 'parish-formation' ) );
@@ -209,9 +221,9 @@ final class Parish_Formation_Assessment_Repository {
 		$now = current_time( 'mysql', true );
 		$saved = $wpdb->update(
 			$wpdb->prefix . 'pf_assessment_attempts',
-			array( 'status' => $decision, 'score_points' => $score, 'max_points' => $maximum, 'passed' => 'passed' === $decision ? 1 : 0, 'reviewed_by' => absint( $reviewer_id ), 'reviewed_at' => $now, 'review_note' => sanitize_textarea_field( $note ) ),
+			array( 'status' => $decision, 'score_points' => $score, 'max_points' => $maximum, 'passed' => 'needs_resubmission' === $decision ? null : ( 'passed' === $decision ? 1 : 0 ), 'reviewed_by' => absint( $reviewer_id ), 'reviewed_at' => $now, 'review_note' => sanitize_textarea_field( $note ), 'learner_feedback' => sanitize_textarea_field( $learner_feedback ) ),
 			array( 'id' => absint( $attempt_id ) ),
-			array( '%s', '%f', '%f', '%d', '%d', '%s', '%s' ),
+			array( '%s', '%f', '%f', '%d', '%d', '%s', '%s', '%s' ),
 			array( '%d' )
 		);
 		if ( false === $saved ) {

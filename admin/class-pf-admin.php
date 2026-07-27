@@ -20,9 +20,12 @@ final class Parish_Formation_Admin {
 	 * @return void
 	 */
 	public static function register_menu() {
+		$pending_count = current_user_can( 'pf_grade_assessments' ) ? Parish_Formation_Assessment_Repository::get_pending_review_count() : 0;
+		$menu_title = esc_html__( 'Parish Formation', 'parish-formation' );
+		if ( $pending_count ) { $menu_title .= ' <span class="awaiting-mod"><span class="pending-count">' . esc_html( number_format_i18n( $pending_count ) ) . '</span></span>'; }
 		add_menu_page(
 			esc_html__( 'Parish Formation', 'parish-formation' ),
-			esc_html__( 'Parish Formation', 'parish-formation' ),
+			$menu_title,
 			'pf_manage_courses',
 			'parish-formation',
 			array( self::class, 'render_dashboard' ),
@@ -52,8 +55,23 @@ final class Parish_Formation_Admin {
 		}
 
 		?>
-		<div class="wrap pf-dashboard"><div class="pf-dashboard-heading"><div><h1><?php esc_html_e( 'Parish Formation Dashboard', 'parish-formation' ); ?></h1><p><?php esc_html_e( 'Monitor participation, outstanding work, and recent formation activity.', 'parish-formation' ); ?></p></div><button id="pf-dashboard-refresh" class="button" type="button"><?php esc_html_e( 'Refresh Dashboard', 'parish-formation' ); ?></button></div><div id="pf-dashboard-status" aria-live="polite"></div><div id="pf-dashboard-content"><?php self::render_dashboard_content( self::dashboard_data() ); ?></div></div>
+		<?php $data = self::dashboard_data(); ?>
+		<div class="wrap pf-dashboard"><div class="pf-dashboard-heading"><div><h1><?php esc_html_e( 'Parish Formation Dashboard', 'parish-formation' ); ?></h1><p><?php esc_html_e( 'Monitor participation, outstanding work, and recent formation activity.', 'parish-formation' ); ?></p></div><button id="pf-dashboard-refresh" class="button" type="button"><?php esc_html_e( 'Refresh Dashboard', 'parish-formation' ); ?></button></div><?php if ( current_user_can( 'pf_grade_assessments' ) && $data['attention']['pending_reviews'] ) : ?><div class="notice notice-warning inline"><p><strong><?php echo esc_html( sprintf( _n( '%d assessment is awaiting review.', '%d assessments are awaiting review.', $data['attention']['pending_reviews'], 'parish-formation' ), $data['attention']['pending_reviews'] ) ); ?></strong> <a href="<?php echo esc_url( self::review_queue_url() ); ?>"><?php esc_html_e( 'Open the review queue', 'parish-formation' ); ?></a></p></div><?php endif; ?><div id="pf-dashboard-status" aria-live="polite"></div><div id="pf-dashboard-content"><?php self::render_dashboard_content( $data ); ?></div></div>
 		<?php
+	}
+
+	public static function register_wordpress_dashboard_widget() {
+		if ( current_user_can( 'pf_grade_assessments' ) ) { wp_add_dashboard_widget( 'pf_pending_assessment_reviews', __( 'Formation Assessments Awaiting Review', 'parish-formation' ), array( self::class, 'render_wordpress_dashboard_widget' ) ); }
+	}
+
+	public static function render_wordpress_dashboard_widget() {
+		$count = Parish_Formation_Assessment_Repository::get_pending_review_count();
+		if ( ! $count ) { echo '<p>' . esc_html__( 'No assessment submissions are awaiting review.', 'parish-formation' ) . '</p>'; return; }
+		echo '<p><strong class="pf-dashboard-review-count">' . esc_html( number_format_i18n( $count ) ) . '</strong> ' . esc_html( _n( 'assessment needs review.', 'assessments need review.', $count, 'parish-formation' ) ) . '</p><p><a class="button button-primary" href="' . esc_url( self::review_queue_url() ) . '">' . esc_html__( 'Review Assessments', 'parish-formation' ) . '</a></p>';
+	}
+
+	private static function review_queue_url() {
+		return add_query_arg( array( 'page' => 'parish-formation-reports', 'hub_tab' => 'reviews', 'pf_review_status' => 'pending_review' ), admin_url( 'admin.php' ) );
 	}
 
 	public static function enqueue_assets( $hook_suffix ) {
@@ -89,7 +107,7 @@ final class Parish_Formation_Admin {
 				'completion_rate' => $total ? (int) round( ( $completed / $total ) * 100 ) : 0,
 			),
 			'attention' => array(
-				'pending_reviews' => absint( $wpdb->get_var( "SELECT COUNT(*) FROM {$attempts} a INNER JOIN {$enrollments} e ON e.id = a.enrollment_id WHERE a.status = 'pending_review' AND a.course_run = e.current_run" ) ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				'pending_reviews' => Parish_Formation_Assessment_Repository::get_pending_review_count(),
 				'expiring_enrollments' => absint( $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$enrollments} WHERE status IN ('enrolled','in_progress') AND expires_at IS NOT NULL AND expires_at >= %s AND expires_at <= %s", $now, $soon ) ) ),
 				'failed_emails' => absint( $wpdb->get_var( "SELECT COUNT(*) FROM {$logs} WHERE status = 'failed'" ) ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				'expiring_certificates' => absint( $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$certificates} WHERE status = 'issued' AND expires_at IS NOT NULL AND expires_at >= %s AND expires_at <= %s", $now, $certificate_soon ) ) ),

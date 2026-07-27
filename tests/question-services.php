@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ) && Parish_Formation_Question_Type_Registry::implemented( 'image_selection' ) && Parish_Formation_Question_Type_Registry::implemented( 'numeric' ) && Parish_Formation_Question_Type_Registry::implemented( 'file_upload' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ) && Parish_Formation_Question_Type_Registry::implemented( 'image_selection' ) && Parish_Formation_Question_Type_Registry::implemented( 'numeric' ) && Parish_Formation_Question_Type_Registry::implemented( 'paragraph' ) && Parish_Formation_Question_Type_Registry::implemented( 'file_upload' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -205,6 +205,13 @@ try {
 	$assert( false !== strpos( $numeric_html, 'inputmode="decimal"' ) && false !== strpos( $numeric_html, 'years' ) && false === strpos( $numeric_html, 'expected' ), 'Numeric learner control is incomplete or exposes its grading key.' );
 	$numeric_snapshot = Parish_Formation_Question_Snapshot::create( $numeric, Parish_Formation_Question_Config::get( $numeric->ID ) );
 	$assert( 5.0 === $numeric_snapshot['type_config']['minimum'] && 'years' === $numeric_snapshot['type_config']['unit_label'], 'Numeric snapshot lost its range or unit configuration.' );
+
+	$paragraph = $create_question( 'paragraph', 'Explain the responsibilities in detail.', '', array(), 4 );
+	$paragraph_config = Parish_Formation_Question_Config::get( $paragraph->ID );
+	$paragraph_grade = Parish_Formation_Question_Grading_Service::grade( $paragraph, 'A longer written response for staff review.' );
+	$paragraph_html = Parish_Formation_Question_Renderer::render( $paragraph, 'pf_answers[' . $paragraph->ID . ']', false );
+	$assert( $paragraph_config['manual_review'] && $paragraph_grade['valid'] && $paragraph_grade['requires_review'] && 4.0 === (float) $paragraph_grade['maximum_points'], 'Paragraph Response did not enter manual review with its configured points.' );
+	$assert( false !== strpos( $paragraph_html, '<textarea' ) && false !== strpos( $paragraph_html, 'pf_answers[' . $paragraph->ID . ']' ), 'Paragraph Response learner textarea was not rendered.' );
 
 	$file_question = $create_question( 'file_upload', 'Upload your signed form.', '', array(), 5 );
 	$file_config = Parish_Formation_Question_Config::get( $file_question->ID );
