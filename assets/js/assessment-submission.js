@@ -146,6 +146,38 @@
 		} );
 	}
 
+	function uploadAssessmentFiles( form, answers ) {
+		const fields = Array.from( form.querySelectorAll( '.pf-assessment-file-input' ) );
+		if ( ! fields.length ) { return Promise.resolve( answers ); }
+		const uploads = [];
+		fields.forEach( function ( field ) {
+			const wrapper = field.closest( '.pf-file-upload-response' );
+			const files = Array.from( field.files || [] );
+			const minimum = parseInt( wrapper.dataset.minFiles || '0', 10 );
+			const maximum = parseInt( wrapper.dataset.maxFiles || '1', 10 );
+			const maxSize = parseInt( wrapper.dataset.maxSize || '0', 10 );
+			if ( files.length < minimum || files.length > maximum ) { throw new Error( 'Please choose between ' + minimum + ' and ' + maximum + ' file(s).' ); }
+			if ( files.some( function ( file ) { return maxSize && file.size > maxSize; } ) ) { throw new Error( 'One of the selected files is too large.' ); }
+			if ( ! files.length ) { return; }
+			const questionId = wrapper.dataset.questionId;
+			const status = wrapper.querySelector( '.pf-file-upload-status' );
+			if ( status ) { status.textContent = pfAssessmentSubmission.uploading || 'Uploading files…'; }
+			const questionUploads = files.map( function ( file ) {
+				const body = new FormData();
+				body.append( 'file', file );
+				body.append( 'enrollment_id', form.elements.enrollment_id.value );
+				body.append( 'course_id', form.elements.course_id.value );
+				body.append( 'assessment_id', form.elements.assessment_id.value );
+				body.append( 'question_id', questionId );
+				return window.fetch( pfAssessmentSubmission.fileEndpoint, { method: 'POST', credentials: 'same-origin', headers: { 'X-WP-Nonce': pfAssessmentSubmission.nonce }, body: body } ).then( function ( response ) {
+					return response.json().then( function ( data ) { if ( ! response.ok ) { throw new Error( data.message || pfAssessmentSubmission.uploadError || 'A file could not be uploaded.' ); } return data.attachmentId; } );
+				} );
+			} );
+			uploads.push( Promise.all( questionUploads ).then( function ( ids ) { answers[ questionId ] = ids; if ( status ) { status.textContent = pfAssessmentSubmission.uploaded || 'Files uploaded securely.'; } } ) );
+		} );
+		return Promise.all( uploads ).then( function () { return answers; } );
+	}
+
 	document.addEventListener( 'submit', function ( event ) {
 		const form = event.target.closest( '.pf-assessment-questions' );
 		if ( ! form || ! window.fetch || ! window.pfAssessmentSubmission ) {
@@ -162,7 +194,7 @@
 		resultBox.replaceChildren();
 		form.setAttribute( 'aria-busy', 'true' );
 
-		window.fetch( pfAssessmentSubmission.endpoint, {
+		Promise.resolve().then( function () { return uploadAssessmentFiles( form, answers ); } ).then( function ( uploadedAnswers ) { return window.fetch( pfAssessmentSubmission.endpoint, {
 			method: 'POST',
 			credentials: 'same-origin',
 			headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': pfAssessmentSubmission.nonce },
@@ -172,9 +204,9 @@
 				assessment_id: form.elements.assessment_id.value,
 				return_url: window.location.href,
 				base_url: form.elements.formation_base_url.value,
-				answers: answers
+				answers: uploadedAnswers
 			} )
-		} ).then( function ( response ) {
+		} ); } ).then( function ( response ) {
 			return response.json().then( function ( body ) {
 				if ( ! response.ok ) {
 					throw new Error( body.message || pfAssessmentSubmission.error );

@@ -254,6 +254,25 @@ final class Parish_Formation_Question_Config {
 				'require_unit' => ! empty( $values['require_unit'] ),
 			);
 		}
+		if ( 'file_upload' === $type ) {
+			$blocked = array( 'php', 'php3', 'php4', 'php5', 'phtml', 'phar', 'exe', 'com', 'bat', 'cmd', 'sh', 'js', 'html', 'htm', 'svg' );
+			$extensions = is_array( $values['allowed_extensions'] ?? null ) ? $values['allowed_extensions'] : preg_split( '/[\s,]+/', (string) ( $values['allowed_extensions'] ?? '' ) );
+			$extensions = array_values( array_diff( array_unique( array_filter( array_map( static fn( $value ) => sanitize_key( ltrim( (string) $value, '.' ) ), $extensions ) ) ), $blocked ) );
+			if ( ! $extensions ) { $extensions = array( 'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png' ); }
+			$mime_types = is_array( $values['allowed_mime_types'] ?? null ) ? $values['allowed_mime_types'] : preg_split( '/[\r\n,]+/', (string) ( $values['allowed_mime_types'] ?? '' ) );
+			$mime_types = array_values( array_filter( array_map( 'sanitize_mime_type', $mime_types ) ) );
+			$minimum = max( 0, absint( $values['minimum_files'] ?? 1 ) );
+			$maximum = min( 10, max( 1, absint( $values['maximum_files'] ?? 1 ) ) );
+			if ( $minimum > $maximum ) { $minimum = $maximum; }
+			return array(
+				'allowed_extensions' => $extensions,
+				'allowed_mime_types' => $mime_types,
+				'max_file_size' => min( wp_max_upload_size(), max( 1024, absint( $values['max_file_size'] ?? 5 * MB_IN_BYTES ) ) ),
+				'minimum_files' => $minimum,
+				'maximum_files' => $maximum,
+				'submission_instructions' => wp_kses_post( $values['submission_instructions'] ?? '' ),
+			);
+		}
 		return self::sanitize_nested( $values );
 	}
 

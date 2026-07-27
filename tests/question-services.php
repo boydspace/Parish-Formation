@@ -30,7 +30,7 @@ try {
 	$assert( isset( $categories['automatic'], $categories['review'], $categories['formation'] ), 'Question categories are incomplete.' );
 	$assert( 'reflection' === Parish_Formation_Question_Type_Registry::normalize( 'reflection_response' ), 'Reflection compatibility alias failed.' );
 	$assert( 'acknowledgement' === Parish_Formation_Question_Type_Registry::normalize( 'acknowledgment' ), 'Acknowledgment compatibility alias failed.' );
-	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ) && Parish_Formation_Question_Type_Registry::implemented( 'image_selection' ) && Parish_Formation_Question_Type_Registry::implemented( 'numeric' ), 'Phase availability is incorrect.' );
+	$assert( Parish_Formation_Question_Type_Registry::implemented( 'multiple_choice' ) && Parish_Formation_Question_Type_Registry::implemented( 'multiple_select' ) && Parish_Formation_Question_Type_Registry::implemented( 'short_answer' ) && Parish_Formation_Question_Type_Registry::implemented( 'fill_blank' ) && Parish_Formation_Question_Type_Registry::implemented( 'matching' ) && Parish_Formation_Question_Type_Registry::implemented( 'ordering' ) && Parish_Formation_Question_Type_Registry::implemented( 'rating_scale' ) && Parish_Formation_Question_Type_Registry::implemented( 'yes_no' ) && Parish_Formation_Question_Type_Registry::implemented( 'image_selection' ) && Parish_Formation_Question_Type_Registry::implemented( 'numeric' ) && Parish_Formation_Question_Type_Registry::implemented( 'file_upload' ), 'Phase availability is incorrect.' );
 
 	$choice = $create_question( 'multiple_choice', 'Choose the first answer.', 'Correct', array( 'Correct', 'Incorrect' ), 2 );
 	$config = Parish_Formation_Question_Config::get( $choice->ID );
@@ -205,6 +205,34 @@ try {
 	$assert( false !== strpos( $numeric_html, 'inputmode="decimal"' ) && false !== strpos( $numeric_html, 'years' ) && false === strpos( $numeric_html, 'expected' ), 'Numeric learner control is incomplete or exposes its grading key.' );
 	$numeric_snapshot = Parish_Formation_Question_Snapshot::create( $numeric, Parish_Formation_Question_Config::get( $numeric->ID ) );
 	$assert( 5.0 === $numeric_snapshot['type_config']['minimum'] && 'years' === $numeric_snapshot['type_config']['unit_label'], 'Numeric snapshot lost its range or unit configuration.' );
+
+	$file_question = $create_question( 'file_upload', 'Upload your signed form.', '', array(), 5 );
+	$file_config = Parish_Formation_Question_Config::get( $file_question->ID );
+	$file_config['type_config'] = array( 'allowed_extensions' => 'pdf, jpg, php', 'allowed_mime_types' => "application/pdf\nimage/jpeg", 'max_file_size' => 2 * MB_IN_BYTES, 'minimum_files' => 1, 'maximum_files' => 2, 'submission_instructions' => 'Upload a readable copy.' );
+	update_post_meta( $file_question->ID, Parish_Formation_Question_Config::META_KEY, Parish_Formation_Question_Config::sanitize( $file_config, 'file_upload' ) );
+	$file_config = Parish_Formation_Question_Config::get( $file_question->ID );
+	$assert( ! in_array( 'php', $file_config['type_config']['allowed_extensions'], true ) && in_array( 'pdf', $file_config['type_config']['allowed_extensions'], true ), 'File Upload did not block executable extensions.' );
+	$private_file = wp_insert_post( array( 'post_type' => 'attachment', 'post_status' => 'private', 'post_title' => 'signed-form', 'post_mime_type' => 'application/pdf' ) );
+	$foreign_file = wp_insert_post( array( 'post_type' => 'attachment', 'post_status' => 'private', 'post_title' => 'foreign-form', 'post_mime_type' => 'application/pdf' ) );
+	$posts[] = $private_file;
+	$posts[] = $foreign_file;
+	foreach ( array( $private_file, $foreign_file ) as $attachment_id ) { update_post_meta( $attachment_id, Parish_Formation_Assessment_File_Service::PRIVATE_META, 1 ); update_post_meta( $attachment_id, Parish_Formation_Assessment_File_Service::QUESTION_META, $file_question->ID ); }
+	update_post_meta( $private_file, Parish_Formation_Assessment_File_Service::OWNER_META, get_current_user_id() );
+	update_post_meta( $foreign_file, Parish_Formation_Assessment_File_Service::OWNER_META, get_current_user_id() + 1 );
+	$file_grade = Parish_Formation_Question_Grading_Service::grade( $file_question, array( $private_file ) );
+	$file_foreign = Parish_Formation_Question_Grading_Service::grade( $file_question, array( $foreign_file ) );
+	$file_count = Parish_Formation_Question_Grading_Service::grade( $file_question, array( $private_file, $private_file + 1000, $private_file + 1001 ) );
+	$assert( $file_grade['valid'] && $file_grade['completed'] && $file_grade['requires_review'] && 'pending_review' === $file_grade['status'] && 5.0 === (float) $file_grade['maximum_points'], 'File Upload did not enter manual review with its configured points.' );
+	$assert( ! $file_foreign['valid'] && 'invalid_file' === $file_foreign['error_code'], 'File Upload accepted another learner’s attachment.' );
+	$assert( ! Parish_Formation_Assessment_File_Service::is_previewable_image( $private_file ), 'File Upload allowed a PDF in the protected image preview.' );
+	$image_preview = wp_insert_post( array( 'post_type' => 'attachment', 'post_status' => 'private', 'post_title' => 'photo', 'post_mime_type' => 'image/jpeg' ) );
+	$posts[] = $image_preview;
+	$assert( Parish_Formation_Assessment_File_Service::is_previewable_image( $image_preview ), 'File Upload did not permit a safe raster image preview.' );
+	$assert( ! $file_count['valid'] && 'invalid_file_count' === $file_count['error_code'], 'File Upload did not enforce its file-count limit.' );
+	$file_html = Parish_Formation_Question_Renderer::render( $file_question, 'pf_answers[' . $file_question->ID . ']', false );
+	$assert( false !== strpos( $file_html, 'type="file"' ) && false !== strpos( $file_html, '.pdf' ) && false !== strpos( $file_html, 'Upload a readable copy.' ), 'File Upload learner controls or instructions are incomplete.' );
+	$file_snapshot = Parish_Formation_Question_Snapshot::create( $file_question, $file_config );
+	$assert( 2 === $file_snapshot['type_config']['maximum_files'] && 2 * MB_IN_BYTES === $file_snapshot['type_config']['max_file_size'], 'File Upload snapshot lost its historical restrictions.' );
 
 	$multiple_select = $create_question( 'multiple_select', 'Select the two sacraments.', '', array(), 6 );
 	$multi_base = Parish_Formation_Question_Config::get( $multiple_select->ID );

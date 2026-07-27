@@ -105,6 +105,15 @@ final class Parish_Formation_Question_Renderer {
 				<?php if ( $require_open && ! $disabled ) { ?><p class="description pf-acknowledgement-open-notice"><?php esc_html_e( 'Open the linked item before checking the acknowledgment.', 'parish-formation' ); ?></p><?php } ?>
 			</div>
 			<?php
+		} elseif ( 'file_upload' === $type ) {
+			$settings = $config['type_config'];
+			$accept = implode( ',', array_map( static fn( $extension ) => '.' . $extension, $settings['allowed_extensions'] ?? array() ) );
+			if ( ! empty( $settings['submission_instructions'] ) ) { ?><div class="pf-file-upload-instructions"><?php echo wp_kses_post( $settings['submission_instructions'] ); ?></div><?php }
+			?><div class="pf-file-upload-response" data-question-id="<?php echo esc_attr( $question->ID ); ?>" data-min-files="<?php echo esc_attr( $settings['minimum_files'] ); ?>" data-max-files="<?php echo esc_attr( $settings['maximum_files'] ); ?>" data-max-size="<?php echo esc_attr( $settings['max_file_size'] ); ?>">
+				<label><span><?php esc_html_e( 'Choose file(s)', 'parish-formation' ); ?></span><input class="pf-assessment-file-input" type="file" accept="<?php echo esc_attr( $accept ); ?>"<?php echo 1 < $settings['maximum_files'] ? ' multiple' : ''; ?><?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> /></label>
+				<p class="description"><?php echo esc_html( sprintf( __( 'Allowed: %1$s. Maximum %2$s per file. Upload %3$d–%4$d file(s).', 'parish-formation' ), implode( ', ', $settings['allowed_extensions'] ), size_format( $settings['max_file_size'] ), $settings['minimum_files'], $settings['maximum_files'] ) ); ?></p>
+				<div class="pf-file-upload-status" aria-live="polite"></div>
+			</div><?php
 		} elseif ( 'numeric' === $type ) {
 			$settings = $config['type_config'];
 			$unit = $settings['unit_label'] ?? '';

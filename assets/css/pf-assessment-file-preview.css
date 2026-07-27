@@ -1,0 +1,11 @@
+.pf-assessment-file-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pf-file-preview-open { overflow: hidden; }
+.pf-file-preview-modal[hidden] { display: none; }
+.pf-file-preview-modal { position: fixed; inset: 0; z-index: 100000; display: grid; place-items: center; padding: 32px; }
+.pf-file-preview-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .72); }
+.pf-file-preview-dialog { position: relative; display: flex; flex-direction: column; width: min(1100px, 92vw); max-height: 90vh; background: #fff; box-shadow: 0 8px 40px rgba(0, 0, 0, .4); }
+.pf-file-preview-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 16px; border-bottom: 1px solid #dcdcde; }
+.pf-file-preview-header h2 { margin: 0; font-size: 18px; }
+.pf-file-preview-body { min-height: 180px; padding: 16px; overflow: auto; text-align: center; background: #f0f0f1; }
+.pf-file-preview-body img { display: block; max-width: 100%; max-height: calc(90vh - 90px); width: auto; height: auto; margin: 0 auto; }
+@media (max-width: 782px) { .pf-file-preview-modal { padding: 12px; } .pf-file-preview-dialog { width: 96vw; } }

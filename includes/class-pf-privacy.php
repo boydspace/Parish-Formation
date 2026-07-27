@@ -30,6 +30,8 @@ final class Parish_Formation_Privacy {
 		if ( ! $user ) { return array( 'data' => array(), 'done' => true ); }
 		global $wpdb;
 		$user_id = absint( $user->ID );
+		$private_files = get_posts( array( 'post_type' => 'attachment', 'post_status' => 'any', 'posts_per_page' => -1, 'fields' => 'ids', 'meta_key' => Parish_Formation_Assessment_File_Service::OWNER_META, 'meta_value' => $user_id ) );
+		foreach ( $private_files as $attachment_id ) { wp_delete_attachment( $attachment_id, true ); }
 		$data = array();
 		self::add_item( $data, 'profile-' . $user_id, __( 'Formation participant profile', 'parish-formation' ), array(
 			__( 'Cell phone', 'parish-formation' ) => get_user_meta( $user_id, Parish_Formation_Account_Service::PHONE_META_KEY, true ),

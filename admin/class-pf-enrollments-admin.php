@@ -13,6 +13,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Registers and renders enrollment administration.
  */
 final class Parish_Formation_Enrollments_Admin {
+	public static function enqueue_review_assets() {
+		if ( ! current_user_can( 'pf_grade_assessments' ) ) { return; }
+		wp_enqueue_style( 'pf-assessment-file-preview', PARISH_FORMATION_PLUGIN_URL . 'assets/css/pf-assessment-file-preview.css', array(), (string) filemtime( PARISH_FORMATION_PLUGIN_DIR . 'assets/css/pf-assessment-file-preview.css' ) );
+		wp_enqueue_script( 'pf-assessment-file-preview', PARISH_FORMATION_PLUGIN_URL . 'assets/js/pf-assessment-file-preview.js', array(), (string) filemtime( PARISH_FORMATION_PLUGIN_DIR . 'assets/js/pf-assessment-file-preview.js' ), true );
+	}
 
 	/**
 	 * Register the enrollments submenu.
@@ -775,7 +780,10 @@ final class Parish_Formation_Enrollments_Admin {
 							<?php $snapshot = json_decode( $answer->question_snapshot, true ); $question_points = max( 1, absint( $snapshot['points'] ?? 1 ) ); ?>
 							<tr>
 								<td><?php echo wp_kses_post( $snapshot['prompt'] ?? '' ); ?></td>
-								<td><?php echo nl2br( esc_html( $answer->answer ) ); ?></td>
+								<td><?php if ( 'file_upload' === ( $snapshot['type'] ?? '' ) ) {
+									$file_ids = json_decode( (string) $answer->answer, true );
+									foreach ( is_array( $file_ids ) ? $file_ids : array() as $file_id ) { $file_id = absint( $file_id ); if ( $file_id ) { ?><p class="pf-assessment-file-actions"><?php if ( Parish_Formation_Assessment_File_Service::is_previewable_image( $file_id ) ) : ?><button type="button" class="button pf-assessment-file-preview-button" data-preview-url="<?php echo esc_url( Parish_Formation_Assessment_File_Service::preview_url( $file_id ) ); ?>" data-preview-title="<?php echo esc_attr( get_the_title( $file_id ) ); ?>"><?php esc_html_e( 'Preview', 'parish-formation' ); ?></button> <?php endif; ?><a class="button" href="<?php echo esc_url( Parish_Formation_Assessment_File_Service::download_url( $file_id ) ); ?>"><?php echo esc_html( sprintf( __( 'Download %s', 'parish-formation' ), get_the_title( $file_id ) ) ); ?></a></p><?php } }
+								} else { echo nl2br( esc_html( $answer->answer ) ); } ?></td>
 								<?php if ( ! $is_acknowledgement ) : ?><td>
 									<?php if ( $answer->requires_review && 'pending_review' === $attempt->status && ! $is_archived_run ) : ?>
 										<label><?php esc_html_e( 'Points', 'parish-formation' ); ?> <input type="number" name="manual_points[<?php echo esc_attr( $answer->id ); ?>]" min="0" max="<?php echo esc_attr( $question_points ); ?>" step="0.01" value="<?php echo esc_attr( $answer->points_awarded ); ?>" class="small-text" /> / <?php echo esc_html( $question_points ); ?></label>

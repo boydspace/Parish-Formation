@@ -305,6 +305,24 @@
 	font-weight: 600;
 }
 
+.pf-file-upload-response {
+	padding: 1rem;
+	border: 1px solid #d9dde5;
+	border-radius: 4px;
+	background: #f8fafc;
+}
+
+.pf-file-upload-response input[type="file"] {
+	display: block;
+	width: 100%;
+	margin-top: 0.5rem;
+}
+
+.pf-file-upload-status {
+	margin-top: 0.75rem;
+	font-weight: 600;
+}
+
 .pf-ordering-label {
 	display: block;
 	margin-bottom: 10px;

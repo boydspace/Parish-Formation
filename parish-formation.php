@@ -50,6 +50,7 @@ require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-enrollment-reposit
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-invitation-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-progress-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-repository.php';
+require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-assessment-file-service.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-repository.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-certificate-design-post-type.php';
 require_once PARISH_FORMATION_PLUGIN_DIR . 'includes/class-pf-notifications.php';
@@ -227,6 +228,7 @@ add_action(
 	'admin_menu',
 	array( 'Parish_Formation_Enrollments_Admin', 'register_menu' )
 );
+add_action( 'admin_enqueue_scripts', array( 'Parish_Formation_Enrollments_Admin', 'enqueue_review_assets' ) );
 
 add_action(
 	'admin_menu',
@@ -536,6 +538,9 @@ add_action(
 	'rest_api_init',
 	array( 'Parish_Formation_Assessment_Actions', 'register_rest_route' )
 );
+add_action( 'rest_api_init', array( 'Parish_Formation_Assessment_File_Service', 'register_rest_route' ) );
+add_action( 'admin_post_pf_download_assessment_file', array( 'Parish_Formation_Assessment_File_Service', 'download' ) );
+add_action( 'admin_post_pf_preview_assessment_file', array( 'Parish_Formation_Assessment_File_Service', 'preview' ) );
 
 add_action(
 	'rest_api_init',

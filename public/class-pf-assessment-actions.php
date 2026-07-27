@@ -108,7 +108,7 @@ final class Parish_Formation_Assessment_Actions {
 	}
 
 	/** Validate enrollment, access, and preceding curriculum gates. */
-	private static function validate_submission( $enrollment_id, $course_id, $assessment_id ) {
+	public static function validate_submission( $enrollment_id, $course_id, $assessment_id ) {
 		$enrollment = Parish_Formation_Enrollment_Repository::get_for_user_course( get_current_user_id(), $course_id );
 		if ( ! $enrollment || absint( $enrollment->id ) !== absint( $enrollment_id ) ) {
 			return new WP_Error( 'no_access', __( 'You do not have access to this enrollment.', 'parish-formation' ), array( 'status' => 403 ) );

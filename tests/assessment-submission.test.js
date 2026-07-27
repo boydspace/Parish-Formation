@@ -5,7 +5,9 @@ let keydownHandler;
 let inputHandler;
 let clickHandler;
 let requestBody;
+let fileRequest;
 const reflectionCounter = { textContent: '' };
+global.FormData = function () { this.values = {}; this.append = function ( key, value ) { this.values[ key ] = value; }; };
 global.document = {
 	addEventListener: function ( event, handler ) {
 		if ( event === 'submit' ) { submitHandler = handler; }
@@ -18,11 +20,12 @@ global.document = {
 	querySelectorAll: function () { return []; },
 	querySelector: function () { return null; }
 };
-global.pfAssessmentSubmission = { endpoint: '/test', nonce: 'nonce', submitting: 'Submitting', error: 'Error' };
+global.pfAssessmentSubmission = { endpoint: '/test', fileEndpoint: '/files', nonce: 'nonce', submitting: 'Submitting', error: 'Error' };
 global.window = {
 	location: { href: 'http://example.test/course/' },
 	pfAssessmentSubmission: global.pfAssessmentSubmission,
-	fetch: function ( unusedUrl, options ) {
+	fetch: function ( url, options ) {
+		if ( url === '/files' ) { fileRequest = options.body.values; return Promise.resolve( { ok: true, json: function () { return Promise.resolve( { attachmentId: 900 } ); } } ); }
 		requestBody = JSON.parse( options.body );
 		return new Promise( function () {} );
 	}
@@ -32,6 +35,9 @@ require( '../assets/js/assessment-submission.js' );
 
 const button = { disabled: false, hidden: false, textContent: 'Submit' };
 const resultBox = { replaceChildren: function () {} };
+const fileStatus = { textContent: '' };
+const fileWrapper = { dataset: { questionId: '255', minFiles: '1', maxFiles: '1', maxSize: '1000' }, querySelector: function () { return fileStatus; } };
+const fileInput = { files: [ { name: 'clearance.pdf', size: 100 } ], closest: function () { return fileWrapper; } };
 const inputs = [
 	{ type: 'checkbox', checked: true, name: 'pf_answers[246][]', value: 'choice-a' },
 	{ type: 'checkbox', checked: true, name: 'pf_answers[246][]', value: 'choice-b' },
@@ -55,13 +61,14 @@ const form = {
 	previousElementSibling: resultBox,
 	elements: { enrollment_id: { value: '1' }, course_id: { value: '2' }, assessment_id: { value: '3' }, formation_base_url: { value: '/formation/' } },
 	querySelector: function () { return button; },
-	querySelectorAll: function () { return inputs; },
+	querySelectorAll: function ( selector ) { return selector === '.pf-assessment-file-input' ? [ fileInput ] : inputs; },
 	setAttribute: function () {},
 	removeAttribute: function () {}
 };
 
 submitHandler( { preventDefault: function () {}, target: { closest: function () { return form; } } } );
 
+setTimeout( function () {
 if ( JSON.stringify( requestBody.answers['246'] ) !== JSON.stringify( [ 'choice-a', 'choice-b' ] ) ) {
 	throw new Error( 'Multiple Select values were not serialized as an array.' );
 }
@@ -88,6 +95,9 @@ if ( JSON.stringify( requestBody.answers['253'] ) !== JSON.stringify( [ 'image-o
 }
 if ( requestBody.answers['254'] !== '7 years' ) {
 	throw new Error( 'Numeric Response changed during serialization.' );
+}
+if ( JSON.stringify( requestBody.answers['255'] ) !== JSON.stringify( [ 900 ] ) || fileRequest.question_id !== '255' || fileStatus.textContent.indexOf( 'securely' ) === -1 ) {
+	throw new Error( 'Secure File Upload did not hand its attachment ID to assessment submission.' );
 }
 const acknowledgementOpened = { value: '0' };
 const acknowledgementCheckbox = { disabled: true };
@@ -126,4 +136,5 @@ inputHandler( { target: reflectionField } );
 if ( reflectionCounter.textContent.indexOf( '3 more required' ) === -1 || reflectionCounter.textContent.indexOf( '13 non-space characters remaining' ) === -1 ) {
 	throw new Error( 'Reflection character counter did not report minimum and maximum remaining values.' );
 }
-process.stdout.write( 'Assessment submission JavaScript test passed: 12 checks.\n' );
+process.stdout.write( 'Assessment submission JavaScript test passed: 13 checks.\n' );
+}, 0 );

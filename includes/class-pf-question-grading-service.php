@@ -268,6 +268,19 @@ final class Parish_Formation_Question_Grading_Service {
 			return self::result( true, '', $original, $points, $config['graded'] ? $config['points'] : 0, true, $config['graded'] ? $is_correct : null, ! empty( $config['manual_review'] ), $config );
 		}
 
+		if ( 'file_upload' === $type ) {
+			$ids = array_values( array_unique( array_filter( array_map( 'absint', is_array( $response ) ? $response : array( $response ) ) ) ) );
+			$minimum = absint( $config['type_config']['minimum_files'] ?? 1 );
+			$maximum_files = absint( $config['type_config']['maximum_files'] ?? 1 );
+			if ( count( $ids ) < $minimum || count( $ids ) > $maximum_files ) { return self::result( false, 'invalid_file_count', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, sprintf( __( 'Upload between %1$d and %2$d files.', 'parish-formation' ), $minimum, $maximum_files ) ); }
+			foreach ( $ids as $attachment_id ) {
+				if ( ! get_post_meta( $attachment_id, Parish_Formation_Assessment_File_Service::PRIVATE_META, true ) || get_current_user_id() !== absint( get_post_meta( $attachment_id, Parish_Formation_Assessment_File_Service::OWNER_META, true ) ) || $question->ID !== absint( get_post_meta( $attachment_id, Parish_Formation_Assessment_File_Service::QUESTION_META, true ) ) ) {
+					return self::result( false, 'invalid_file', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, __( 'An uploaded file is invalid or does not belong to you.', 'parish-formation' ) );
+				}
+			}
+			return self::result( true, '', $ids, 0, $config['graded'] ? $config['points'] : 0, true, null, true, $config );
+		}
+
 		if ( 'paragraph' === $type ) {
 			$maximum = $config['graded'] ? $config['points'] : 0;
 			return self::result( true, '', $original, 0, $maximum, true, null, true, $config );

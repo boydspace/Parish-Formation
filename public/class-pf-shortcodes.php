@@ -72,8 +72,12 @@ final class Parish_Formation_Shortcodes {
 			'pfAssessmentSubmission',
 			array(
 				'endpoint' => rest_url( 'parish-formation/v1/assessment-attempts' ),
+				'fileEndpoint' => rest_url( 'parish-formation/v1/assessment-files' ),
 				'nonce'    => wp_create_nonce( 'wp_rest' ),
 				'submitting' => __( 'Submitting…', 'parish-formation' ),
+				'uploading' => __( 'Uploading files securely…', 'parish-formation' ),
+				'uploaded' => __( 'Files uploaded securely.', 'parish-formation' ),
+				'uploadError' => __( 'A file could not be uploaded.', 'parish-formation' ),
 				'error'      => __( 'The assessment could not be submitted.', 'parish-formation' ),
 				'orderingMoved' => __( '%1$s moved to position %2$d.', 'parish-formation' ),
 				'charactersRequired' => __( '%1$d non-space characters entered; %2$d more required.', 'parish-formation' ),
