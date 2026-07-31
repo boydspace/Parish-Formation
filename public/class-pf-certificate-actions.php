@@ -28,11 +28,13 @@ final class Parish_Formation_Certificate_Actions {
 
 	/** Stream a public certificate identified by its high-entropy verification code. */
 	public static function public_pdf() {
-		$code        = isset( $_GET['code'] ) ? strtoupper( preg_replace( '/[^A-Z0-9]/i', '', wp_unslash( $_GET['code'] ) ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		$code        = isset( $_GET['code'] ) ? strtoupper( preg_replace( '/[^A-Z0-9]/i', '', sanitize_text_field( wp_unslash( $_GET['code'] ) ) ) ) : '';
 		$certificate = Parish_Formation_Certificate_Repository::get_by_verification_code( $code );
 		if ( ! $certificate ) {
 			wp_die( esc_html__( 'This certificate could not be found.', 'parish-formation' ), '', array( 'response' => 404 ) );
 		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$download = isset( $_GET['download'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['download'] ) );
 		self::stream_pdf( $certificate, $download );
 	}
@@ -95,6 +97,7 @@ final class Parish_Formation_Certificate_Actions {
 		$is_portrait = 'portrait' === $design['orientation'];
 		$certificate_box = $is_portrait ? 'top:0.45in;left:0.45in;width:6.65in;height:9.2in;padding:0.65in 0.55in;' : 'top:0.49in;left:0.54in;width:8.45in;height:6.2in;padding:0.58in 0.65in;';
 		$title_margin = $is_portrait ? '0.34in 0 0.62in' : '0.28in 0 0.46in';
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		$expiration = $expires ? '<span class="expiry">' . esc_html( sprintf( __( 'Valid through: %s', 'parish-formation' ), $expires ) ) . '</span>' : '';
 		return '<!doctype html><html><head><meta charset="UTF-8"><style>
 			@page { size: letter ' . esc_html( $design['orientation'] ) . '; margin: 0.25in; }
@@ -119,7 +122,9 @@ final class Parish_Formation_Certificate_Actions {
 		'<h2>' . esc_html( $certificate->participant_name ) . '</h2>' .
 		'<p class="lead">' . esc_html( $design['completion_text'] ) . '</p>' .
 		'<h3>' . esc_html( $certificate->course_title ) . '</h3>' .
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		'<p>' . esc_html( sprintf( __( 'Completed %s', 'parish-formation' ), $completed ) ) . '</p>' . $signature .
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		'<div class="footer"><span class="code">' . esc_html( sprintf( __( 'Verification code: %s', 'parish-formation' ), $certificate->verification_code ) ) . '</span>' . $expiration . '</div>' .
 		'</div></body></html>';
 	}

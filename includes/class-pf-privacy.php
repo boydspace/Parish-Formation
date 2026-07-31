@@ -2,6 +2,7 @@
 /** WordPress personal-data export and erasure integration. */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 /** Exports participant formation records and anonymizes them on approved erasure. */
 final class Parish_Formation_Privacy {
@@ -30,7 +31,7 @@ final class Parish_Formation_Privacy {
 		if ( ! $user ) { return array( 'data' => array(), 'done' => true ); }
 		global $wpdb;
 		$user_id = absint( $user->ID );
-		$private_files = get_posts( array( 'post_type' => 'attachment', 'post_status' => 'any', 'posts_per_page' => -1, 'fields' => 'ids', 'meta_key' => Parish_Formation_Assessment_File_Service::OWNER_META, 'meta_value' => $user_id ) );
+		$private_files = get_posts( array( 'post_type' => 'attachment', 'post_status' => 'any', 'posts_per_page' => -1, 'fields' => 'ids', 'meta_key' => Parish_Formation_Assessment_File_Service::OWNER_META, 'meta_value' => $user_id ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Privacy erasure must locate every protected attachment owned by this specific participant.
 		foreach ( $private_files as $attachment_id ) { wp_delete_attachment( $attachment_id, true ); }
 		$data = array();
 		self::add_item( $data, 'profile-' . $user_id, __( 'Formation participant profile', 'parish-formation' ), array(

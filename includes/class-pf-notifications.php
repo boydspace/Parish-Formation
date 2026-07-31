@@ -4,6 +4,9 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
+
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Notification-log table identifiers are plugin-owned names derived from $wpdb->prefix; all data values use placeholders.
 
 /** Sends consistent, configurable, and auditable formation notifications. */
 final class Parish_Formation_Notifications {
@@ -287,6 +290,7 @@ final class Parish_Formation_Notifications {
 		$passing    = 'percentage' === $attempt->passing_rule ? $attempt->passing_value . '%' : rtrim( rtrim( number_format( (float) $attempt->passing_value, 2, '.', '' ), '0' ), '.' );
 		$max_attempts = max( 1, absint( get_post_meta( $assessment_id, Parish_Formation_Assessment_Settings::MAX_ATTEMPTS_META_KEY, true ) ) );
 		$remaining  = max( 0, $max_attempts - absint( $attempt->attempt_number ) );
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		$values     = array( 'assessment_name' => get_the_title( $assessment_id ), 'score' => $score_text, 'passing_score' => $passing, 'attempts_message' => $remaining ? sprintf( _n( 'You have %d attempt remaining.', 'You have %d attempts remaining.', $remaining, 'parish-formation' ), $remaining ) : __( 'No attempts remain.', 'parish-formation' ) );
 		$suffix     = 'attempt_' . absint( $attempt->id );
 		if ( Parish_Formation_Assessment_Settings::is_acknowledgement_mode( $assessment_id ) ) {

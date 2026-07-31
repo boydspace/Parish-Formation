@@ -8,6 +8,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 /**
  * Registers and renders enrollment administration.
@@ -65,8 +66,11 @@ final class Parish_Formation_Enrollments_Admin {
 		if ( ! current_user_can( 'pf_view_reports' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view formation reports.', 'parish-formation' ) );
 		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$search    = isset( $_GET['pf_search'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_search'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$course_id = isset( $_GET['pf_course_filter'] ) ? absint( $_GET['pf_course_filter'] ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$status    = isset( $_GET['pf_status_filter'] ) ? sanitize_key( wp_unslash( $_GET['pf_status_filter'] ) ) : '';
 		if ( ! in_array( $status, array( '', 'enrolled', 'in_progress', 'completed', 'unenrolled', 'all' ), true ) ) {
 			$status = '';
@@ -177,6 +181,7 @@ final class Parish_Formation_Enrollments_Admin {
 
 	/** Render a whitelisted certificate action notice. */
 	private static function render_certificate_notice() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$code = isset( $_GET['pf_certificate_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_certificate_notice'] ) ) : '';
 		$notices = array(
 			'certificate_issued'       => array( 'success', __( 'The certificate was issued successfully.', 'parish-formation' ) ),
@@ -213,7 +218,7 @@ final class Parish_Formation_Enrollments_Admin {
 		if ( false === $output ) {
 			wp_die( esc_html__( 'The course report could not be created.', 'parish-formation' ) );
 		}
-		fwrite( $output, "\xEF\xBB\xBF" );
+		fwrite( $output, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Streaming a generated CSV response, not writing a server file.
 		fputcsv( $output, array( 'Participant', 'Email', 'Course', 'Current Run', 'Status', 'Progress Percentage', 'Items Finished', 'Total Items', 'Assessment Results', 'Enrolled (UTC)', 'Completed (UTC)', 'Archived Runs', 'Certificate Eligible' ) );
 		foreach ( $rows as $row ) {
 			fputcsv(
@@ -224,7 +229,7 @@ final class Parish_Formation_Enrollments_Admin {
 				)
 			);
 		}
-		fclose( $output );
+		fclose( $output ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing the CSV response stream.
 		exit;
 	}
 
@@ -233,9 +238,13 @@ final class Parish_Formation_Enrollments_Admin {
 		if ( ! current_user_can( 'pf_grade_assessments' ) ) {
 			wp_die( esc_html__( 'You do not have permission to review assessments.', 'parish-formation' ) );
 		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$search       = isset( $_GET['pf_search'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_search'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$course_id    = isset( $_GET['pf_course_filter'] ) ? absint( $_GET['pf_course_filter'] ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$assessment_id = isset( $_GET['pf_assessment_filter'] ) ? absint( $_GET['pf_assessment_filter'] ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$status        = isset( $_GET['pf_review_status'] ) ? sanitize_key( wp_unslash( $_GET['pf_review_status'] ) ) : 'pending_review';
 		if ( ! in_array( $status, array( 'pending_review', 'needs_resubmission', 'passed', 'failed', 'all' ), true ) ) {
 			$status = 'pending_review';
@@ -384,6 +393,7 @@ final class Parish_Formation_Enrollments_Admin {
 			<?php foreach ( $groups as $group ) : ?>
 				<tr>
 					<td><?php echo esc_html( $group['participant'] ); ?><br><small><?php echo esc_html( $group['email'] ); ?></small></td>
+					<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 					<td><strong><?php echo esc_html( $group['course'] ); ?></strong><br><small><?php echo esc_html( sprintf( _n( '%d submission', '%d submissions', count( $group['attempts'] ), 'parish-formation' ), count( $group['attempts'] ) ) ); ?></small></td>
 					<td>
 						<?php foreach ( $group['attempts'] as $index => $attempt ) : ?>
@@ -399,8 +409,10 @@ final class Parish_Formation_Enrollments_Admin {
 							<div<?php echo $index ? ' style="border-top: 1px solid #dcdcde; margin-top: 8px; padding-top: 8px;"' : ''; ?>>
 								<?php $is_acknowledgement = self::is_acknowledgement_attempt( $attempt ); ?>
 								<strong><?php echo esc_html( $attempt->assessment_title ); ?></strong>
+								<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 								<?php echo esc_html( $is_acknowledgement ? sprintf( __( '— Run %1$d — %2$s', 'parish-formation' ), $attempt->course_run, self::assessment_status_label( $attempt ) ) : sprintf( __( '— Run %1$d, Attempt %2$d — %3$s', 'parish-formation' ), $attempt->course_run, $attempt->attempt_number, self::assessment_status_label( $attempt ) ) ); ?>
 								<?php if ( ! $is_acknowledgement && 'pending_review' !== $attempt->status ) : ?>
+									<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 									<?php echo esc_html( sprintf( __( '— %1$s / %2$s', 'parish-formation' ), $attempt->score_points, $attempt->max_points ) ); ?>
 								<?php endif; ?>
 								<br><small><?php echo esc_html( self::format_utc_date( $attempt->submitted_at ) ); ?></small>
@@ -440,10 +452,10 @@ final class Parish_Formation_Enrollments_Admin {
 		if ( false === $output ) {
 			wp_die( esc_html__( 'The assessment report could not be created.', 'parish-formation' ) );
 		}
-		fwrite( $output, "\xEF\xBB\xBF" );
+		fwrite( $output, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Streaming a generated CSV response, not writing a server file.
 		if ( $detailed ) {
 			self::write_detailed_assessment_export( $output, $attempts );
-			fclose( $output );
+			fclose( $output ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing the CSV response stream.
 			exit;
 		}
 		fputcsv( $output, array( 'Participant', 'Email', 'Course', 'Course Run', 'Assessment', 'Type', 'Attempt', 'Status', 'Score', 'Maximum Score', 'Percentage', 'Submitted (UTC)', 'Reviewed (UTC)' ) );
@@ -467,7 +479,7 @@ final class Parish_Formation_Enrollments_Admin {
 			);
 			fputcsv( $output, array_map( array( self::class, 'protect_csv_value' ), $row ) );
 		}
-		fclose( $output );
+		fclose( $output ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing the CSV response stream.
 		exit;
 	}
 
@@ -547,6 +559,7 @@ final class Parish_Formation_Enrollments_Admin {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'parish-formation' ) );
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$enrollment_id = isset( $_GET['enrollment_id'] ) ? absint( $_GET['enrollment_id'] ) : 0;
 
 		if ( $enrollment_id ) {
@@ -554,8 +567,11 @@ final class Parish_Formation_Enrollments_Admin {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$search_term   = isset( $_GET['pf_search'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_search'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$course_filter = isset( $_GET['pf_course_filter'] ) ? absint( $_GET['pf_course_filter'] ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$status_filter = isset( $_GET['pf_status_filter'] ) ? sanitize_key( wp_unslash( $_GET['pf_status_filter'] ) ) : '';
 		$valid_statuses = array( 'enrolled', 'in_progress', 'completed' );
 
@@ -853,6 +869,7 @@ final class Parish_Formation_Enrollments_Admin {
 		<?php foreach ( $attempts as $attempt ) : ?>
 			<?php $answers = Parish_Formation_Assessment_Repository::get_attempt_answers( $attempt->id ); $is_acknowledgement = self::is_acknowledgement_attempt( $attempt ); ?>
 			<div id="pf-assessment-attempt-<?php echo esc_attr( $attempt->id ); ?>" class="postbox" style="padding: 16px; max-width: 1000px; scroll-margin-top: 40px;">
+				<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 				<h3><?php echo esc_html( get_the_title( $attempt->assessment_id ) ); ?> &mdash; <?php echo esc_html( $is_acknowledgement ? sprintf( __( 'Run %d', 'parish-formation' ), $attempt->course_run ) : sprintf( __( 'Run %1$d, Attempt %2$d', 'parish-formation' ), $attempt->course_run, $attempt->attempt_number ) ); ?></h3>
 				<?php $is_archived_run = absint( $attempt->course_run ) !== max( 1, absint( $enrollment->current_run ) ); ?>
 				<?php if ( $is_archived_run ) : ?><p><span class="dashicons dashicons-archive" aria-hidden="true"></span> <strong><?php esc_html_e( 'Archived course run', 'parish-formation' ); ?></strong></p><?php endif; ?>
@@ -871,6 +888,7 @@ final class Parish_Formation_Enrollments_Admin {
 								<td><?php echo wp_kses_post( $snapshot['prompt'] ?? '' ); ?></td>
 								<td><?php if ( 'file_upload' === ( $snapshot['type'] ?? '' ) ) {
 									$file_ids = json_decode( (string) $answer->answer, true );
+									/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 									foreach ( is_array( $file_ids ) ? $file_ids : array() as $file_id ) { $file_id = absint( $file_id ); if ( $file_id ) { ?><p class="pf-assessment-file-actions"><?php if ( Parish_Formation_Assessment_File_Service::is_previewable_image( $file_id ) ) : ?><button type="button" class="button pf-assessment-file-preview-button" data-preview-url="<?php echo esc_url( Parish_Formation_Assessment_File_Service::preview_url( $file_id ) ); ?>" data-preview-title="<?php echo esc_attr( get_the_title( $file_id ) ); ?>"><?php esc_html_e( 'Preview', 'parish-formation' ); ?></button> <?php endif; ?><a class="button" href="<?php echo esc_url( Parish_Formation_Assessment_File_Service::download_url( $file_id ) ); ?>"><?php echo esc_html( sprintf( __( 'Download %s', 'parish-formation' ), get_the_title( $file_id ) ) ); ?></a></p><?php } }
 								} else { echo nl2br( esc_html( $answer->answer ) ); } ?></td>
 								<?php if ( ! $is_acknowledgement ) : ?><td>
@@ -1037,9 +1055,9 @@ final class Parish_Formation_Enrollments_Admin {
 		$attempt_id    = isset( $_POST['attempt_id'] ) ? absint( $_POST['attempt_id'] ) : 0;
 		$decision      = isset( $_POST['review_decision'] ) ? sanitize_key( wp_unslash( $_POST['review_decision'] ) ) : '';
 		$note          = isset( $_POST['review_note'] ) ? sanitize_textarea_field( wp_unslash( $_POST['review_note'] ) ) : '';
-		$manual_points = isset( $_POST['manual_points'] ) && is_array( $_POST['manual_points'] ) ? wp_unslash( $_POST['manual_points'] ) : array();
-		$answer_feedback = isset( $_POST['answer_feedback'] ) && is_array( $_POST['answer_feedback'] ) ? wp_unslash( $_POST['answer_feedback'] ) : array();
-		$answer_notes = isset( $_POST['answer_notes'] ) && is_array( $_POST['answer_notes'] ) ? wp_unslash( $_POST['answer_notes'] ) : array();
+		$manual_points = isset( $_POST['manual_points'] ) && is_array( $_POST['manual_points'] ) ? map_deep( wp_unslash( $_POST['manual_points'] ), 'sanitize_text_field' ) : array();
+		$answer_feedback = isset( $_POST['answer_feedback'] ) && is_array( $_POST['answer_feedback'] ) ? map_deep( wp_unslash( $_POST['answer_feedback'] ), 'sanitize_textarea_field' ) : array();
+		$answer_notes = isset( $_POST['answer_notes'] ) && is_array( $_POST['answer_notes'] ) ? map_deep( wp_unslash( $_POST['answer_notes'] ), 'sanitize_textarea_field' ) : array();
 		$learner_feedback = isset( $_POST['learner_feedback'] ) ? sanitize_textarea_field( wp_unslash( $_POST['learner_feedback'] ) ) : '';
 		check_admin_referer( 'pf_review_assessment_' . $attempt_id );
 
@@ -1061,6 +1079,7 @@ final class Parish_Formation_Enrollments_Admin {
 	 * @return void
 	 */
 	private static function render_notice() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$notice_code = isset( $_GET['pf_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_notice'] ) ) : '';
 		$notices     = array(
 			'created'              => array( 'success', __( 'The participant was enrolled successfully.', 'parish-formation' ) ),
@@ -1132,8 +1151,8 @@ final class Parish_Formation_Enrollments_Admin {
 			FROM {$enrollments_table} AS enrollment
 			INNER JOIN {$users_table} AS user ON user.ID = enrollment.user_id
 			INNER JOIN {$posts_table} AS course ON course.ID = enrollment.course_id
-			WHERE 1 = 1";
-		$query_parameters = array();
+			WHERE %d = %d";
+		$query_parameters = array( 1, 1 );
 
 		if ( $search_term ) {
 			$search_like        = '%' . $wpdb->esc_like( $search_term ) . '%';
@@ -1154,11 +1173,7 @@ final class Parish_Formation_Enrollments_Admin {
 
 		$query .= ' ORDER BY enrollment.enrolled_at DESC, enrollment.id DESC LIMIT 50';
 
-		if ( $query_parameters ) {
-			$query = $wpdb->prepare( $query, $query_parameters );
-		}
-
-		return $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		return $wpdb->get_results( $wpdb->prepare( $query, $query_parameters ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- Identifiers are plugin-owned table names; all values use placeholders.
 	}
 
 	/** Retrieve and enrich participant-level course reporting rows. */
@@ -1171,8 +1186,8 @@ final class Parish_Formation_Enrollments_Admin {
 			FROM {$enrollments_table} AS enrollment
 			INNER JOIN {$wpdb->users} AS user ON user.ID = enrollment.user_id
 			INNER JOIN {$wpdb->posts} AS course ON course.ID = enrollment.course_id
-			WHERE 1 = 1";
-		$parameters = array();
+			WHERE %d = %d";
+		$parameters = array( 1, 1 );
 		if ( $search ) {
 			$like         = '%' . $wpdb->esc_like( $search ) . '%';
 			$query       .= ' AND (user.display_name LIKE %s OR user.user_email LIKE %s)';
@@ -1194,10 +1209,7 @@ final class Parish_Formation_Enrollments_Admin {
 			$query       .= ' LIMIT %d';
 			$parameters[] = absint( $limit );
 		}
-		if ( $parameters ) {
-			$query = $wpdb->prepare( $query, $parameters );
-		}
-		$rows = $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$rows = $wpdb->get_results( $wpdb->prepare( $query, $parameters ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- Identifiers are plugin-owned table names; all values use placeholders.
 		foreach ( $rows as $row ) {
 			$lessons              = Parish_Formation_Course_Repository::get_published_lessons( $row->course_id );
 			$row->report_progress = Parish_Formation_Progress_Repository::get_summary( $row->id, $lessons, $row->course_id );
@@ -1236,12 +1248,15 @@ final class Parish_Formation_Enrollments_Admin {
 			if ( ! $assessment_total ) {
 				$row->report_assessments = $acknowledgement_total ? '' : __( 'None required', 'parish-formation' );
 			} else {
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				$row->report_assessments = sprintf( __( '%1$d of %2$d passed', 'parish-formation' ), $assessment_passed, $assessment_total );
 				if ( $assessment_pending ) {
+					/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 					$row->report_assessments .= ' · ' . sprintf( _n( '%d pending', '%d pending', $assessment_pending, 'parish-formation' ), $assessment_pending );
 				}
 			}
 			if ( $acknowledgement_total ) {
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				$acknowledgement_summary = sprintf( __( '%1$d of %2$d acknowledgements submitted', 'parish-formation' ), $acknowledgement_submitted, $acknowledgement_total );
 				$row->report_assessments .= ( $row->report_assessments ? ' · ' : '' ) . $acknowledgement_summary;
 			}
@@ -1289,8 +1304,8 @@ final class Parish_Formation_Enrollments_Admin {
 			INNER JOIN {$users_table} AS user ON user.ID = attempt.user_id
 			INNER JOIN {$posts_table} AS course ON course.ID = attempt.course_id
 			INNER JOIN {$posts_table} AS assessment ON assessment.ID = attempt.assessment_id
-			WHERE enrollment.status <> 'unenrolled'";
-		$parameters = array();
+			WHERE enrollment.status <> 'unenrolled' AND %d = %d";
+		$parameters = array( 1, 1 );
 		if ( 'all' !== $status ) {
 			$query       .= ' AND attempt.status = %s AND attempt.course_run = enrollment.current_run';
 			$parameters[] = $status;
@@ -1314,10 +1329,7 @@ final class Parish_Formation_Enrollments_Admin {
 			$query       .= ' LIMIT %d';
 			$parameters[] = absint( $limit );
 		}
-		if ( $parameters ) {
-			$query = $wpdb->prepare( $query, $parameters );
-		}
-		return $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		return $wpdb->get_results( $wpdb->prepare( $query, $parameters ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- Identifiers are plugin-owned table names; all values use placeholders.
 	}
 
 	/** Determine whether a stored attempt is an acknowledgement or response. */

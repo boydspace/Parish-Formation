@@ -2,6 +2,7 @@
 /** Scheduled privacy-conscious retention cleanup. */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 /** Stores retention policy and removes eligible operational records. */
 final class Parish_Formation_Retention {

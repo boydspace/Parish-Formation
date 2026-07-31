@@ -8,6 +8,9 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
+
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Migration table identifiers are plugin-owned names derived from $wpdb->prefix and never contain request data.
 
 /**
  * Runs versioned, repeatable plugin upgrades.
@@ -263,7 +266,8 @@ final class Parish_Formation_Upgrader {
 		) {$charset_collate};" );
 		$legacy_index = $wpdb->get_var( "SHOW INDEX FROM {$attempts} WHERE Key_name = 'enrollment_assessment_attempt'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		if ( $legacy_index ) {
-			$wpdb->query( "ALTER TABLE {$attempts} DROP INDEX enrollment_assessment_attempt" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			// This one-time migration removes the obsolete unique index before dbDelta creates its replacement.
+			$wpdb->query( "ALTER TABLE {$attempts} DROP INDEX enrollment_assessment_attempt" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.SchemaChange -- The table name is plugin-owned and the schema migration is intentional.
 		}
 		dbDelta( "CREATE TABLE {$answers} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

@@ -2,9 +2,9 @@
 /** Isolated assessment grading and certificate lifecycle integration tests. */
 
 $test_url = getenv( 'PF_TEST_URL' ) ?: 'http://parish-formation.test';
-$url      = parse_url( $test_url );
-$_SERVER['REQUEST_SCHEME'] = $_SERVER['REQUEST_SCHEME'] ?? ( $url['scheme'] ?? 'http' );
-$_SERVER['HTTP_HOST']      = $_SERVER['HTTP_HOST'] ?? ( $url['host'] ?? 'parish-formation.test' );
+$url      = parse_url( $test_url ); // phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- WordPress is not loaded until the test URL establishes the bootstrap host below.
+$_SERVER['REQUEST_SCHEME'] = $_SERVER['REQUEST_SCHEME'] ?? ( $url['scheme'] ?? 'http' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Test bootstrap must populate server globals before WordPress sanitization functions are available.
+$_SERVER['HTTP_HOST']      = $_SERVER['HTTP_HOST'] ?? ( $url['host'] ?? 'parish-formation.test' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Test bootstrap must populate server globals before WordPress sanitization functions are available.
 
 require_once dirname( __DIR__, 4 ) . '/wp-load.php';
 require_once ABSPATH . 'wp-admin/includes/user.php';
@@ -206,7 +206,7 @@ try {
 		$attempt_ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$wpdb->prefix}pf_assessment_attempts WHERE enrollment_id = %d", $enrollment_id ) );
 		if ( $attempt_ids ) {
 			$placeholders = implode( ',', array_fill( 0, count( $attempt_ids ), '%d' ) );
-			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}pf_assessment_answers WHERE attempt_id IN ({$placeholders})", ...$attempt_ids ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}pf_assessment_answers WHERE attempt_id IN ({$placeholders})", ...$attempt_ids ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- The placeholder list is generated from integer IDs immediately above.
 		}
 		$wpdb->delete( $wpdb->prefix . 'pf_assessment_attempts', array( 'enrollment_id' => $enrollment_id ), array( '%d' ) );
 		$wpdb->delete( $wpdb->prefix . 'pf_certificates', array( 'enrollment_id' => $enrollment_id ), array( '%d' ) );
@@ -226,7 +226,7 @@ try {
 }
 
 if ( $failures ) {
-	fwrite( STDERR, sprintf( "Assessment and certificate test failed (%d/%d checks):\n- %s\n", count( $failures ), $checks, implode( "\n- ", $failures ) ) );
+	fwrite( STDERR, sprintf( "Assessment and certificate test failed (%d/%d checks):\n- %s\n", count( $failures ), $checks, implode( "\n- ", $failures ) ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- CLI test output is a stream, not a WordPress-managed file.
 	exit( 1 );
 }
-fwrite( STDOUT, sprintf( "Assessment and certificate tests passed: %d checks.\n", $checks ) );
+fwrite( STDOUT, sprintf( "Assessment and certificate tests passed: %d checks.\n", $checks ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- CLI test output is a stream, not a WordPress-managed file.

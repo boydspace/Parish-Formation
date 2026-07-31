@@ -21,7 +21,7 @@ final class Parish_Formation_Course_Repository {
 				'post_type'      => Parish_Formation_Assessment_Post_Type::POST_TYPE,
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Course-assessment relationships are stored as post meta by the established data model.
 					array(
 						'key'     => Parish_Formation_Assessment_Settings::COURSE_META_KEY,
 						'value'   => absint( $course_id ),
@@ -94,7 +94,7 @@ final class Parish_Formation_Course_Repository {
 				'posts_per_page' => -1,
 				'orderby'        => 'title',
 				'order'          => 'ASC',
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Course-lesson relationships are stored as post meta by the established data model.
 					array(
 						'key'     => '_pf_course_id',
 						'value'   => absint( $course_id ),

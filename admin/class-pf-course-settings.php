@@ -121,6 +121,7 @@ final class Parish_Formation_Course_Settings {
 		<?php if ( $access_code_saved ) : ?><p><label><input type="checkbox" name="pf_access_code_clear" value="1"> <?php esc_html_e( 'Remove the saved access code', 'parish-formation' ); ?></label></p><?php endif; ?>
 		<p><label for="pf-access-code-expires"><strong><?php esc_html_e( 'Code expiration date', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code-expires" name="pf_access_code_expires" type="date" value="<?php echo esc_attr( $access_code_expires ); ?>"> <span class="description"><?php esc_html_e( 'Optional. The code remains valid through this date in the site timezone.', 'parish-formation' ); ?></span></p>
 		<p><label for="pf-access-code-limit"><strong><?php esc_html_e( 'Maximum successful uses', 'parish-formation' ); ?></strong></label><br><input id="pf-access-code-limit" name="pf_access_code_limit" type="number" min="0" max="1000000" step="1" value="<?php echo esc_attr( $access_code_limit ); ?>" class="small-text"> <span class="description"><?php esc_html_e( 'Use 0 for unlimited. A new code resets the usage count.', 'parish-formation' ); ?></span></p>
+		<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 		<?php if ( $access_code_saved ) : ?><p class="description"><?php echo esc_html( sprintf( __( 'Successful uses: %d', 'parish-formation' ), $access_code_uses ) ); ?></p><?php endif; ?>
 		<hr>
 		<p>
@@ -167,7 +168,7 @@ final class Parish_Formation_Course_Settings {
 				'post_type'      => Parish_Formation_Assessment_Post_Type::POST_TYPE,
 				'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future' ),
 				'posts_per_page' => -1,
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Course-assessment relationships are stored as post meta by the established data model.
 					array(
 						'key'     => Parish_Formation_Assessment_Settings::COURSE_META_KEY,
 						'value'   => $post->ID,
@@ -211,6 +212,7 @@ final class Parish_Formation_Course_Settings {
 					<span class="pf-curriculum-type"><?php echo 'lesson' === $item['type'] ? esc_html__( 'Lesson', 'parish-formation' ) : esc_html__( 'Assessment', 'parish-formation' ); ?></span>
 					<a href="<?php echo esc_url( get_edit_post_link( $item['post']->ID ) ); ?>"><?php echo esc_html( $item['post']->post_title ); ?></a>
 					<span class="pf-curriculum-status"><?php echo esc_html( get_post_status_object( $item['post']->post_status )->label ); ?></span>
+					<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 					<span class="pf-curriculum-actions"><button type="button" class="button-link pf-curriculum-move-up" aria-label="<?php echo esc_attr( sprintf( __( 'Move %s up', 'parish-formation' ), $item['post']->post_title ) ); ?>"><span class="dashicons dashicons-arrow-up-alt2" aria-hidden="true"></span></button><button type="button" class="button-link pf-curriculum-move-down" aria-label="<?php echo esc_attr( sprintf( __( 'Move %s down', 'parish-formation' ), $item['post']->post_title ) ); ?>"><span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button></span>
 				</li>
 			<?php endforeach; ?>
@@ -286,7 +288,7 @@ final class Parish_Formation_Course_Settings {
 		} else {
 			delete_post_meta( $post_id, self::CERTIFICATE_DESIGN_ID_META_KEY );
 		}
-		$posted_notifications = isset( $_POST['pf_notification_enabled'] ) && is_array( $_POST['pf_notification_enabled'] ) ? wp_unslash( $_POST['pf_notification_enabled'] ) : array();
+		$posted_notifications = isset( $_POST['pf_notification_enabled'] ) && is_array( $_POST['pf_notification_enabled'] ) ? map_deep( wp_unslash( $_POST['pf_notification_enabled'] ), 'sanitize_text_field' ) : array();
 		$disabled_notifications = array();
 		foreach ( Parish_Formation_Notifications::types() as $type => $definition ) {
 			if ( 'account' === $definition[0] ) {
@@ -297,7 +299,7 @@ final class Parish_Formation_Course_Settings {
 			}
 		}
 		update_post_meta( $post_id, self::NOTIFICATION_DISABLED_META_KEY, $disabled_notifications );
-		$staff_emails = isset( $_POST['pf_notification_staff_emails'] ) ? Parish_Formation_Notifications::sanitize_email_list( wp_unslash( $_POST['pf_notification_staff_emails'] ) ) : '';
+		$staff_emails = isset( $_POST['pf_notification_staff_emails'] ) ? Parish_Formation_Notifications::sanitize_email_list( sanitize_textarea_field( wp_unslash( $_POST['pf_notification_staff_emails'] ) ) ) : '';
 		if ( $staff_emails ) {
 			update_post_meta( $post_id, self::NOTIFICATION_STAFF_EMAILS_META_KEY, $staff_emails );
 		} else {
@@ -342,7 +344,7 @@ final class Parish_Formation_Course_Settings {
 		}
 
 		$course_id = isset( $_POST['course_id'] ) ? absint( $_POST['course_id'] ) : 0;
-		$items     = isset( $_POST['items'] ) && is_array( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : array();
+		$items     = isset( $_POST['items'] ) && is_array( $_POST['items'] ) ? map_deep( wp_unslash( $_POST['items'] ), 'sanitize_text_field' ) : array();
 		if ( Parish_Formation_Course_Post_Type::POST_TYPE !== get_post_type( $course_id ) ) {
 			wp_send_json_error( array( 'message' => __( 'The course could not be found.', 'parish-formation' ) ), 404 );
 		}

@@ -46,7 +46,10 @@ final class Parish_Formation_Assessment_File_Service {
 		if ( is_wp_error( $private ) ) { wp_delete_file( $uploaded['file'] ); return $private; }
 		$filename = wp_unique_filename( $private, sanitize_file_name( wp_basename( $uploaded['file'] ) ) );
 		$destination = trailingslashit( $private ) . $filename;
-		if ( ! @rename( $uploaded['file'], $destination ) ) { wp_delete_file( $uploaded['file'] ); return new WP_Error( 'private_storage_failed', __( 'The file could not be moved into protected storage.', 'parish-formation' ), array( 'status' => 500 ) ); }
+		if ( ! @rename( $uploaded['file'], $destination ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- Moving a just-validated sideload into protected storage must work without interactive filesystem credentials.
+			wp_delete_file( $uploaded['file'] );
+			return new WP_Error( 'private_storage_failed', __( 'The file could not be moved into protected storage.', 'parish-formation' ), array( 'status' => 500 ) );
+		}
 		$attachment_id = wp_insert_attachment( array( 'post_title' => sanitize_text_field( pathinfo( $filename, PATHINFO_FILENAME ) ), 'post_status' => 'private', 'post_mime_type' => $checked['type'], 'guid' => '' ), $destination );
 		if ( is_wp_error( $attachment_id ) ) { wp_delete_file( $destination ); return $attachment_id; }
 		update_attached_file( $attachment_id, $destination );

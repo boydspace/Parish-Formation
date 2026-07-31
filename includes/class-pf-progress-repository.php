@@ -8,6 +8,9 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
+
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Repository table identifiers are plugin-owned names derived from $wpdb->prefix; all data values use placeholders.
 
 /**
  * Lesson-progress persistence operations.

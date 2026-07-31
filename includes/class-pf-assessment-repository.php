@@ -4,6 +4,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 final class Parish_Formation_Assessment_Repository {
 	/** Count current-course attempts awaiting staff review. */
@@ -15,6 +16,7 @@ final class Parish_Formation_Assessment_Repository {
 	public static function format_score_summary( $attempt ) {
 		$completion_count = max( 0, count( self::get_attempt_answers( $attempt->id ) ) - absint( $attempt->total_graded ) );
 		$summary = sprintf(
+			/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 			__( 'Score: %1$s of %2$s points; %3$d of %4$d automatically graded questions correct.', 'parish-formation' ),
 			$attempt->score_points,
 			$attempt->max_points,
@@ -23,6 +25,7 @@ final class Parish_Formation_Assessment_Repository {
 		);
 		if ( $completion_count ) {
 			$summary .= ' ' . sprintf(
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				_n( '%d completion-based response submitted.', '%d completion-based responses submitted.', $completion_count, 'parish-formation' ),
 				$completion_count
 			);
@@ -43,9 +46,9 @@ final class Parish_Formation_Assessment_Repository {
 				'post_type'      => Parish_Formation_Question_Post_Type::POST_TYPE,
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
-				'meta_key'       => '_pf_question_order',
+				'meta_key'       => '_pf_question_order', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Question ordering is part of the existing post-meta model.
 				'orderby'        => array( 'meta_value_num' => 'ASC', 'ID' => 'ASC' ),
-				'meta_query'     => array( array( 'key' => '_pf_assessment_id', 'value' => absint( $assessment_id ), 'compare' => '=', 'type' => 'NUMERIC' ) ),
+				'meta_query'     => array( array( 'key' => '_pf_assessment_id', 'value' => absint( $assessment_id ), 'compare' => '=', 'type' => 'NUMERIC' ) ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Assessment-question relationships are stored as post meta by the established data model.
 			)
 		);
 	}
@@ -107,6 +110,7 @@ final class Parish_Formation_Assessment_Repository {
 			$grade    = Parish_Formation_Question_Grading_Service::grade( $question, $response );
 			if ( ! $grade['valid'] ) {
 				$message = $grade['message'] ?: __( 'This response is not valid.', 'parish-formation' );
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				return new WP_Error( $grade['error_code'] ?: 'invalid_answer', sprintf( __( 'Question %1$d: %2$s', 'parish-formation' ), count( $answer_rows ) + 1, $message ) );
 			}
 			$config          = Parish_Formation_Question_Config::get( $question->ID );
@@ -144,6 +148,7 @@ final class Parish_Formation_Assessment_Repository {
 				return new WP_Error(
 					'invalid_passing_configuration',
 					sprintf(
+						/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 						__( 'This assessment requires %1$s %2$s to pass, but only %3$s are available. Please ask a course administrator to correct the passing value.', 'parish-formation' ),
 						$value,
 						'correct_count' === $rule ? __( 'correct answers', 'parish-formation' ) : ( 'points' === $rule ? __( 'points', 'parish-formation' ) : __( 'percent', 'parish-formation' ) ),

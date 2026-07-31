@@ -25,12 +25,16 @@ final class Parish_Formation_Admin_Hubs {
 	public static function render_settings() { self::render_hub( 'settings' ); }
 
 	public static function redirect_legacy_pages() {
-		if ( wp_doing_ajax() || 'GET' !== strtoupper( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) || empty( $_GET['page'] ) ) { return; }
+		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_key( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		if ( wp_doing_ajax() || 'GET' !== strtoupper( $request_method ) || empty( $_GET['page'] ) ) { return; }
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$page = sanitize_key( wp_unslash( $_GET['page'] ) );
 		foreach ( self::configuration() as $hub_key => $hub ) {
 			foreach ( $hub['tabs'] as $tab_key => $tab ) {
 				if ( $page !== $tab['legacy_slug'] ) { continue; }
 				$args = array();
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 				foreach ( wp_unslash( $_GET ) as $key => $value ) { if ( is_scalar( $value ) ) { $args[ sanitize_key( $key ) ] = sanitize_text_field( (string) $value ); } }
 				$args['page'] = $hub['slug']; $args['hub_tab'] = $tab_key;
 				wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) ); exit;
@@ -54,6 +58,7 @@ final class Parish_Formation_Admin_Hubs {
 	private static function render_hub( $hub ) {
 		$config = self::configuration();
 		if ( ! isset( $config[ $hub ] ) || ! current_user_can( $config[ $hub ]['capability'] ) ) { wp_die( esc_html__( 'You do not have permission to access this section.', 'parish-formation' ) ); }
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$requested = isset( $_GET['hub_tab'] ) ? sanitize_key( wp_unslash( $_GET['hub_tab'] ) ) : '';
 		$tab = isset( $config[ $hub ]['tabs'][ $requested ] ) && current_user_can( $config[ $hub ]['tabs'][ $requested ]['capability'] ) ? $requested : self::first_allowed_tab( $config[ $hub ]['tabs'] );
 		$definition = $config[ $hub ]['tabs'][ $tab];

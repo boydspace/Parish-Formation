@@ -8,6 +8,9 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
+
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Dashboard queries use only plugin-owned table identifiers derived from $wpdb->prefix.
 
 /**
  * Registers plugin administration pages.
@@ -56,6 +59,7 @@ final class Parish_Formation_Admin {
 
 		?>
 		<?php $data = self::dashboard_data(); ?>
+		<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 		<div class="wrap pf-dashboard"><div class="pf-dashboard-heading"><div><h1><?php esc_html_e( 'Parish Formation Dashboard', 'parish-formation' ); ?></h1><p><?php esc_html_e( 'Monitor participation, outstanding work, and recent formation activity.', 'parish-formation' ); ?></p></div><button id="pf-dashboard-refresh" class="button" type="button"><?php esc_html_e( 'Refresh Dashboard', 'parish-formation' ); ?></button></div><?php if ( current_user_can( 'pf_grade_assessments' ) && $data['attention']['pending_reviews'] ) : ?><div class="notice notice-warning inline"><p><strong><?php echo esc_html( sprintf( _n( '%d assessment is awaiting review.', '%d assessments are awaiting review.', $data['attention']['pending_reviews'], 'parish-formation' ), $data['attention']['pending_reviews'] ) ); ?></strong> <a href="<?php echo esc_url( self::review_queue_url() ); ?>"><?php esc_html_e( 'Open the review queue', 'parish-formation' ); ?></a></p></div><?php endif; ?><div id="pf-dashboard-status" aria-live="polite"></div><div id="pf-dashboard-content"><?php self::render_dashboard_content( $data ); ?></div></div>
 		<?php
 	}

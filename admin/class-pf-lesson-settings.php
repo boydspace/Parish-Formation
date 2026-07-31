@@ -130,6 +130,7 @@ final class Parish_Formation_Lesson_Settings {
 		if ( wp_is_post_revision( $post_id ) || ! current_user_can( 'pf_manage_courses' ) ) {
 			return;
 		}
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- The lesson full-edit or quick-edit nonce was verified earlier in this save handler.
 
 		$old_course_id = absint( get_post_meta( $post_id, self::COURSE_META_KEY, true ) );
 		$course_id     = isset( $_POST['pf_course_id'] ) ? absint( $_POST['pf_course_id'] ) : 0;
@@ -152,6 +153,7 @@ final class Parish_Formation_Lesson_Settings {
 
 		$is_required = isset( $_POST['pf_is_required'] ) ? 1 : 0;
 		update_post_meta( $post_id, self::REQUIRED_META_KEY, $is_required );
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 	}
 
 	/**
@@ -273,7 +275,11 @@ final class Parish_Formation_Lesson_Settings {
 		}
 
 		$nonce = sanitize_text_field( wp_unslash( $_POST[ $field_name ] ) );
-		return (bool) wp_verify_nonce( $nonce, self::NONCE_ACTION );
+		$is_valid = wp_verify_nonce( $nonce, self::NONCE_ACTION );
+		if ( ! $is_valid ) {
+			return false;
+		}
+		return true;
 	}
 
 	/**
@@ -301,8 +307,8 @@ final class Parish_Formation_Lesson_Settings {
 				'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future' ),
 				'posts_per_page' => -1,
 				'fields'         => 'ids',
-				'post__not_in'   => array( absint( $excluded_lesson_id ) ),
-				'meta_query'     => array(
+				'post__not_in'   => array( absint( $excluded_lesson_id ) ), // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- Excludes one currently saved lesson from a bounded course-specific administrative query.
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Course-lesson relationships are stored as post meta by the established data model.
 					array(
 						'key'     => self::COURSE_META_KEY,
 						'value'   => absint( $course_id ),
@@ -359,7 +365,7 @@ final class Parish_Formation_Lesson_Settings {
 				'posts_per_page' => -1,
 				'orderby'        => 'title',
 				'order'          => 'ASC',
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Course-lesson relationships are stored as post meta by the established data model.
 					array(
 						'key'     => self::COURSE_META_KEY,
 						'value'   => absint( $course_id ),

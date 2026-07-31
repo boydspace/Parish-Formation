@@ -4,6 +4,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 /** Provides a public, read-only verification route. */
 final class Parish_Formation_Certificate_Verification {
@@ -42,7 +43,8 @@ final class Parish_Formation_Certificate_Verification {
 			wp_safe_redirect( $code ? add_query_arg( 'certificate_code', $code, $shortcode_page_url ) : $shortcode_page_url );
 			exit;
 		}
-		$submitted_code = isset( $_GET['certificate_code'] ) ? strtoupper( preg_replace( '/[^A-Z0-9]/i', '', wp_unslash( $_GET['certificate_code'] ) ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		$submitted_code = isset( $_GET['certificate_code'] ) ? strtoupper( preg_replace( '/[^A-Z0-9]/i', '', sanitize_text_field( wp_unslash( $_GET['certificate_code'] ) ) ) ) : '';
 		if ( $submitted_code ) {
 			wp_safe_redirect( home_url( '/formation-certificate/' . rawurlencode( $submitted_code ) . '/' ) );
 			exit;
@@ -62,7 +64,8 @@ final class Parish_Formation_Certificate_Verification {
 	/** Render certificate verification inside a normal WordPress page. */
 	public static function render_shortcode() {
 		$route_code  = get_query_var( 'certificate_code', '' );
-		$code        = isset( $_GET['certificate_code'] ) ? strtoupper( preg_replace( '/[^A-Z0-9]/i', '', wp_unslash( $_GET['certificate_code'] ) ) ) : strtoupper( preg_replace( '/[^A-Z0-9]/i', '', $route_code ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		$code        = isset( $_GET['certificate_code'] ) ? strtoupper( preg_replace( '/[^A-Z0-9]/i', '', sanitize_text_field( wp_unslash( $_GET['certificate_code'] ) ) ) ) : strtoupper( preg_replace( '/[^A-Z0-9]/i', '', $route_code ) );
 		$certificate = $code ? Parish_Formation_Certificate_Repository::get_by_verification_code( $code ) : null;
 		ob_start();
 		self::render_page( $code, $certificate, false );

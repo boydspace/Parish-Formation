@@ -53,6 +53,7 @@ final class Parish_Formation_Question_Renderer {
 				echo wp_kses_post( $segment );
 				if ( isset( $blanks[ $index ] ) ) {
 					$blank = $blanks[ $index ];
+					/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 					?><label class="pf-fill-blank-field"><span class="screen-reader-text"><?php echo esc_html( sprintf( __( 'Blank %d', 'parish-formation' ), $index + 1 ) ); ?></span><input class="uk-input" type="text" name="<?php echo esc_attr( $field_name . '[' . $blank['id'] . ']' ); ?>" autocomplete="off"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					?> /></label><?php
 				}
@@ -111,6 +112,7 @@ final class Parish_Formation_Question_Renderer {
 			if ( ! empty( $settings['submission_instructions'] ) ) { ?><div class="pf-file-upload-instructions"><?php echo wp_kses_post( $settings['submission_instructions'] ); ?></div><?php }
 			?><div class="pf-file-upload-response" data-question-id="<?php echo esc_attr( $question->ID ); ?>" data-min-files="<?php echo esc_attr( $settings['minimum_files'] ); ?>" data-max-files="<?php echo esc_attr( $settings['maximum_files'] ); ?>" data-max-size="<?php echo esc_attr( $settings['max_file_size'] ); ?>">
 				<label><span><?php esc_html_e( 'Choose file(s)', 'parish-formation' ); ?></span><input class="pf-assessment-file-input" type="file" accept="<?php echo esc_attr( $accept ); ?>"<?php echo 1 < $settings['maximum_files'] ? ' multiple' : ''; ?><?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> /></label>
+				<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 				<p class="description"><?php echo esc_html( sprintf( __( 'Allowed: %1$s. Maximum %2$s per file. Upload %3$d–%4$d file(s).', 'parish-formation' ), implode( ', ', $settings['allowed_extensions'] ), size_format( $settings['max_file_size'] ), $settings['minimum_files'], $settings['maximum_files'] ) ); ?></p>
 				<div class="pf-file-upload-status" aria-live="polite"></div>
 			</div><?php
@@ -166,7 +168,9 @@ final class Parish_Formation_Question_Renderer {
 			if ( ! empty( $config['type_config']['private_notice'] ) ) { ?><div class="pf-reflection-private-notice uk-alert uk-alert-primary"><?php echo wp_kses_post( $config['type_config']['private_notice'] ); ?></div><?php }
 			if ( ! empty( $config['type_config']['sample_prompt'] ) ) { ?><div class="pf-reflection-sample"><strong><?php esc_html_e( 'Reflection example:', 'parish-formation' ); ?></strong> <?php echo wp_kses_post( $config['type_config']['sample_prompt'] ); ?></div><?php }
 			?><label><span class="screen-reader-text"><?php esc_html_e( 'Your reflection', 'parish-formation' ); ?></span><textarea class="uk-textarea pf-reflection-response" name="<?php echo esc_attr( $field_name ); ?>" rows="7" data-min-characters="<?php echo esc_attr( $minimum ); ?>" data-max-characters="<?php echo esc_attr( $maximum ); ?>" aria-describedby="<?php echo esc_attr( $counter_id ); ?>" placeholder="<?php esc_attr_e( 'Enter your reflection...', 'parish-formation' ); ?>"<?php echo $control_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>></textarea></label>
+			<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 			<p id="<?php echo esc_attr( $counter_id ); ?>" class="pf-reflection-character-count" aria-live="polite"><?php echo esc_html( $minimum ? sprintf( __( '0 non-space characters entered; %d more required.', 'parish-formation' ), $minimum ) : __( '0 non-space characters entered.', 'parish-formation' ) ); ?></p><?php
+			/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 			if ( $minimum || $maximum ) { ?><p class="description pf-reflection-length-guidance"><?php echo esc_html( $minimum && $maximum ? sprintf( __( 'Use between %1$d and %2$d non-space characters.', 'parish-formation' ), $minimum, $maximum ) : ( $minimum ? sprintf( __( 'Use at least %d non-space characters.', 'parish-formation' ), $minimum ) : sprintf( __( 'Use no more than %d non-space characters.', 'parish-formation' ), $maximum ) ) ); ?></p><?php }
 		} else {
 			?>

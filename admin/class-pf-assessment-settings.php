@@ -91,6 +91,7 @@ final class Parish_Formation_Assessment_Settings {
 		<p><label for="pf-assessment-passing-value"><strong><?php esc_html_e( 'Passing value', 'parish-formation' ); ?></strong></label></p>
 		<input id="pf-assessment-passing-value" name="pf_assessment_passing_value" type="number" min="0" step="0.01" value="<?php echo esc_attr( $passing_value ); ?>" class="widefat" />
 		<p class="description" id="pf-assessment-passing-limit" data-points="<?php echo esc_attr( $limits['points'] ); ?>" data-correct="<?php echo esc_attr( $limits['correct_count'] ); ?>">
+			<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 			<?php echo esc_html( sprintf( __( 'Currently available: %1$s total points and %2$d automatically graded questions.', 'parish-formation' ), $limits['points'], $limits['correct_count'] ) ); ?>
 		</p>
 		<?php if ( ( 'points' === $passing_rule && $passing_value > $limits['points'] ) || ( 'correct_count' === $passing_rule && $passing_value > $limits['correct_count'] ) || ( 'percentage' === $passing_rule && $passing_value > 100 ) ) : ?>
@@ -145,9 +146,10 @@ final class Parish_Formation_Assessment_Settings {
 		if ( wp_is_post_revision( $post_id ) || ! current_user_can( 'pf_manage_assessments' ) ) {
 			return;
 		}
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- The full-edit or quick-edit nonce was verified above by verify_nonce().
 
 		$old_course_id = absint( get_post_meta( $post_id, self::COURSE_META_KEY, true ) );
-		$course_id     = isset( $_POST['pf_assessment_course'] ) ? absint( $_POST['pf_assessment_course'] ) : 0;
+		$course_id     = isset( $_POST['pf_assessment_course'] ) ? absint( wp_unslash( $_POST['pf_assessment_course'] ) ) : 0;
 		if ( $course_id && Parish_Formation_Course_Post_Type::POST_TYPE === get_post_type( $course_id ) ) {
 			update_post_meta( $post_id, self::COURSE_META_KEY, $course_id );
 		} else {
@@ -177,9 +179,9 @@ final class Parish_Formation_Assessment_Settings {
 			update_post_meta( $post_id, self::PROGRESSION_META_KEY, self::valid_progression( $progression ) ? $progression : 'pass_to_continue' );
 			$passing_rule = isset( $_POST['pf_assessment_passing_rule'] ) ? sanitize_key( wp_unslash( $_POST['pf_assessment_passing_rule'] ) ) : '';
 			update_post_meta( $post_id, self::PASSING_RULE_META_KEY, self::valid_passing_rule( $passing_rule ) ? $passing_rule : 'percentage' );
-			$passing_value = isset( $_POST['pf_assessment_passing_value'] ) ? (float) wp_unslash( $_POST['pf_assessment_passing_value'] ) : 100;
+			$passing_value = isset( $_POST['pf_assessment_passing_value'] ) ? (float) sanitize_text_field( wp_unslash( $_POST['pf_assessment_passing_value'] ) ) : 100;
 			update_post_meta( $post_id, self::PASSING_VALUE_META_KEY, max( 0, $passing_value ) );
-			$max_attempts = isset( $_POST['pf_assessment_max_attempts'] ) ? absint( $_POST['pf_assessment_max_attempts'] ) : 1;
+			$max_attempts = isset( $_POST['pf_assessment_max_attempts'] ) ? absint( wp_unslash( $_POST['pf_assessment_max_attempts'] ) ) : 1;
 			update_post_meta( $post_id, self::MAX_ATTEMPTS_META_KEY, max( 1, $max_attempts ) );
 			if ( ! empty( $_POST['pf_assessment_manual_approval'] ) ) {
 				update_post_meta( $post_id, self::MANUAL_APPROVAL_META_KEY, 1 );
@@ -187,6 +189,7 @@ final class Parish_Formation_Assessment_Settings {
 				delete_post_meta( $post_id, self::MANUAL_APPROVAL_META_KEY );
 			}
 		}
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 	}
 
 	/** Add the course column to the Assessments list. */
@@ -258,7 +261,11 @@ final class Parish_Formation_Assessment_Settings {
 			return false;
 		}
 		$nonce = sanitize_text_field( wp_unslash( $_POST[ $field_name ] ) );
-		return (bool) wp_verify_nonce( $nonce, self::NONCE_ACTION );
+		$is_valid = wp_verify_nonce( $nonce, self::NONCE_ACTION );
+		if ( ! $is_valid ) {
+			return false;
+		}
+		return true;
 	}
 
 	private static function valid_grading( $value ) {

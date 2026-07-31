@@ -106,6 +106,7 @@ final class Parish_Formation_Invitations_Admin {
 	}
 
 	private static function render_notice() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$notice = isset( $_GET['pf_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_notice'] ) ) : '';
 		$messages = array( 'created' => __( 'Invitation created.', 'parish-formation' ), 'revoked' => __( 'Invitation revoked.', 'parish-formation' ), 'resent' => __( 'Invitation email resent.', 'parish-formation' ), 'resend_failed' => __( 'The invitation email could not be sent. Review the email activity log for details.', 'parish-formation' ), 'invitation_not_resendable' => __( 'This invitation cannot be resent.', 'parish-formation' ), 'invalid_course' => __( 'Select a valid course.', 'parish-formation' ), 'invalid_email' => __( 'Enter a valid restricted email address.', 'parish-formation' ), 'invalid_expiration' => __( 'Enter a valid expiration date and time.', 'parish-formation' ), 'database_error' => __( 'The invitation could not be saved.', 'parish-formation' ) );
 		if ( isset( $messages[ $notice ] ) ) {

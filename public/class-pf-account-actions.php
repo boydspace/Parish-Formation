@@ -16,7 +16,7 @@ final class Parish_Formation_Account_Actions {
 		$key = self::rate_key( 'login' );
 		if ( absint( get_transient( $key ) ) >= 8 ) { self::redirect_error( $return_url, 'login-rate-limited' ); }
 		$login = isset( $_POST['log'] ) ? sanitize_text_field( wp_unslash( $_POST['log'] ) ) : '';
-		$password = isset( $_POST['pwd'] ) ? (string) wp_unslash( $_POST['pwd'] ) : '';
+		$password = isset( $_POST['pwd'] ) ? (string) wp_unslash( $_POST['pwd'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Passwords must be preserved byte-for-byte for authentication.
 		$user = wp_signon( array( 'user_login' => $login, 'user_password' => $password, 'remember' => ! empty( $_POST['rememberme'] ) ), is_ssl() );
 		if ( is_wp_error( $user ) ) {
 			$count = absint( get_transient( $key ) ) + 1; set_transient( $key, $count, 10 * MINUTE_IN_SECONDS );
@@ -34,7 +34,7 @@ final class Parish_Formation_Account_Actions {
 		if ( ! empty( $_POST['website'] ) ) { self::redirect_error( $return_url, 'registration-failed' ); }
 		$key = self::rate_key( 'registration' );
 		if ( absint( get_transient( $key ) ) >= 5 ) { self::redirect_error( $return_url, 'registration-rate-limited' ); }
-		$result = Parish_Formation_Account_Service::create_participant( array( 'email' => isset( $_POST['user_email'] ) ? wp_unslash( $_POST['user_email'] ) : '', 'first_name' => isset( $_POST['first_name'] ) ? wp_unslash( $_POST['first_name'] ) : '', 'last_name' => isset( $_POST['last_name'] ) ? wp_unslash( $_POST['last_name'] ) : '', 'phone' => isset( $_POST['cell_phone'] ) ? wp_unslash( $_POST['cell_phone'] ) : '', 'password' => isset( $_POST['user_password'] ) ? wp_unslash( $_POST['user_password'] ) : '', 'verify_password' => isset( $_POST['verify_password'] ) ? wp_unslash( $_POST['verify_password'] ) : '' ) );
+		$result = Parish_Formation_Account_Service::create_participant( array( 'email' => isset( $_POST['user_email'] ) ? sanitize_email( wp_unslash( $_POST['user_email'] ) ) : '', 'first_name' => isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '', 'last_name' => isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '', 'phone' => isset( $_POST['cell_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['cell_phone'] ) ) : '', 'password' => isset( $_POST['user_password'] ) ? wp_unslash( $_POST['user_password'] ) : '', 'verify_password' => isset( $_POST['verify_password'] ) ? wp_unslash( $_POST['verify_password'] ) : '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Password fields must be preserved byte-for-byte; the remaining fields are sanitized here and validated by the account service.
 		if ( is_wp_error( $result ) ) { set_transient( $key, absint( get_transient( $key ) ) + 1, 15 * MINUTE_IN_SECONDS ); self::redirect_error( $return_url, $result->get_error_code() ); }
 		delete_transient( $key );
 		if ( $result['generated_password'] ) {
@@ -55,8 +55,8 @@ final class Parish_Formation_Account_Actions {
 		check_admin_referer( 'pf_account_reset_password', 'pf_reset_nonce' );
 		$key      = isset( $_POST['reset_key'] ) ? sanitize_text_field( wp_unslash( $_POST['reset_key'] ) ) : '';
 		$login    = isset( $_POST['reset_login'] ) ? sanitize_user( wp_unslash( $_POST['reset_login'] ), true ) : '';
-		$password = isset( $_POST['new_password'] ) ? (string) wp_unslash( $_POST['new_password'] ) : '';
-		$verify   = isset( $_POST['verify_password'] ) ? (string) wp_unslash( $_POST['verify_password'] ) : '';
+		$password = isset( $_POST['new_password'] ) ? (string) wp_unslash( $_POST['new_password'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Passwords must be preserved byte-for-byte.
+		$verify   = isset( $_POST['verify_password'] ) ? (string) wp_unslash( $_POST['verify_password'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Passwords must be preserved byte-for-byte.
 		$user     = check_password_reset_key( $key, $login );
 		if ( is_wp_error( $user ) || strlen( $password ) < 8 || ! hash_equals( $password, $verify ) ) { wp_safe_redirect( add_query_arg( array( 'pf_reset_key' => $key, 'pf_reset_login' => $login ), Parish_Formation_Account_Shortcodes::get_login_url() ) ); exit; }
 		reset_password( $user, $password );
@@ -64,7 +64,8 @@ final class Parish_Formation_Account_Actions {
 	}
 
 	public static function redirect_core_login() {
-		if ( 'GET' !== strtoupper( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ) { return; }
+		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_key( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+		if ( 'GET' !== strtoupper( $request_method ) ) { return; }
 		$action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : 'login';
 		if ( in_array( $action, array( 'login', 'register', 'lostpassword', 'retrievepassword' ), true ) ) { wp_safe_redirect( Parish_Formation_Account_Shortcodes::get_login_url() ); exit; }
 		if ( in_array( $action, array( 'rp', 'resetpass' ), true ) && isset( $_GET['key'], $_GET['login'] ) ) { wp_safe_redirect( Parish_Formation_Account_Shortcodes::get_password_reset_url( sanitize_text_field( wp_unslash( $_GET['key'] ) ), sanitize_user( wp_unslash( $_GET['login'] ), true ) ) ); exit; }
@@ -117,14 +118,16 @@ final class Parish_Formation_Account_Actions {
 		$key = self::rate_key( 'passwordless_verify' );
 		if ( absint( get_transient( $key ) ) >= 8 ) { self::redirect_error( $return_url, 'passwordless-rate-limited' ); }
 		$request = isset( $_POST['passwordless_request'] ) ? sanitize_key( wp_unslash( $_POST['passwordless_request'] ) ) : '';
-		$code  = isset( $_POST['login_code'] ) ? wp_unslash( $_POST['login_code'] ) : '';
+		$code  = isset( $_POST['login_code'] ) ? sanitize_text_field( wp_unslash( $_POST['login_code'] ) ) : '';
 		$login = Parish_Formation_Account_Service::settings()['passwordless_login'] ? Parish_Formation_Account_Service::consume_passwordless_request_code( $request, $code ) : false;
 		if ( ! $login ) { set_transient( $key, absint( get_transient( $key ) ) + 1, 10 * MINUTE_IN_SECONDS ); self::redirect_error( $return_url, 'passwordless-invalid' ); }
 		delete_transient( $key ); self::complete_passwordless_login( $login );
 	}
 
 	public static function magic_login() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$request = isset( $_GET['request'] ) ? sanitize_key( wp_unslash( $_GET['request'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$token   = isset( $_GET['token'] ) ? sanitize_text_field( wp_unslash( $_GET['token'] ) ) : '';
 		$login = Parish_Formation_Account_Service::settings()['passwordless_login'] ? Parish_Formation_Account_Service::consume_passwordless_token( $request, $token ) : false;
 		if ( ! $login ) { wp_safe_redirect( add_query_arg( 'pf_account_notice', 'passwordless-invalid', self::login_page_url() ) ); exit; }
@@ -143,7 +146,7 @@ final class Parish_Formation_Account_Actions {
 		$key = self::rate_key( 'passwordless_verify' );
 		if ( absint( get_transient( $key ) ) >= 8 ) { wp_send_json_error( array( 'message' => __( 'Too many attempts. Please wait ten minutes and try again.', 'parish-formation' ) ), 429 ); }
 		$request = isset( $_POST['passwordless_request'] ) ? sanitize_key( wp_unslash( $_POST['passwordless_request'] ) ) : '';
-		$code    = isset( $_POST['login_code'] ) ? wp_unslash( $_POST['login_code'] ) : '';
+		$code    = isset( $_POST['login_code'] ) ? sanitize_text_field( wp_unslash( $_POST['login_code'] ) ) : '';
 		$login = Parish_Formation_Account_Service::settings()['passwordless_login'] ? Parish_Formation_Account_Service::consume_passwordless_request_code( $request, $code ) : false;
 		if ( ! $login ) { set_transient( $key, absint( get_transient( $key ) ) + 1, 10 * MINUTE_IN_SECONDS ); wp_send_json_error( array( 'message' => __( 'That code is invalid or has expired. Request a new one and try again.', 'parish-formation' ) ), 400 ); }
 		$user = get_userdata( $login['user_id'] );
@@ -167,7 +170,7 @@ final class Parish_Formation_Account_Actions {
 
 	private static function return_url( $type ) {
 		$fallback = Parish_Formation_Shortcodes::get_course_catalog_url();
-		$url = isset( $_POST['return_url'] ) ? esc_url_raw( wp_unslash( $_POST['return_url'] ) ) : $fallback;
+		$url = isset( $_POST['return_url'] ) ? esc_url_raw( wp_unslash( $_POST['return_url'] ) ) : $fallback; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Every public handler calling this helper verifies its action nonce first.
 		return wp_validate_redirect( $url, $fallback );
 	}
 

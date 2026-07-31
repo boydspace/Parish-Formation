@@ -2,6 +2,7 @@
 /** Participant staff-note persistence and immutable audit history. */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 /** Stores private staff notes separately from participant-facing profile data. */
 final class Parish_Formation_Participant_Note_Repository {

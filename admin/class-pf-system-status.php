@@ -2,6 +2,7 @@
 /** Read-only production diagnostics. */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 /** Displays environment and Parish Formation readiness checks. */
 final class Parish_Formation_System_Status {
@@ -15,6 +16,7 @@ final class Parish_Formation_System_Status {
 		$counts = array_count_values( wp_list_pluck( $checks, 'status' ) );
 		?>
 		<div class="wrap"><h1><?php esc_html_e( 'Parish Formation System Status', 'parish-formation' ); ?></h1>
+		<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 		<p><?php echo esc_html( sprintf( __( '%1$d checks passed, %2$d warnings, %3$d failures.', 'parish-formation' ), absint( $counts['good'] ?? 0 ), absint( $counts['warning'] ?? 0 ), absint( $counts['bad'] ?? 0 ) ) ); ?></p>
 		<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Check', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Status', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Details', 'parish-formation' ); ?></th></tr></thead><tbody>
 		<?php foreach ( $checks as $check ) : ?><tr><td><strong><?php echo esc_html( $check['label'] ); ?></strong></td><td><span style="font-weight:700;color:<?php echo esc_attr( 'good' === $check['status'] ? '#147d43' : ( 'warning' === $check['status'] ? '#996800' : '#b42318' ) ); ?>"><?php echo esc_html( 'good' === $check['status'] ? __( 'Ready', 'parish-formation' ) : ( 'warning' === $check['status'] ? __( 'Review', 'parish-formation' ) : __( 'Problem', 'parish-formation' ) ) ); ?></span></td><td><?php echo esc_html( $check['details'] ); ?></td></tr><?php endforeach; ?>
@@ -28,6 +30,7 @@ final class Parish_Formation_System_Status {
 		$checks = array();
 		self::add( $checks, __( 'Plugin version', 'parish-formation' ), 'good', PARISH_FORMATION_VERSION );
 		$installed_db = get_option( 'parish_formation_db_version', 'Not installed' );
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		self::add( $checks, __( 'Database schema', 'parish-formation' ), version_compare( $installed_db, PARISH_FORMATION_DB_VERSION, '>=' ) ? 'good' : 'bad', sprintf( __( 'Installed %1$s; required %2$s', 'parish-formation' ), $installed_db, PARISH_FORMATION_DB_VERSION ) );
 		self::add( $checks, __( 'PHP version', 'parish-formation' ), version_compare( PHP_VERSION, '8.3', '>=' ) ? 'good' : 'bad', PHP_VERSION );
 		self::add( $checks, __( 'WordPress version', 'parish-formation' ), version_compare( get_bloginfo( 'version' ), '6.0', '>=' ) ? 'good' : 'bad', get_bloginfo( 'version' ) );
@@ -35,6 +38,7 @@ final class Parish_Formation_System_Status {
 		$tables = array( 'pf_enrollments', 'pf_progress', 'pf_enrollment_runs', 'pf_assessment_attempts', 'pf_assessment_answers', 'pf_certificates', 'pf_notification_log', 'pf_invitations', 'pf_participant_notes', 'pf_participant_note_events', 'pf_security_events' );
 		$missing = array();
 		foreach ( $tables as $suffix ) { $table = $wpdb->prefix . $suffix; if ( $table !== $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) ) { $missing[] = $suffix; } }
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		self::add( $checks, __( 'Database tables', 'parish-formation' ), $missing ? 'bad' : 'good', $missing ? sprintf( __( 'Missing: %s', 'parish-formation' ), implode( ', ', $missing ) ) : sprintf( __( 'All %d required tables found', 'parish-formation' ), count( $tables ) ) );
 
 		self::shortcode_check( $checks, __( 'My Formation page', 'parish-formation' ), 'parish_formation_my_courses' );
@@ -52,7 +56,7 @@ final class Parish_Formation_System_Status {
 		self::add( $checks, __( 'OpenSSL', 'parish-formation' ), extension_loaded( 'openssl' ) ? 'good' : 'bad', extension_loaded( 'openssl' ) ? __( 'Available for invitation-token protection.', 'parish-formation' ) : __( 'Required for invitation-token protection.', 'parish-formation' ) );
 		self::add( $checks, __( 'GD image support', 'parish-formation' ), extension_loaded( 'gd' ) ? 'good' : 'warning', extension_loaded( 'gd' ) ? __( 'Available for certificate signature stamping.', 'parish-formation' ) : __( 'Signature verification-code stamping will be unavailable.', 'parish-formation' ) );
 		$uploads = wp_upload_dir();
-		$uploads_ready = empty( $uploads['error'] ) && is_dir( $uploads['basedir'] ) && is_writable( $uploads['basedir'] );
+		$uploads_ready = empty( $uploads['error'] ) && is_dir( $uploads['basedir'] ) && wp_is_writable( $uploads['basedir'] );
 		self::add( $checks, __( 'Uploads directory', 'parish-formation' ), $uploads_ready ? 'good' : 'bad', $uploads_ready ? $uploads['basedir'] : ( $uploads['error'] ?: __( 'Directory is not writable.', 'parish-formation' ) ) );
 		$mailer = self::detected_mailer();
 		self::add( $checks, __( 'Email transport', 'parish-formation' ), $mailer ? 'good' : 'warning', $mailer ?: __( 'No recognized SMTP plugin detected; WordPress wp_mail() will use the server default.', 'parish-formation' ) );
@@ -65,11 +69,13 @@ final class Parish_Formation_System_Status {
 		foreach ( $shortcodes as $shortcode ) { $clauses[] = 'post_content LIKE %s'; $args[] = '%[' . $wpdb->esc_like( $shortcode ) . '%'; }
 		$sql = "SELECT ID FROM {$wpdb->posts} WHERE post_type='page' AND post_status='publish' AND (" . implode( ' OR ', $clauses ) . ') ORDER BY ID LIMIT 1';
 		$page_id = absint( $wpdb->get_var( $wpdb->prepare( $sql, ...$args ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		self::add( $checks, $label, $page_id ? 'good' : 'bad', $page_id ? get_permalink( $page_id ) : sprintf( __( 'Publish a page containing [%s].', 'parish-formation' ), $shortcodes[0] ) );
 	}
 
 	private static function cron_check( &$checks, $label, $hook ) {
 		$next = wp_next_scheduled( $hook );
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		self::add( $checks, $label, $next ? 'good' : 'bad', $next ? sprintf( __( 'Next run: %s', 'parish-formation' ), wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $next ) ) : __( 'Not scheduled.', 'parish-formation' ) );
 	}
 

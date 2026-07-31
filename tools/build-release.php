@@ -21,7 +21,7 @@ if ( $version !== trim( $constant_match[1] ) ) {
 	exit( 1 );
 }
 
-$required_root_files = array( 'parish-formation.php', 'uninstall.php', 'README.md', 'LICENSE', 'composer.json', 'composer.lock' );
+$required_root_files = array( 'parish-formation.php', 'uninstall.php', 'readme.txt', 'README.md', 'LICENSE', 'composer.json', 'composer.lock' );
 $included_dirs       = array( 'admin', 'assets', 'includes', 'public', 'vendor' );
 
 foreach ( $required_root_files as $file ) {

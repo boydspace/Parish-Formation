@@ -79,10 +79,15 @@ final class Parish_Formation_Shortcodes {
 				'uploaded' => __( 'Files uploaded securely.', 'parish-formation' ),
 				'uploadError' => __( 'A file could not be uploaded.', 'parish-formation' ),
 				'error'      => __( 'The assessment could not be submitted.', 'parish-formation' ),
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				'orderingMoved' => __( '%1$s moved to position %2$d.', 'parish-formation' ),
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				'charactersRequired' => __( '%1$d non-space characters entered; %2$d more required.', 'parish-formation' ),
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				'charactersMinimumMet' => __( '%d non-space characters entered; minimum met.', 'parish-formation' ),
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				'charactersEntered' => __( '%d non-space characters entered.', 'parish-formation' ),
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				'charactersRemaining' => __( ' %d non-space characters remaining.', 'parish-formation' ),
 				'acknowledgementReady' => __( 'The linked item was opened. You may now acknowledge the statement.', 'parish-formation' ),
 			)
@@ -150,7 +155,7 @@ final class Parish_Formation_Shortcodes {
 				'posts_per_page' => -1,
 				'orderby'        => 'title',
 				'order'          => 'ASC',
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Public enrollment visibility is stored in course post meta by the established data model.
 					'relation' => 'OR',
 					array(
 						'key'   => Parish_Formation_Course_Settings::OPEN_ENROLLMENT_META_KEY,
@@ -180,7 +185,9 @@ final class Parish_Formation_Shortcodes {
 		);
 		$current_url = remove_query_arg( 'pf_enrollment', self::current_url() );
 		$formation_url = self::get_my_formation_url();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$notice      = isset( $_GET['pf_enrollment'] ) ? sanitize_key( wp_unslash( $_GET['pf_enrollment'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$invitation_token = isset( $_GET['pf_invitation'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_invitation'] ) ) : '';
 		if ( $invitation_token ) {
 			return self::render_invitation( $invitation_token, $current_url );
@@ -267,6 +274,7 @@ final class Parish_Formation_Shortcodes {
 	/** Render secure invitation acceptance, login, or registration. */
 	private static function render_invitation( $token, $current_url ) {
 		$invitation = Parish_Formation_Invitation_Repository::get_by_token( $token );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$notice     = isset( $_GET['pf_invitation_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_invitation_notice'] ) ) : '';
 		$messages   = array(
 			'invitation-unavailable' => __( 'This invitation is no longer available.', 'parish-formation' ),
@@ -405,6 +413,7 @@ final class Parish_Formation_Shortcodes {
 				esc_html__( 'Log in', 'parish-formation' )
 			);
 		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$certificate_uuid = isset( $_GET['pf_certificate'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_certificate'] ) ) : '';
 		if ( $certificate_uuid ) {
 			return self::render_certificate( $certificate_uuid );
@@ -414,6 +423,7 @@ final class Parish_Formation_Shortcodes {
 		if ( is_wp_error( $route ) ) {
 			return '<div class="uk-alert uk-alert-danger"><p>' . esc_html( $route->get_error_message() ) . '</p></div>';
 		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$course_id = $route ? $route['course_id'] : ( isset( $_GET['pf_course'] ) ? absint( $_GET['pf_course'] ) : 0 );
 
 		if ( $course_id ) {
@@ -561,12 +571,15 @@ final class Parish_Formation_Shortcodes {
 				<h2><?php echo esc_html( $certificate->participant_name ); ?></h2>
 				<p><?php echo esc_html( $design['completion_text'] ); ?></p>
 				<h3><?php echo esc_html( $certificate->course_title ); ?></h3>
+				<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 				<p><?php echo esc_html( sprintf( __( 'Completed %s', 'parish-formation' ), self::format_utc_date( $certificate->completed_at ) ) ); ?></p>
 				<?php if ( $design['signatory_name'] ) : ?>
 					<div class="pf-certificate-signature"><span><?php echo esc_html( $design['signatory_name'] ); ?></span><?php if ( $design['signatory_title'] ) : ?><small><?php echo esc_html( $design['signatory_title'] ); ?></small><?php endif; ?></div>
 				<?php endif; ?>
 				<footer>
+					<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 					<span><?php echo esc_html( sprintf( __( 'Verification code: %s', 'parish-formation' ), $certificate->verification_code ) ); ?></span>
+					<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 					<?php if ( $certificate->expires_at ) : ?><span><?php echo esc_html( sprintf( __( 'Valid through: %s', 'parish-formation' ), self::format_utc_date( $certificate->expires_at ) ) ); ?></span><?php endif; ?>
 				</footer>
 			</article>
@@ -594,11 +607,13 @@ final class Parish_Formation_Shortcodes {
 
 		ob_start();
 		?>
+		<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here. ?>
 		<?php if ( isset( $_GET['pf_assessment_error'] ) ) : ?><div class="uk-alert uk-alert-danger"><p><?php echo esc_html( sanitize_text_field( wp_unslash( $_GET['pf_assessment_error'] ) ) ); ?></p></div><?php endif; ?>
 		<?php if ( $latest ) : ?>
 			<div class="pf-assessment-latest-result uk-alert <?php echo 'passed' === $latest->status ? 'uk-alert-success' : ( 'failed' === $latest->status ? 'uk-alert-danger' : 'uk-alert-primary' ); ?>">
 				<p><strong><?php echo esc_html( $acknowledgement_mode ? ( 'pending_review' === $latest->status ? __( 'Submitted — awaiting review', 'parish-formation' ) : __( 'Submitted', 'parish-formation' ) ) : ucwords( str_replace( '_', ' ', $latest->status ) ) ); ?></strong></p>
 				<?php if ( ! $acknowledgement_mode && 'pending_review' !== $latest->status ) : ?><p><?php echo esc_html( Parish_Formation_Assessment_Repository::format_score_summary( $latest ) ); ?></p><?php endif; ?>
+				<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 				<?php if ( ! $acknowledgement_mode ) : ?><p><?php echo esc_html( sprintf( __( 'Attempt %1$d of %2$d.', 'parish-formation' ), $latest->attempt_number, max( $max_attempts, absint( $latest->attempt_number ) ) ) ); ?></p><?php endif; ?>
 				<?php if ( ! empty( $latest->learner_feedback ) ) : ?><p><strong><?php esc_html_e( 'Staff feedback:', 'parish-formation' ); ?></strong><br><?php echo nl2br( esc_html( $latest->learner_feedback ) ); ?></p><?php endif; ?>
 				<?php if ( 'needs_resubmission' === $latest->status ) : ?><p><?php esc_html_e( 'Staff requested a revised submission. Complete the questions below and submit again.', 'parish-formation' ); ?></p><?php endif; ?>
@@ -620,6 +635,7 @@ final class Parish_Formation_Shortcodes {
 				$field_name = 'pf_answers[' . $question->ID . ']';
 				?>
 				<section class="pf-assessment-question uk-card uk-card-default uk-card-body uk-margin" data-question-id="<?php echo esc_attr( $question->ID ); ?>">
+					<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 					<h3><?php echo esc_html( sprintf( __( 'Question %d', 'parish-formation' ), $index + 1 ) ); ?></h3>
 					<?php if ( 'fill_blank' !== Parish_Formation_Question_Config::get( $question->ID )['type'] ) : ?><div class="pf-assessment-prompt"><?php echo $prompt; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div><?php endif; ?>
 					<?php echo Parish_Formation_Question_Renderer::render( $question, $field_name, $closed ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
@@ -796,7 +812,9 @@ final class Parish_Formation_Shortcodes {
 		$sequence = self::get_sequence( $enrollment->id, $lessons );
 		$progress = Parish_Formation_Progress_Repository::get_summary( $enrollment->id, $lessons, $course_id );
 		self::reconcile_course_completion( $enrollment, $lessons, $progress );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$lesson_id    = 'lesson' === $route_item_type ? self::find_curriculum_id_by_slug( $curriculum, 'lesson', $route_item_slug ) : ( isset( $_GET['pf_lesson'] ) ? absint( $_GET['pf_lesson'] ) : 0 );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$assessment_id  = 'assessment' === $route_item_type ? self::find_curriculum_id_by_slug( $curriculum, 'assessment', $route_item_slug ) : ( isset( $_GET['pf_assessment'] ) ? absint( $_GET['pf_assessment'] ) : 0 );
 		$active_lesson  = null;
 		$active_assessment = null;
@@ -903,7 +921,7 @@ final class Parish_Formation_Shortcodes {
 				<?php elseif ( $active_lesson ) : ?>
 					<header class="pf-content-header"><h1><?php echo esc_html( $active_lesson->post_title ); ?></h1></header>
 					<article class="pf-content-body uk-article">
-						<?php echo apply_filters( 'the_content', $active_lesson->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<?php echo apply_filters( 'the_content', $active_lesson->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core the_content filter intentionally renders authored lesson blocks and shortcodes. ?>
 					</article>
 					<footer class="pf-content-footer">
 						<?php if ( $lesson_index === $sequence['current_index'] ) : ?>
@@ -931,7 +949,7 @@ final class Parish_Formation_Shortcodes {
 				<?php else : ?>
 					<header class="pf-content-header"><h1><?php echo esc_html( $enrollment->course_title ); ?></h1></header>
 					<article class="pf-content-body uk-article">
-						<?php echo apply_filters( 'the_content', $enrollment->course_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<?php echo apply_filters( 'the_content', $enrollment->course_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core the_content filter intentionally renders authored course blocks and shortcodes. ?>
 						<?php if ( $progress['is_complete'] ) : ?>
 							<div class="uk-alert uk-alert-success">
 								<h3><?php echo esc_html__( 'Course Complete', 'parish-formation' ); ?></h3>

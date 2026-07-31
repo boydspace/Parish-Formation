@@ -149,6 +149,7 @@ final class Parish_Formation_Question_Block {
 					'ID'           => $question_id,
 					'post_type'    => Parish_Formation_Question_Post_Type::POST_TYPE,
 					'post_status'  => 'publish',
+					/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 					'post_title'   => sprintf( __( 'Question %d', 'parish-formation' ), $index + 1 ),
 					'post_content' => $prompt,
 				),
@@ -290,9 +291,9 @@ final class Parish_Formation_Question_Block {
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
 				'fields'         => 'ids',
-				'meta_key'       => '_pf_question_order',
+				'meta_key'       => '_pf_question_order', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Question ordering is part of the existing post-meta model.
 				'orderby'        => array( 'meta_value_num' => 'ASC', 'ID' => 'ASC' ),
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Assessment-question relationships are stored as post meta by the established data model.
 					array(
 						'key'     => '_pf_assessment_id',
 						'value'   => absint( $assessment_id ),

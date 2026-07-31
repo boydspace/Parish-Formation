@@ -4,6 +4,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 /** Certificate design settings and preview. */
 final class Parish_Formation_Certificate_Design_Settings {
@@ -149,9 +150,9 @@ final class Parish_Formation_Certificate_Design_Settings {
 		$temp = tempnam( get_temp_dir(), 'pf-signature-' );
 		if ( false === $temp ) { return ''; }
 		$saved = $editor->save( $temp, 'image/png' );
-		if ( is_wp_error( $saved ) || empty( $saved['path'] ) || ! is_readable( $saved['path'] ) ) { @unlink( $temp ); return ''; }
+		if ( is_wp_error( $saved ) || empty( $saved['path'] ) || ! is_readable( $saved['path'] ) ) { wp_delete_file( $temp ); return ''; }
 		$bytes = file_get_contents( $saved['path'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		@unlink( $saved['path'] );
+		wp_delete_file( $saved['path'] );
 		if ( false === $bytes ) { return ''; }
 		$data = 'data:image/png;base64,' . base64_encode( $bytes );
 		wp_delete_attachment( $attachment_id, true );

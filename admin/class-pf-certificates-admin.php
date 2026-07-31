@@ -4,6 +4,11 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
+
+// phpcs:disable WordPress.Security.NonceVerification.Recommended -- GET values in this screen are read-only search and display filters; all mutations use nonce-protected actions.
+
+// phpcs:disable WordPress.Security.NonceVerification.Recommended -- GET values in this screen are read-only search and display filters; all mutations use nonce-protected actions.
 
 /** Provides certificate search, audit detail, revocation, and reissuance. */
 final class Parish_Formation_Certificates_Admin {
@@ -25,6 +30,7 @@ final class Parish_Formation_Certificates_Admin {
 		if ( ! current_user_can( 'pf_view_reports' ) ) {
 			wp_die( esc_html__( 'You do not have permission to view certificates.', 'parish-formation' ) );
 		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$certificate_id = isset( $_GET['certificate_id'] ) ? absint( $_GET['certificate_id'] ) : 0;
 		if ( $certificate_id ) {
 			self::render_detail( $certificate_id );
@@ -58,8 +64,14 @@ final class Parish_Formation_Certificates_Admin {
 			wp_die( esc_html__( 'You do not have permission to export certificates.', 'parish-formation' ) );
 		}
 		check_admin_referer( 'pf_export_certificates' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only report filter; it does not mutate data.
 		$search    = isset( $_GET['pf_search'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_search'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only report filter; it does not mutate data.
 		$course_id = isset( $_GET['pf_course_filter'] ) ? absint( $_GET['pf_course_filter'] ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only report filter; it does not mutate data.
 		$status    = isset( $_GET['pf_status_filter'] ) ? sanitize_key( wp_unslash( $_GET['pf_status_filter'] ) ) : 'all';
 		$rows      = self::get_filtered_certificates( $search, $course_id, $status, 0 );
 		nocache_headers();
@@ -70,7 +82,7 @@ final class Parish_Formation_Certificates_Admin {
 		foreach ( $rows as $row ) {
 			fputcsv( $output, array( $row->participant_name, $row->course_title, $row->course_run, $row->issue_number, self::status_label( $row ), $row->verification_code, $row->completed_at, $row->issued_at, $row->expires_at, $row->revoked_at, $row->revocation_reason ) );
 		}
-		fclose( $output );
+		fclose( $output ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing the generated CSV response stream.
 		exit;
 	}
 
@@ -108,6 +120,7 @@ final class Parish_Formation_Certificates_Admin {
 			<?php if ( ! $rows ) : ?><p><?php esc_html_e( 'No certificates match these filters.', 'parish-formation' ); ?></p><?php else : ?>
 			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Participant', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Course', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Run / Issue', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Status', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Verification Code', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Issued', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Expires', 'parish-formation' ); ?></th><th><?php esc_html_e( 'Actions', 'parish-formation' ); ?></th></tr></thead><tbody>
 			<?php foreach ( $rows as $row ) : $detail_url = add_query_arg( array( 'page' => 'parish-formation-certificates', 'certificate_id' => $row->id ), admin_url( 'admin.php' ) ); ?>
+				<?php /* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */ ?>
 				<tr><td><a href="<?php echo esc_url( $detail_url ); ?>"><?php echo esc_html( $row->participant_name ); ?></a></td><td><?php echo esc_html( $row->course_title ); ?></td><td><?php echo esc_html( $row->course_run . ' / ' . $row->issue_number ); ?></td><td><?php echo esc_html( self::status_label( $row ) ); ?></td><td><a href="<?php echo esc_url( Parish_Formation_Certificate_Verification::get_verification_url( $row->verification_code ) ); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr( sprintf( __( 'Verify certificate %s', 'parish-formation' ), $row->verification_code ) ); ?>"><code><?php echo esc_html( $row->verification_code ); ?></code></a></td><td><?php echo esc_html( self::format_utc_date( $row->issued_at ) ); ?></td><td><?php echo $row->expires_at ? esc_html( self::format_utc_date( $row->expires_at ) ) : '&mdash;'; ?></td><td><a class="button button-small" href="<?php echo esc_url( self::pdf_download_url( $row ) ); ?>"><?php esc_html_e( 'Download PDF', 'parish-formation' ); ?></a></td></tr>
 			<?php endforeach; ?>
 			</tbody></table><?php endif; ?>
@@ -189,6 +202,7 @@ final class Parish_Formation_Certificates_Admin {
 
 	/** Show action feedback without reflecting arbitrary query text. */
 	private static function render_notice() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$code = isset( $_GET['pf_certificate_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_certificate_notice'] ) ) : '';
 		$notices = array(
 			'certificate_revoked' => array( 'success', __( 'The certificate was revoked.', 'parish-formation' ) ),

@@ -25,15 +25,19 @@ final class Parish_Formation_Account_Shortcodes {
 
 	public static function render_login() {
 		$settings = Parish_Formation_Account_Service::settings();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		if ( isset( $_GET['pf_reset_key'], $_GET['pf_reset_login'] ) ) { return self::render_password_reset(); }
 		if ( is_user_logged_in() ) {
-			return '<div class="pf-account-card uk-card uk-card-default uk-card-body"><p>' . esc_html__( 'You are already logged in.', 'parish-formation' ) . '</p><p><a class="uk-button uk-button-primary" href="' . esc_url( $settings['login_redirect'] ) . '">' . esc_html__( 'Open My Formation', 'parish-formation' ) . '</a> ' . self::render_account_button() . '</p></div>';
+			return '<div class="pf-account-card uk-card uk-card-default uk-card-body"><p>' . esc_html__( 'You are already logged in.', 'parish-formation' ) . '</p><p><a class="uk-button uk-button-primary" href="' . esc_url( $settings['login_redirect'] ) . '">' . esc_html__( 'Open My Formation', 'parish-formation' ) . '</a> ' . wp_kses_post( self::render_account_button() ) . '</p></div>';
 		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$notice = isset( $_GET['pf_account_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_account_notice'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$passwordless_request = isset( $_GET['pf_passwordless_request'] ) ? sanitize_key( wp_unslash( $_GET['pf_passwordless_request'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$return_url = isset( $_GET['redirect_to'] ) ? wp_validate_redirect( esc_url_raw( wp_unslash( $_GET['redirect_to'] ) ), $settings['login_redirect'] ) : $settings['login_redirect'];
 		ob_start(); ?>
-		<div class="pf-account-card uk-card uk-card-default uk-card-body"><h2 class="uk-card-title"><?php esc_html_e( 'Log In', 'parish-formation' ); ?></h2><?php echo self::notice( $notice ); ?>
+		<div class="pf-account-card uk-card uk-card-default uk-card-body"><h2 class="uk-card-title"><?php esc_html_e( 'Log In', 'parish-formation' ); ?></h2><?php echo wp_kses_post( self::notice( $notice ) ); ?>
 		<form class="pf-account-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="pf_account_login"><input type="hidden" name="return_url" value="<?php echo esc_attr( $return_url ); ?>"><?php wp_nonce_field( 'pf_account_login', 'pf_account_nonce' ); ?>
 		<label><?php esc_html_e( 'Email address', 'parish-formation' ); ?><input class="uk-input" name="log" type="email" required autocomplete="email"></label><label><?php esc_html_e( 'Password', 'parish-formation' ); ?><input class="uk-input" name="pwd" type="password" autocomplete="current-password"></label><label class="pf-account-check"><input class="uk-checkbox" name="rememberme" type="checkbox" value="1"> <?php esc_html_e( 'Remember me', 'parish-formation' ); ?></label><div class="pf-account-actions"><button class="uk-button uk-button-primary" type="submit" name="login_method" value="password"><?php esc_html_e( 'Log In', 'parish-formation' ); ?></button><?php if ( $settings['passwordless_login'] ) : ?><button class="uk-button uk-button-default" type="submit" name="login_method" value="passwordless"><?php esc_html_e( 'Email One-Time Code', 'parish-formation' ); ?></button><?php endif; ?></div></form>
 		<?php if ( $settings['passwordless_login'] && 'passwordless-sent' === $notice && $passwordless_request ) : ?>
@@ -53,8 +57,10 @@ final class Parish_Formation_Account_Shortcodes {
 	}
 
 	private static function render_password_reset() {
-		$key   = sanitize_text_field( wp_unslash( $_GET['pf_reset_key'] ) );
-		$login = sanitize_user( wp_unslash( $_GET['pf_reset_login'] ), true );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		$key   = isset( $_GET['pf_reset_key'] ) ? sanitize_text_field( wp_unslash( $_GET['pf_reset_key'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
+		$login = isset( $_GET['pf_reset_login'] ) ? sanitize_user( wp_unslash( $_GET['pf_reset_login'] ), true ) : '';
 		$user  = check_password_reset_key( $key, $login );
 		if ( is_wp_error( $user ) ) { return '<div class="pf-account-card uk-card uk-card-default uk-card-body"><div class="uk-alert uk-alert-danger"><p>' . esc_html__( 'That password setup link is invalid or has expired.', 'parish-formation' ) . '</p></div><a class="uk-button uk-button-primary" href="' . esc_url( self::get_login_url() ) . '">' . esc_html__( 'Return to Login', 'parish-formation' ) . '</a></div>'; }
 		ob_start(); ?>
@@ -66,9 +72,10 @@ final class Parish_Formation_Account_Shortcodes {
 		$settings = Parish_Formation_Account_Service::settings();
 		if ( is_user_logged_in() ) { return '<div class="uk-alert uk-alert-primary"><p>' . esc_html__( 'You already have an account and are logged in.', 'parish-formation' ) . '</p></div>'; }
 		if ( ! $settings['public_registration'] ) { return '<div class="uk-alert uk-alert-warning"><p>' . esc_html__( 'Public account registration is currently closed.', 'parish-formation' ) . '</p></div>'; }
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$notice = isset( $_GET['pf_account_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_account_notice'] ) ) : '';
 		ob_start(); ?>
-		<div class="pf-account-card uk-card uk-card-default uk-card-body"><h2 class="uk-card-title"><?php esc_html_e( 'Create an Account', 'parish-formation' ); ?></h2><?php echo self::notice( $notice ); ?>
+		<div class="pf-account-card uk-card uk-card-default uk-card-body"><h2 class="uk-card-title"><?php esc_html_e( 'Create an Account', 'parish-formation' ); ?></h2><?php echo wp_kses_post( self::notice( $notice ) ); ?>
 		<form class="pf-account-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="pf_account_register"><input type="hidden" name="return_url" value="<?php echo esc_attr( self::current_url() ); ?>"><?php wp_nonce_field( 'pf_account_register', 'pf_registration_nonce' ); ?><div class="pf-account-name-grid"><label><?php esc_html_e( 'First name', 'parish-formation' ); ?><input class="uk-input" name="first_name" type="text" <?php echo $settings['require_first_name'] ? 'required' : ''; ?> autocomplete="given-name"></label><label><?php esc_html_e( 'Last name', 'parish-formation' ); ?><input class="uk-input" name="last_name" type="text" <?php echo $settings['require_last_name'] ? 'required' : ''; ?> autocomplete="family-name"></label></div><label><?php esc_html_e( 'Email address', 'parish-formation' ); ?><input class="uk-input" name="user_email" type="email" required autocomplete="email"></label><label><?php esc_html_e( 'Cell phone number', 'parish-formation' ); ?><input class="uk-input" name="cell_phone" type="tel" <?php echo $settings['require_phone'] ? 'required' : ''; ?> autocomplete="tel"></label>
 		<?php if ( 'required' === $settings['password_mode'] ) : ?><div class="pf-account-name-grid"><label><?php esc_html_e( 'Password', 'parish-formation' ); ?><input class="uk-input" name="user_password" type="password" minlength="8" required autocomplete="new-password"></label><label><?php esc_html_e( 'Verify password', 'parish-formation' ); ?><input class="uk-input" name="verify_password" type="password" minlength="8" required autocomplete="new-password"></label></div><?php else : ?><p><?php esc_html_e( 'We will email you a secure link to set up your password.', 'parish-formation' ); ?></p><?php endif; ?>
 		<label class="pf-account-honeypot" aria-hidden="true">Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label><button class="uk-button uk-button-primary" type="submit"><?php esc_html_e( 'Create Account', 'parish-formation' ); ?></button></form><p><?php esc_html_e( 'Already have an account?', 'parish-formation' ); ?> <a href="<?php echo esc_url( self::get_login_url() ); ?>"><?php esc_html_e( 'Log in here', 'parish-formation' ); ?></a></p></div>

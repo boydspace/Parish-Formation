@@ -99,11 +99,11 @@ final class Parish_Formation_Enrollment_Actions {
 		$account = Parish_Formation_Account_Service::create_participant(
 			array(
 				'email' => $email,
-				'first_name' => isset( $_POST['first_name'] ) ? wp_unslash( $_POST['first_name'] ) : '',
-				'last_name' => isset( $_POST['last_name'] ) ? wp_unslash( $_POST['last_name'] ) : '',
-				'phone' => isset( $_POST['cell_phone'] ) ? wp_unslash( $_POST['cell_phone'] ) : '',
-				'password' => isset( $_POST['user_password'] ) ? wp_unslash( $_POST['user_password'] ) : '',
-				'verify_password' => isset( $_POST['verify_password'] ) ? wp_unslash( $_POST['verify_password'] ) : '',
+				'first_name' => isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '',
+				'last_name' => isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '',
+				'phone' => isset( $_POST['cell_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['cell_phone'] ) ) : '',
+				'password' => isset( $_POST['user_password'] ) ? wp_unslash( $_POST['user_password'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Passwords are intentionally preserved and validated by the account service.
+				'verify_password' => isset( $_POST['verify_password'] ) ? wp_unslash( $_POST['verify_password'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Passwords are intentionally preserved and validated by the account service.
 			),
 			'invitation'
 		);
@@ -251,7 +251,7 @@ final class Parish_Formation_Enrollment_Actions {
 				'posts_per_page' => -1,
 				'fields'         => 'ids',
 				'no_found_rows'  => true,
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Access-code eligibility is stored in course post meta by the established data model.
 					array(
 						'key'   => Parish_Formation_Course_Settings::ACCESS_CODE_ENABLED_META_KEY,
 						'value' => '1',

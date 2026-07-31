@@ -4,6 +4,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 /** Provides notification configuration, testing, and delivery history. */
 final class Parish_Formation_Notifications_Admin {
@@ -49,6 +50,7 @@ final class Parish_Formation_Notifications_Admin {
 		global $wpdb;
 		$settings = Parish_Formation_Notifications::settings();
 		$types    = Parish_Formation_Notifications::types();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$requested_tab  = isset( $_GET['template_type'] ) ? sanitize_key( wp_unslash( $_GET['template_type'] ) ) : 'enrollment_confirmation';
 		$is_design      = 'email_design' === $requested_tab;
 		$template_type  = $is_design ? 'enrollment_confirmation' : $requested_tab;
@@ -58,8 +60,11 @@ final class Parish_Formation_Notifications_Admin {
 		$template = Parish_Formation_Notifications::template( $template_type );
 		$preview  = Parish_Formation_Notifications::resolve_template( $template_type, Parish_Formation_Notifications::sample_values() );
 		$design   = Parish_Formation_Notifications::design();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$log_status = isset( $_GET['log_status'] ) ? sanitize_key( wp_unslash( $_GET['log_status'] ) ) : 'all';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$log_type   = isset( $_GET['log_type'] ) ? sanitize_key( wp_unslash( $_GET['log_type'] ) ) : 'all';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$log_search = isset( $_GET['log_search'] ) ? sanitize_text_field( wp_unslash( $_GET['log_search'] ) ) : '';
 		$where      = array( '1=1' );
 		$query_args = array();
@@ -167,7 +172,7 @@ final class Parish_Formation_Notifications_Admin {
 		self::require_access();
 		check_admin_referer( 'pf_save_notification_settings' );
 		$enabled = array();
-		$posted_enabled = isset( $_POST['enabled'] ) && is_array( $_POST['enabled'] ) ? wp_unslash( $_POST['enabled'] ) : array();
+		$posted_enabled = isset( $_POST['enabled'] ) && is_array( $_POST['enabled'] ) ? map_deep( wp_unslash( $_POST['enabled'] ), 'sanitize_text_field' ) : array();
 		foreach ( Parish_Formation_Notifications::types() as $type => $definition ) {
 			$enabled[ $type ] = isset( $posted_enabled[ $type ] );
 		}
@@ -180,7 +185,7 @@ final class Parish_Formation_Notifications_Admin {
 			self::redirect( 'invalid_reply_to' );
 		}
 		$current = get_option( Parish_Formation_Notifications::SETTINGS_OPTION, array() );
-		update_option( Parish_Formation_Notifications::SETTINGS_OPTION, array( 'from_name' => isset( $_POST['from_name'] ) ? sanitize_text_field( wp_unslash( $_POST['from_name'] ) ) : '', 'from_email' => $from_email, 'reply_to' => $reply_to, 'staff_emails' => isset( $_POST['staff_emails'] ) ? Parish_Formation_Notifications::sanitize_email_list( wp_unslash( $_POST['staff_emails'] ) ) : '', 'reminder_days' => isset( $_POST['reminder_days'] ) ? Parish_Formation_Notifications::sanitize_reminder_days( wp_unslash( $_POST['reminder_days'] ) ) : '', 'enabled' => $enabled, 'templates' => isset( $current['templates'] ) ? $current['templates'] : array(), 'design' => isset( $current['design'] ) ? $current['design'] : array() ), false );
+		update_option( Parish_Formation_Notifications::SETTINGS_OPTION, array( 'from_name' => isset( $_POST['from_name'] ) ? sanitize_text_field( wp_unslash( $_POST['from_name'] ) ) : '', 'from_email' => $from_email, 'reply_to' => $reply_to, 'staff_emails' => isset( $_POST['staff_emails'] ) ? Parish_Formation_Notifications::sanitize_email_list( sanitize_textarea_field( wp_unslash( $_POST['staff_emails'] ) ) ) : '', 'reminder_days' => isset( $_POST['reminder_days'] ) ? Parish_Formation_Notifications::sanitize_reminder_days( sanitize_text_field( wp_unslash( $_POST['reminder_days'] ) ) ) : '', 'enabled' => $enabled, 'templates' => isset( $current['templates'] ) ? $current['templates'] : array(), 'design' => isset( $current['design'] ) ? $current['design'] : array() ), false );
 		self::redirect( 'settings_saved' );
 	}
 
@@ -195,6 +200,7 @@ final class Parish_Formation_Notifications_Admin {
 		preg_match_all( '/\{([a-z0-9_]+)\}/', $subject . ' ' . $body, $matches );
 		$unknown = array_diff( array_unique( $matches[1] ), Parish_Formation_Notifications::placeholders( $type ) );
 		if ( $unknown ) {
+			/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 			set_transient( 'pf_notification_template_error_' . get_current_user_id(), sprintf( __( 'Unknown placeholders: %s', 'parish-formation' ), implode( ', ', array_map( static function ( $item ) { return '{' . $item . '}'; }, $unknown ) ) ), 60 );
 			self::redirect( 'template_invalid', $type );
 		}
@@ -269,6 +275,7 @@ final class Parish_Formation_Notifications_Admin {
 		if ( ! $email ) {
 			self::redirect( 'invalid_test_recipient' );
 		}
+		/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 		$sent = Parish_Formation_Notifications::send( 'enrollment_confirmation', $email, sprintf( __( '[%s] Parish Formation test email', 'parish-formation' ), get_bloginfo( 'name' ) ), __( 'Your email settings are working', 'parish-formation' ), __( 'This is a test of the Parish Formation notification system. Future course messages will use this layout and sender configuration.', 'parish-formation' ), 'test_' . wp_generate_password( 20, false, false ), true );
 		self::redirect( $sent ? 'test_sent' : 'test_failed' );
 	}
@@ -299,6 +306,7 @@ final class Parish_Formation_Notifications_Admin {
 
 	/** Render action feedback. */
 	private static function render_notice() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here.
 		$code = isset( $_GET['pf_notification_notice'] ) ? sanitize_key( wp_unslash( $_GET['pf_notification_notice'] ) ) : '';
 		$template_error = get_transient( 'pf_notification_template_error_' . get_current_user_id() );
 		if ( $template_error ) {

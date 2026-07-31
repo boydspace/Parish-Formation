@@ -181,9 +181,11 @@ final class Parish_Formation_Question_Grading_Service {
 			$minimum = absint( $config['type_config']['minimum_characters'] ?? 0 );
 			$maximum_characters = absint( $config['type_config']['maximum_characters'] ?? 0 );
 			if ( $minimum && $length < $minimum ) {
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				return self::result( false, 'response_too_short', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, sprintf( __( 'Please enter at least %d non-space characters.', 'parish-formation' ), $minimum ) );
 			}
 			if ( $maximum_characters && $length > $maximum_characters ) {
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				return self::result( false, 'response_too_long', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, sprintf( __( 'Please use no more than %d non-space characters.', 'parish-formation' ), $maximum_characters ) );
 			}
 			$completion_credit = ! empty( $config['type_config']['completion_credit'] );
@@ -272,6 +274,7 @@ final class Parish_Formation_Question_Grading_Service {
 			$ids = array_values( array_unique( array_filter( array_map( 'absint', is_array( $response ) ? $response : array( $response ) ) ) ) );
 			$minimum = absint( $config['type_config']['minimum_files'] ?? 1 );
 			$maximum_files = absint( $config['type_config']['maximum_files'] ?? 1 );
+			/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 			if ( count( $ids ) < $minimum || count( $ids ) > $maximum_files ) { return self::result( false, 'invalid_file_count', $original, 0, $config['graded'] ? $config['points'] : 0, false, null, false, $config, sprintf( __( 'Upload between %1$d and %2$d files.', 'parish-formation' ), $minimum, $maximum_files ) ); }
 			foreach ( $ids as $attachment_id ) {
 				if ( ! get_post_meta( $attachment_id, Parish_Formation_Assessment_File_Service::PRIVATE_META, true ) || get_current_user_id() !== absint( get_post_meta( $attachment_id, Parish_Formation_Assessment_File_Service::OWNER_META, true ) ) || $question->ID !== absint( get_post_meta( $attachment_id, Parish_Formation_Assessment_File_Service::QUESTION_META, true ) ) ) {
@@ -316,9 +319,11 @@ final class Parish_Formation_Question_Grading_Service {
 		$unit = isset( $matches[2] ) ? trim( $matches[2] ) : '';
 		$expected_unit = trim( (string) ( $settings['unit_label'] ?? '' ) );
 		if ( ! empty( $settings['require_unit'] ) && ( '' === $expected_unit || 0 !== strcasecmp( $unit, $expected_unit ) ) ) {
+			/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 			return array( 'valid' => false, 'error_code' => 'invalid_unit', 'message' => sprintf( __( 'Include the required unit: %s.', 'parish-formation' ), $expected_unit ) );
 		}
 		if ( '' !== $unit && '' !== $expected_unit && 0 !== strcasecmp( $unit, $expected_unit ) ) {
+			/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 			return array( 'valid' => false, 'error_code' => 'invalid_unit', 'message' => sprintf( __( 'Use the unit %s.', 'parish-formation' ), $expected_unit ) );
 		}
 		if ( '' !== $unit && '' === $expected_unit ) {

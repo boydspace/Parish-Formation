@@ -4,6 +4,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- This component intentionally reads and writes plugin-owned custom tables; identifiers derive from $wpdb->prefix and mutable values are prepared.
 
 final class Parish_Formation_Security_Event_Repository {
 	/** Append one event to the site-specific hash chain. */
@@ -60,6 +61,7 @@ final class Parish_Formation_Security_Event_Repository {
 			$payload  = implode( '|', array( $previous_hash, $event->event_type, $event->object_type, absint( $event->object_id ), absint( $event->actor_user_id ), absint( $event->participant_user_id ), absint( $event->course_id ), $event->context_json, $event->created_at ) );
 			$expected = hash_hmac( 'sha256', $payload, wp_salt( 'auth' ) );
 			if ( ! hash_equals( (string) $event->previous_hash, $previous_hash ) || ! hash_equals( (string) $event->event_hash, $expected ) ) {
+				/* translators: Placeholder values are replaced with the contextual count, name, date, status, or label described by the message. */
 				return new WP_Error( 'security_event_chain_invalid', sprintf( __( 'Security event %d failed integrity verification.', 'parish-formation' ), $event->id ) );
 			}
 			$previous_hash = $event->event_hash;

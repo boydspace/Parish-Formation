@@ -14,6 +14,7 @@ final class Parish_Formation_Account_Settings {
 		$settings = Parish_Formation_Account_Service::settings();
 		?>
 		<div class="wrap"><h1><?php esc_html_e( 'Participant Account Settings', 'parish-formation' ); ?></h1>
+		<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation/filter input, or a request independently authorized by its one-time token; no nonce-protected form mutation occurs here. ?>
 		<?php if ( isset( $_GET['updated'] ) ) : ?><div class="notice notice-success"><p><?php esc_html_e( 'Account settings saved.', 'parish-formation' ); ?></p></div><?php endif; ?>
 		<p><?php esc_html_e( 'Control public registration and the fields required when participants create accounts.', 'parish-formation' ); ?></p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="pf_save_account_settings"><?php wp_nonce_field( 'pf_save_account_settings' ); ?>

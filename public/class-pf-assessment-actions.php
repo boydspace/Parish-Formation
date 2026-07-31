@@ -35,7 +35,7 @@ final class Parish_Formation_Assessment_Actions {
 			wp_die( esc_html( $enrollment->get_error_message() ) );
 		}
 
-		$answers = isset( $_POST['pf_answers'] ) && is_array( $_POST['pf_answers'] ) ? wp_unslash( $_POST['pf_answers'] ) : array();
+		$answers = isset( $_POST['pf_answers'] ) && is_array( $_POST['pf_answers'] ) ? wp_unslash( $_POST['pf_answers'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Type-specific validation and sanitization occur centrally in the assessment repository and grading service.
 		$result  = Parish_Formation_Assessment_Repository::submit( $enrollment, $assessment_id, $answers );
 		$return_url = isset( $_POST['return_url'] ) ? wp_validate_redirect( esc_url_raw( wp_unslash( $_POST['return_url'] ) ), home_url( '/' ) ) : home_url( '/' );
 		if ( is_wp_error( $result ) ) {
